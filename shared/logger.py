@@ -1,22 +1,32 @@
 import logging
 import sys
 
-# ANSI color codes
 COLORS = {
     "INFO": "\033[94m",       # Blue
     "ERROR": "\033[91m",      # Red
     "CRITICAL": "\033[95m",   # Light Purple
-    "RESET": "\033[0m"
 }
+
+RESET = "\033[0m"
 
 
 class ColorFormatter(logging.Formatter):
     def format(self, record):
-        levelname = record.levelname
-        color = COLORS.get(levelname, "")
-        reset = COLORS["RESET"]
-        message = super().format(record)
-        return f"{color}{message}{reset}"
+        original_levelname = record.levelname
+
+        if original_levelname in COLORS:
+            colored_levelname = (
+                f"{COLORS[original_levelname]}"
+                f"{original_levelname}"
+                f"{RESET}"
+            )
+            record.levelname = colored_levelname
+
+        formatted = super().format(record)
+
+        record.levelname = original_levelname  # Restore it
+
+        return formatted
 
 
 def setup_logger(name: str, console_levels=None):
