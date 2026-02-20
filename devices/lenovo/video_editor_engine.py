@@ -1,3 +1,5 @@
+# Ffmpeg is needed for this script, but it is not a repo requirement.
+
 import os
 import subprocess as subp
 from datetime import datetime
