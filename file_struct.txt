@@ -1,0 +1,13 @@
+*** This file is just for reference, depicting this repos file hierarchy
+
+
+cjm-dev: (Repo)
+    /devices
+        /lenovo
+
+
+        /rpi
+
+    /experiments
+    /scripts
+    /shared
