@@ -12,13 +12,13 @@ import requests
 import pandas as pd
 import re
 import time
-import logging
+from shared.logger import setup_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 import os
 from dotenv import load_dotenv
-from lead_filter import load_existing_place_ids, is_new_place
+from leadfilter import load_existing_place_ids, is_new_place
 
 load_dotenv()
 
@@ -35,9 +35,10 @@ CSV_OUTPUT = "leads_output.csv"
 existing_place_ids = load_existing_place_ids(CSV_OUTPUT)
 
 # Logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("leadgen")
-
+logger = setup_logger(
+    name="leadgen",
+    console_levels=["CRITICAL"]  # Only these show in console, any of them can be removed.
+)
 
 def get_places(location, radius, keywords, api_key):
     """Use Nearby Search to gather place_ids for given keywords and location.
@@ -60,13 +61,13 @@ def get_places(location, radius, keywords, api_key):
                 data = r.json()
 
                 # DEBUG LOGS
-                logger.warning("HTTP Status Code: %s", r.status_code)
-                logger.warning("Places Status: %s", data.get("status"))
-                logger.warning("Error Message: %s", data.get("error_message"))
-                logger.warning("Results Count: %d", len(data.get("results", [])))
+                logger.info("HTTP Status Code: %s", r.status_code)
+                logger.info("Places Status: %s", data.get("status"))
+                logger.info("Error Message: %s", data.get("error_message"))
+                logger.info("Results Count: %d", len(data.get("results", [])))
 
             except Exception as e:
-                logger.warning("Nearby search failed for keyword %s: %s", kw, e)
+                logger.error("Nearby search failed for keyword %s: %s", kw, e)
                 break
             data = r.json()
             results = data.get("results", [])
@@ -117,7 +118,7 @@ def get_place_details(place_id, api_key):
             "address": result.get("formatted_address"),
         }
     except Exception as e:
-        logger.warning("Place details failed for %s: %s", place_id, e)
+        logger.error("Place details failed for %s: %s", place_id, e)
         return {"website": None, "phone_google": None, "address": None}
 
 
@@ -233,7 +234,7 @@ def score_lead(has_website, https, has_viewport, html_length, emails, has_cta, r
 def process_businesses(businesses, api_key, existing_ids):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
     enriched = []
-    logger.info("Fetching place details for %d businesses", len(businesses))
+    logger.critical("Fetching place details for %d businesses", len(businesses))
     for b in businesses:
         place_id = b.get("place_id")
         details = get_place_details(place_id, api_key)
@@ -258,7 +259,7 @@ def process_businesses(businesses, api_key, existing_ids):
             continue
         unique[key] = e
     businesses_unique = list(unique.values())
-    logger.info("After deduplication: %d businesses", len(businesses_unique))
+    logger.critical("After deduplication: %d businesses", len(businesses_unique))
 
     # Analyze websites concurrently
     analyses = {}
@@ -277,7 +278,7 @@ def process_businesses(businesses, api_key, existing_ids):
             try:
                 analyses[b.get("place_id")] = fut.result()
             except Exception as e:
-                logger.warning("Website analysis failed for %s: %s", b.get("website"), e)
+                logger.error("Website analysis failed for %s: %s", b.get("website"), e)
                 analyses[b.get("place_id")] = {"emails": [], "phones_website": [], "https": False, "has_viewport": False, "html_length": 0, "has_title": False, "has_cta": False, "error": str(e)}
 
     # Build final rows
@@ -331,7 +332,7 @@ def save_results(rows, csv_path):
     # otherwise save new
     df_new = df_new.sort_values(by="lead_score", ascending=False)
     df_new.to_csv(csv_path, index=False)
-    logger.info("Saved %d leads to %s", len(df_new), csv_path)
+    logger.critical("Saved %d leads to %s", len(df_new), csv_path)
 
 
 def main():
@@ -339,10 +340,10 @@ def main():
         logger.error("Please set GOOGLE_API_KEY in the script before running.")
         return
 
-    logger.info("Starting lead generation for location=%s radius=%s keywords=%s", LOCATION, SEARCH_RADIUS, KEYWORDS)
+    logger.critical("Starting lead generation for location=%s radius=%s keywords=%s", LOCATION, SEARCH_RADIUS, KEYWORDS)
     places = get_places(LOCATION, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
     if not places:
-        logger.info("No places found; exiting")
+        logger.critical("No places found; exiting")
         return
     rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids)
     save_results(rows, CSV_OUTPUT)
