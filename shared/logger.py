@@ -3,6 +3,13 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+
+# ---- PATH SETUP ----
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BASE_DIR.parent   # if you want logs at repo root
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+
 # ---- GLOBAL LOG FILE (created once per execution) ----
 _LOG_FILE = None
 
@@ -12,14 +19,10 @@ def _get_log_file(class_name: str) -> Path:
 
     if _LOG_FILE is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_dir = Path("logs")
-        log_dir.mkdir(exist_ok=True)
-
         filename = f"{timestamp}_{class_name}.log"
-        _LOG_FILE = log_dir / filename
+        _LOG_FILE = LOG_DIR / filename
 
     return _LOG_FILE
-
 
 # ---- COLOR CONFIG ----
 COLORS = {
