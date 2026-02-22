@@ -105,18 +105,21 @@ class MotoClipGenerator:
 
     # --------------------------------------------------
     def create_highlight(self, video_path, timestamp, output_file):
+        """
+        Create a simple highlight clip from the raw video.
+        No cropping, no blur, preserves original aspect ratio.
+        """
         start = max(timestamp - 5, 0)
         command = [
             "ffmpeg",
             "-ss", str(start),
             "-i", video_path,
             "-t", str(self.highlight_duration),
-            "-filter_complex",
-            "[0:v]scale=1080:-2,boxblur=20:1[bg];"
-            "[0:v]scale=-2:1080[fg];"
-            "[bg][fg]overlay=(W-w)/2:(H-h)/2",
+            "-c:v", "libx264",
             "-preset", "veryfast",
             "-crf", "18",
+            "-c:a", "aac",
+            "-b:a", "128k",
             output_file
         ]
         self.run_ffmpeg(command)
