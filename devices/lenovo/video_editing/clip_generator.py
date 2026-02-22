@@ -11,10 +11,11 @@ class MotoClipGenerator:
         self.highlight_dir = os.path.join(self.base_dir, "highlights")
         self.split_dir = os.path.join(self.base_dir, "splits")
 
-        # UPDATED SETTINGS
-        self.highlight_duration = 20
-        self.split_duration = 60
-        self.motion_threshold = 0.3
+        # Settings
+        self.highlight_duration = 18   # Shorter highlights for short-form
+        self.split_duration = 60       # 1-minute splits
+        self.motion_threshold = 0.25   # scene detection threshold
+        self.audio_threshold = -20     # dB for light acceleration detection
 
     # --------------------------------------------------
     def ensure_dir(self, path):
@@ -40,7 +41,6 @@ class MotoClipGenerator:
     # --------------------------------------------------
     def detect_motion_timestamps(self, video_path):
         print(f"Detecting motion in {video_path} ...")
-
         command = [
             "ffmpeg",
             "-i", video_path,
@@ -48,14 +48,12 @@ class MotoClipGenerator:
             "-f", "null",
             "-"
         ]
-
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True
         )
-
         timestamps = []
         for line in process.stdout:
             if "pts_time:" in line:
@@ -64,14 +62,50 @@ class MotoClipGenerator:
                     timestamps.append(t)
                 except:
                     pass
-
         process.wait()
         return timestamps
 
     # --------------------------------------------------
+    def detect_acceleration(self, video_path):
+        """
+        Light acceleration detection using audio spikes.
+        Returns timestamps of high engine rev / acceleration.
+        """
+        print(f"Detecting acceleration in {video_path} ...")
+        command = [
+            "ffmpeg",
+            "-i", video_path,
+            "-af", f"astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level",
+            "-f", "null",
+            "-"
+        ]
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        accel_timestamps = []
+        last_time = 0.0
+        for line in process.stdout:
+            if "pts_time:" in line and "lavfi.astats.Overall.RMS_level=" in line:
+                try:
+                    t = float(line.split("pts_time:")[1].split()[0])
+                    rms = float(line.split("lavfi.astats.Overall.RMS_level=")[1].split()[0])
+                    if rms > self.audio_threshold:
+                        # Only keep timestamps separated by ~3 sec to avoid repeats
+                        if t - last_time > 3:
+                            accel_timestamps.append(t)
+                            last_time = t
+                except:
+                    pass
+        process.wait()
+        return accel_timestamps
+
+    # --------------------------------------------------
     def create_highlight(self, video_path, timestamp, output_file):
         start = max(timestamp - 5, 0)
-
         command = [
             "ffmpeg",
             "-ss", str(start),
@@ -85,13 +119,11 @@ class MotoClipGenerator:
             "-crf", "18",
             output_file
         ]
-
         self.run_ffmpeg(command)
 
     # --------------------------------------------------
     def split_video(self, video_path, output_dir):
         self.ensure_dir(output_dir)
-
         command = [
             "ffmpeg",
             "-i", video_path,
@@ -101,7 +133,6 @@ class MotoClipGenerator:
             "-reset_timestamps", "1",
             os.path.join(output_dir, "split_%03d.mp4")
         ]
-
         self.run_ffmpeg(command)
 
     # --------------------------------------------------
@@ -122,23 +153,36 @@ class MotoClipGenerator:
             "highlights": []
         }
 
-        timestamps = self.detect_motion_timestamps(video_path)
-
-        for idx, t in enumerate(timestamps):
+        # Motion highlights
+        motion_timestamps = self.detect_motion_timestamps(video_path)
+        for idx, t in enumerate(motion_timestamps):
             output_file = os.path.join(highlight_path, f"highlight_{idx:03d}.mp4")
-
             if os.path.exists(output_file):
                 continue
-
             self.create_highlight(video_path, t, output_file)
-
             metadata["highlights"].append({
                 "file": output_file,
-                "timestamp": t
+                "timestamp": t,
+                "acceleration": False
             })
 
+        # Acceleration highlights
+        accel_timestamps = self.detect_acceleration(video_path)
+        for idx, t in enumerate(accel_timestamps):
+            output_file = os.path.join(highlight_path, f"highlight_accel_{idx:03d}.mp4")
+            if os.path.exists(output_file):
+                continue
+            self.create_highlight(video_path, t, output_file)
+            metadata["highlights"].append({
+                "file": output_file,
+                "timestamp": t,
+                "acceleration": True
+            })
+
+        # Split full video
         self.split_video(video_path, split_path)
 
+        # Save metadata
         metadata_file = os.path.join(highlight_path, "metadata.json")
         with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=4)
