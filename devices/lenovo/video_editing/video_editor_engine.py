@@ -1,161 +1,202 @@
-# Ffmpeg is needed for this script, but it is not a repo requirement.
-
 import os
-import subprocess as subp
-from datetime import datetime
+import subprocess
+import random
+import sys
 
-class VideoEditorEngine:
-    def __init__(self, base_dir, segment_time=120, highlight_duration=20, luma_threshold=45.0):
-        #Base folders
-        self.base_dir = base_dir
-        self.raw_dir = os.path.join(base_dir, "raw")
-        self.split_dir = os.path.join(base_dir, "split")
-        self.highlight_dir = os.path.join(base_dir, "highlights")
-        self.montage_dir = os.path.join(base_dir, "montages")
-        
-        #Config
-        self.segment_time = segment_time
-        self.highlight_duration = highlight_duration
-        self.luma_threshold = luma_threshold
+class MotoContentFactory:
+    def __init__(self):
+        # Hardcoded base directory
+        self.base_dir = r"E:\0. Moto Vids"
 
-    #Utility
-    @staticmethod
-    def ensure_folder(self):
-        pass
-        #print('ERROR WITH FOLDERS')
-        #exit
+        # Folders
+        self.raw_dir = os.path.join(self.base_dir, "raw")
+        self.highlight_dir = os.path.join(self.base_dir, "highlights")
+        self.split_dir = os.path.join(self.base_dir, "splits")
+        self.montage_dir = os.path.join(self.base_dir, "montages")
 
-    #FFmpeg Helpers
-    def split_video(self, input_file, output_folder):
-        self.ensure_folder(output_folder)
+        # Config
+        self.highlight_duration = 30  # seconds
+        self.split_duration = 120     # seconds
+        self.motion_threshold = 0.3   # scene detection threshold
+        self.montage_variations = 20  # how many montage combinations per ride
+
+    # --------------------------------------------------
+    # Utility
+    # --------------------------------------------------
+    def ensure_dir(self, path):
+        os.makedirs(path, exist_ok=True)
+
+    def run_ffmpeg(self, command):
+        """Run FFmpeg and stream output in real-time for safe Ctrl+C"""
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        try:
+            for line in process.stdout:
+                print(line, end='')
+        except KeyboardInterrupt:
+            print("\nUser interrupted. Terminating FFmpeg...")
+            process.terminate()
+            process.wait()
+            sys.exit(1)
+        process.wait()
+        if process.returncode != 0:
+            print(f"FFmpeg exited with code {process.returncode}")
+
+    # --------------------------------------------------
+    # Motion Detection (Scene Changes)
+    # --------------------------------------------------
+    def detect_motion_timestamps(self, video_path):
+        print(f"Detecting motion in {video_path} ...")
         command = [
             "ffmpeg",
-            "-i", input_file,
-            "-map", "0",
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "18",
-            "-c:a", "aac",
-            "-f", "segment",
-            "-segment_time", str(self.segment_time),
-            "-reset_timestamps", "1",
-            "-force_key_frames", f"expr:gte(t,n_forced*{self.segment_time})",
-            os.path.join(output_folder, "split_%03d.mp4")
-        ]
-        subp.run(command)
-
-    def detect_brightness(self, video_file):
-        command = [
-            "ffmpeg",
-            "-i", video_file,
-            "-vf", "signalstats",
+            "-i", video_path,
+            "-vf", f"select='gt(scene,{self.motion_threshold})',showinfo",
             "-f", "null",
             "-"
         ]
-        result = subp.run(command, capture_output=True, text=True)
-        yavg_vals = []
-        for line in result.stderr.splitlines():
-            if "YAVG:" in line:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        timestamps = []
+        for line in process.stdout:
+            if "pts_time:" in line:
                 try:
-                    val = float(line.split("YAVG:")[1].split()[0])
-                    yavg_vals.append(val)
+                    t = float(line.split("pts_time:")[1].split()[0])
+                    timestamps.append(t)
                 except:
                     pass
-        if not yavg_vals:
-            return None
-        return sum(yavg_vals) / len(yavg_vals)
+        process.wait()
+        return timestamps
 
-    def classify_day_night(self, avg_luma):
-        return "NIGHT" if avg_luma < self.luma_threshold else "DAY"
-
-    def create_highlight(self, segment_file, output_folder):
-        self.ensure_folder(output_folder)
-        basename = os.path.splitext(os.path.basename(segment_file))[0]
-        output_file = os.path.join(output_folder, f"{basename}_highlight.mp4")
+    # --------------------------------------------------
+    # Highlight Creation (Vertical + Blur Background)
+    # --------------------------------------------------
+    def create_highlight(self, video_path, timestamp, output_file):
+        start = max(timestamp - 5, 0)  # 5 seconds before scene change
         command = [
             "ffmpeg",
-            "-i", segment_file,
-            "-ss", "0",
+            "-ss", str(start),
+            "-i", video_path,
             "-t", str(self.highlight_duration),
-            "-c", "copy",
+            "-filter_complex",
+            "[0:v]scale=1080:-2,boxblur=20:1[bg];"
+            "[0:v]scale=-2:1080[fg];"
+            "[bg][fg]overlay=(W-w)/2:(H-h)/2",
+            "-preset", "fast",
+            "-crf", "20",
             output_file
         ]
-        subp.run(command)
-        return output_file
+        self.run_ffmpeg(command)
 
-    def create_montage(self, video_files, output_file):
-        if not video_files:
-            return
-        list_file = "temp_list.txt"
-        with open(list_file, "w") as f:
-            for vf in video_files:
-                f.write(f"file '{vf}'\n")
+    # --------------------------------------------------
+    # Split Video into 1-2 min segments
+    # --------------------------------------------------
+    def split_video(self, video_path, output_dir):
+        self.ensure_dir(output_dir)
         command = [
             "ffmpeg",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", list_file,
+            "-i", video_path,
             "-c", "copy",
-            output_file
+            "-f", "segment",
+            "-segment_time", str(self.split_duration),
+            "-reset_timestamps", "1",
+            os.path.join(output_dir, "split_%03d.mp4")
         ]
-        subp.run(command)
-        os.remove(list_file)
+        self.run_ffmpeg(command)
 
-    #Main Processing
-    def process_date_folder(self, date_folder):
-        raw_date_path = os.path.join(self.raw_dir, date_folder)
-        split_date_path = os.path.join(self.split_dir, date_folder)
-        highlight_date_path = os.path.join(self.highlight_dir, date_folder)
-        montage_date_path = os.path.join(self.montage_dir, date_folder)
-        self.ensure_folder(montage_date_path)
-
-        #Create ALL date folders
-        os.makedirs(split_date_path, exist_ok=True)
-        os.makedirs(highlight_date_path, exist_ok=True)
-        os.makedirs(montage_date_path, exist_ok=True)
-
-        all_split_videos = []
-        all_highlight_videos = []
-
-        for raw_file in os.listdir(raw_date_path):
-            if raw_file.lower().endswith(".mp4"):
-                raw_path = os.path.join(raw_date_path, raw_file)
-                print(f"Processing {raw_file} ...")
-
-                #1. Split video
-                self.split_video(raw_path, split_date_path)
-
-                #2. Brightness detection (first segment only)
-                first_segment = os.path.join(split_date_path, "split_000.mp4")
-                avg_luma = self.detect_brightness(first_segment)
-                theme = self.classify_day_night(avg_luma) if avg_luma is not None else "DAY"
-                print(f"Detected theme: {theme}")
-
-                #3. Process split segments
-                segments = [os.path.join(split_date_path, f) for f in os.listdir(split_date_path) if f.endswith(".mp4")]
-                for seg in segments:
-                    all_split_videos.append(seg)
-                    highlight_file = self.create_highlight(seg, highlight_date_path)
-                    all_highlight_videos.append(highlight_file)
-
-        #4. Create montages
-        montage_split_file = os.path.join(montage_date_path, f"{date_folder}_montage_splits.mp4")
-        self.create_montage(all_split_videos, montage_split_file)
-
-        montage_highlight_file = os.path.join(montage_date_path, f"{date_folder}_montage_highlights.mp4")
-        self.create_montage(all_highlight_videos, montage_highlight_file)
-
-    #Entry Point for All Dates
-    def process_dates(self, folder_name):
-        full_path = os.path.join(self.raw_dir, folder_name)
-        if not os.path.exists(full_path):
-            print("Folder not found.")
+    # --------------------------------------------------
+    # Generate Multiple Montage Variations
+    # --------------------------------------------------
+    def generate_montages(self, clips, output_dir):
+        self.ensure_dir(output_dir)
+        montage_count = self.montage_variations
+        if len(clips) < 3:
+            print("Not enough clips to create montages.")
             return
-        else:
-            print(f"Processing date folder: {folder_name}")
-            self.process_date_folder(folder_name)
+
+        for i in range(montage_count):
+            selected = random.sample(
+                clips,
+                random.randint(3, min(8, len(clips)))
+            )
+            list_file = os.path.join(output_dir, "temp.txt")
+            with open(list_file, "w") as f:
+                for clip in selected:
+                    f.write(f"file '{clip}'\n")
+            output_file = os.path.join(output_dir, f"montage_{i:02d}.mp4")
+            command = [
+                "ffmpeg",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", list_file,
+                "-c", "copy",
+                output_file
+            ]
+            self.run_ffmpeg(command)
+            os.remove(list_file)
+
+    # --------------------------------------------------
+    # Process a Single Video
+    # --------------------------------------------------
+    def process_video(self, video_file, date_folder):
+        video_path = os.path.join(self.raw_dir, date_folder, video_file)
+        video_name = os.path.splitext(video_file)[0]
+
+        highlight_path = os.path.join(self.highlight_dir, date_folder, video_name)
+        split_path = os.path.join(self.split_dir, date_folder, video_name)
+        montage_path = os.path.join(self.montage_dir, date_folder, video_name)
+
+        self.ensure_dir(highlight_path)
+        self.ensure_dir(split_path)
+        self.ensure_dir(montage_path)
+
+        print(f"\nProcessing {video_file} ...")
+
+        # Generate highlights
+        timestamps = self.detect_motion_timestamps(video_path)
+        highlight_files = []
+        for idx, t in enumerate(timestamps):
+            output_file = os.path.join(highlight_path, f"highlight_{idx:03d}.mp4")
+            self.create_highlight(video_path, t, output_file)
+            highlight_files.append(output_file)
+
+        # Split full video
+        self.split_video(video_path, split_path)
+
+        # Collect split clips
+        split_clips = [os.path.join(split_path, f) for f in os.listdir(split_path) if f.endswith(".mp4")]
+
+        # Combine highlights + splits for montage pool
+        all_clips = highlight_files + split_clips
+
+        # Generate multiple montage variations
+        self.generate_montages(all_clips, montage_path)
+
+    # --------------------------------------------------
+    # Process a Date Folder
+    # --------------------------------------------------
+    def process_date_folder(self):
+        date_folder = input("Enter date folder (ex: 7.24.2025): ")
+        raw_date_path = os.path.join(self.raw_dir, date_folder)
+        if not os.path.exists(raw_date_path):
+            print("Date folder not found.")
+            return
+
+        for file in os.listdir(raw_date_path):
+            if file.lower().endswith(".mp4"):
+                self.process_video(file, date_folder)
 
 
+# --------------------------------------------------
+# MAIN
+# --------------------------------------------------
 if __name__ == "__main__":
-    pipeline = VideoEditorEngine(base_dir=r"E:\0. Moto Vids")
-    pipeline.process_dates('7.24.2025')
+    factory = MotoContentFactory()
+    factory.process_date_folder()
