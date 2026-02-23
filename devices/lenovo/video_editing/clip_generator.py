@@ -156,36 +156,52 @@ class MotoClipGenerator:
             "highlights": []
         }
 
-        # Motion highlights
+        # --------------------------------------------------
+        # 1. Detect motion + acceleration
         motion_timestamps = self.detect_motion_timestamps(video_path)
-        for idx, t in enumerate(motion_timestamps):
-            output_file = os.path.join(highlight_path, f"highlight_{idx:03d}.mp4")
-            if os.path.exists(output_file):
-                continue
-            self.create_highlight(video_path, t, output_file)
-            metadata["highlights"].append({
-                "file": output_file,
-                "timestamp": t,
-                "acceleration": False
-            })
-
-        # Acceleration highlights
         accel_timestamps = self.detect_acceleration(video_path)
-        for idx, t in enumerate(accel_timestamps):
-            output_file = os.path.join(highlight_path, f"highlight_accel_{idx:03d}.mp4")
+
+        # Tag acceleration timestamps for metadata
+        accel_set = set(accel_timestamps)
+
+        # Combine both lists
+        all_timestamps = motion_timestamps + accel_timestamps
+
+        # --------------------------------------------------
+        # 2. Remove duplicates & enforce cooldown
+        all_timestamps = sorted(all_timestamps)
+
+        cleaned = []
+        min_gap = self.highlight_duration  # prevent overlap
+
+        for t in all_timestamps:
+            if not cleaned:
+                cleaned.append(t)
+            elif t - cleaned[-1] > min_gap:
+                cleaned.append(t)
+
+        # --------------------------------------------------
+        # 3. Generate highlights
+        for idx, t in enumerate(cleaned):
+            output_file = os.path.join(highlight_path, f"highlight_{idx:03d}.mp4")
+
             if os.path.exists(output_file):
                 continue
+
             self.create_highlight(video_path, t, output_file)
+
             metadata["highlights"].append({
                 "file": output_file,
                 "timestamp": t,
-                "acceleration": True
+                "acceleration": any(abs(t - a) < 1.0 for a in accel_set)
             })
 
-        # Split full video
+        # --------------------------------------------------
+        # 4. Split full video (completely independent)
         self.split_video(video_path, split_path)
 
-        # Save metadata
+        # --------------------------------------------------
+        # 5. Save metadata
         metadata_file = os.path.join(highlight_path, "metadata.json")
         with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=4)
