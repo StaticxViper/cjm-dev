@@ -4,7 +4,7 @@
 cjm-dev: (Repo)
     /devices
         /lenovo
-
+            /video_editing
 
         /rpi
 

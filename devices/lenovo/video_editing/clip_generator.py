@@ -1,0 +1,227 @@
+import os
+import subprocess
+import sys
+import json
+
+class MotoClipGenerator:
+    def __init__(self):
+        self.base_dir = r"E:\0. Moto Vids"
+
+        self.raw_dir = os.path.join(self.base_dir, "raw")
+        self.highlight_dir = os.path.join(self.base_dir, "highlights")
+        self.split_dir = os.path.join(self.base_dir, "splits")
+
+        # Settings
+        self.highlight_duration = 18   # Shorter highlights for short-form
+        self.split_duration = 60       # 1-minute splits
+        self.motion_threshold = 0.25   # scene detection threshold
+        self.audio_threshold = -20     # dB for light acceleration detection
+
+    # --------------------------------------------------
+    def ensure_dir(self, path):
+        os.makedirs(path, exist_ok=True)
+
+    def run_ffmpeg(self, command):
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        try:
+            for line in process.stdout:
+                print(line, end='')
+        except KeyboardInterrupt:
+            print("\nInterrupted. Killing FFmpeg...")
+            process.terminate()
+            process.wait()
+            sys.exit(1)
+        process.wait()
+
+    # --------------------------------------------------
+    def detect_motion_timestamps(self, video_path):
+        print(f"Detecting motion in {video_path} ...")
+        command = [
+            "ffmpeg",
+            "-i", video_path,
+            "-vf", f"select='gt(scene,{self.motion_threshold})',showinfo",
+            "-f", "null",
+            "-"
+        ]
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+        timestamps = []
+        for line in process.stdout:
+            if "pts_time:" in line:
+                try:
+                    t = float(line.split("pts_time:")[1].split()[0])
+                    timestamps.append(t)
+                except:
+                    pass
+        process.wait()
+        return timestamps
+
+    # --------------------------------------------------
+    def detect_acceleration(self, video_path):
+        """
+        Light acceleration detection using audio spikes.
+        Returns timestamps of high engine rev / acceleration.
+        """
+        print(f"Detecting acceleration in {video_path} ...")
+        command = [
+            "ffmpeg",
+            "-i", video_path,
+            "-af", f"astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level",
+            "-f", "null",
+            "-"
+        ]
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        accel_timestamps = []
+        last_time = 0.0
+        for line in process.stdout:
+            if "pts_time:" in line and "lavfi.astats.Overall.RMS_level=" in line:
+                try:
+                    t = float(line.split("pts_time:")[1].split()[0])
+                    rms = float(line.split("lavfi.astats.Overall.RMS_level=")[1].split()[0])
+                    if rms > self.audio_threshold:
+                        # Only keep timestamps separated by ~3 sec to avoid repeats
+                        if t - last_time > 3:
+                            accel_timestamps.append(t)
+                            last_time = t
+                except:
+                    pass
+        process.wait()
+        return accel_timestamps
+
+    # --------------------------------------------------
+    def create_highlight(self, video_path, timestamp, output_file):
+        """
+        Create a simple highlight clip from the raw video.
+        No cropping, no blur, preserves original aspect ratio.
+        """
+        start = max(timestamp - 5, 0)
+        command = [
+            "ffmpeg",
+            "-ss", str(start),
+            "-i", video_path,
+            "-t", str(self.highlight_duration),
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "18",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            output_file
+        ]
+        self.run_ffmpeg(command)
+
+    # --------------------------------------------------
+    def split_video(self, video_path, output_dir):
+        self.ensure_dir(output_dir)
+        command = [
+            "ffmpeg",
+            "-i", video_path,
+            "-c", "copy",
+            "-f", "segment",
+            "-segment_time", str(self.split_duration),
+            "-reset_timestamps", "1",
+            os.path.join(output_dir, "split_%03d.mp4")
+        ]
+        self.run_ffmpeg(command)
+
+    # --------------------------------------------------
+    def process_video(self, video_file, date_folder):
+        video_path = os.path.join(self.raw_dir, date_folder, video_file)
+        video_name = os.path.splitext(video_file)[0]
+
+        highlight_path = os.path.join(self.highlight_dir, date_folder, video_name)
+        split_path = os.path.join(self.split_dir, date_folder, video_name)
+
+        self.ensure_dir(highlight_path)
+        self.ensure_dir(split_path)
+
+        print(f"\nProcessing {video_file}")
+
+        metadata = {
+            "video": video_file,
+            "highlights": []
+        }
+
+        # --------------------------------------------------
+        # 1. Detect motion + acceleration
+        motion_timestamps = self.detect_motion_timestamps(video_path)
+        accel_timestamps = self.detect_acceleration(video_path)
+
+        # Tag acceleration timestamps for metadata
+        accel_set = set(accel_timestamps)
+
+        # Combine both lists
+        all_timestamps = motion_timestamps + accel_timestamps
+
+        # --------------------------------------------------
+        # 2. Remove duplicates & enforce cooldown
+        all_timestamps = sorted(all_timestamps)
+
+        cleaned = []
+        min_gap = self.highlight_duration  # prevent overlap
+
+        for t in all_timestamps:
+            if not cleaned:
+                cleaned.append(t)
+            elif t - cleaned[-1] > min_gap:
+                cleaned.append(t)
+
+        # --------------------------------------------------
+        # 3. Generate highlights
+        for idx, t in enumerate(cleaned):
+            output_file = os.path.join(highlight_path, f"highlight_{idx:03d}.mp4")
+
+            if os.path.exists(output_file):
+                continue
+
+            self.create_highlight(video_path, t, output_file)
+
+            metadata["highlights"].append({
+                "file": output_file,
+                "timestamp": t,
+                "acceleration": any(abs(t - a) < 1.0 for a in accel_set)
+            })
+
+        # --------------------------------------------------
+        # 4. Split full video (completely independent)
+        self.split_video(video_path, split_path)
+
+        # --------------------------------------------------
+        # 5. Save metadata
+        metadata_file = os.path.join(highlight_path, "metadata.json")
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=4)
+
+        print("Done.")
+
+    # --------------------------------------------------
+    def process_date_folder(self):
+        date_folder = input("Enter date folder: ")
+        raw_date_path = os.path.join(self.raw_dir, date_folder)
+
+        if not os.path.exists(raw_date_path):
+            print("Date folder not found.")
+            return
+
+        for file in os.listdir(raw_date_path):
+            if file.lower().endswith(".mp4"):
+                self.process_video(file, date_folder)
+
+
+if __name__ == "__main__":
+    generator = MotoClipGenerator()
+    generator.process_date_folder()
