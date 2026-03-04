@@ -24,7 +24,7 @@ class APIManager:
             self.log.info(r.text)
 
     def build_request(self, base_url: str, endpoint: str, method: str = "POST",
-        api_key: Optional[str] = None, params: Optional[Dict[str, Any]] = None,
+        api: Optional[str] = None, params: Optional[Dict[str, Any]] = None,
         json_body: Optional[Dict[str, Any]] = None,
         timeout: float = 10.0) -> Dict[str, Any]:
         """
@@ -47,7 +47,8 @@ class APIManager:
             "Content-Type": "application/json",
         }
 
-        if api_key:
+        if api:
+            api_key = self.get_api_key(api)
             headers["X-API-Key"] = api_key
 
         with httpx.Client(base_url=base_url, timeout=timeout) as client:
@@ -69,12 +70,15 @@ class APIManager:
 
         return {}
 
-    def get_api_key(self):
-        pass
-
-    
-
-
+    def get_api_key(self, api:str):
+        self.log.info(f'Searching for API Key associated with: "{api}"')
+        for key,value in API_KEYS.items:
+            if api in key:
+                self.log.info('API Key Found!')
+                api = value
+                break
+        
+        return api
 
 if __name__ == "__main__":
     instance = APIManager()
