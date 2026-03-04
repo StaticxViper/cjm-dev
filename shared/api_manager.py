@@ -1,5 +1,11 @@
 import httpx
+from typing import Optional, Dict, Any
+import os
+from dotenv import load_dotenv
 from logger import setup_logger
+
+load_dotenv()
+API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY")}
 
 logger = setup_logger(
     name="api-manager",
@@ -16,6 +22,57 @@ class APIManager:
             url = self.default_url
             r = httpx.get(url)
             self.log.info(r.text)
+
+    def build_request(self, base_url: str, endpoint: str, method: str = "POST",
+        api_key: Optional[str] = None, params: Optional[Dict[str, Any]] = None,
+        json_body: Optional[Dict[str, Any]] = None,
+        timeout: float = 10.0) -> Dict[str, Any]:
+        """
+        Generic API request function.
+
+        Args:
+            base_url: https://api.yourserver.com
+            endpoint: /device/data
+            method: HTTP method (GET, POST, etc.)
+            api_key: API key for authentication
+            params: Query parameters
+            json_body: JSON payload
+            timeout: Request timeout
+
+        Returns:
+            Parsed JSON response
+        """
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        if api_key:
+            headers["X-API-Key"] = api_key
+
+        with httpx.Client(base_url=base_url, timeout=timeout) as client:
+            response = client.request(
+                method=method.upper(),
+                url=endpoint,
+                headers=headers,
+                params=params,
+                json=json_body,
+            )
+
+            # Raise for bad status codes
+            response.raise_for_status()
+
+        # Return JSON safely
+        if response.content:
+            self.log.info(response.content)
+            return response.json()
+
+        return {}
+
+    def get_api_key(self):
+        pass
+
+    
 
 
 
