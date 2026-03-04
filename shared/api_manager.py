@@ -71,8 +71,19 @@ class APIManager:
         return {}
 
     def get_api_key(self, api:str):
+        """
+        Traverses through API_KEYS dict and determines which env variable to use based on given string.
+        
+        Args:
+            api: String for grabbing API Key (Ex: 'Google' for 'GOOGLE_API_KEY')
+
+        Returns:
+            API Key String
+        """
         self.log.info(f'Searching for API Key associated with: "{api}"')
+        # Loop through API_KEYS
         for key,value in API_KEYS.items:
+            # If API string matches key of API_KEYS, assign the value to api
             if api in key:
                 self.log.info('API Key Found!')
                 api = value
