@@ -8,7 +8,7 @@ Develop new tools and scripts to increase knowledge, and make my life easier
 About Me:
 
 Chris "CJ" Moulton
-Automation Test Engineer
+Software Engineer
 Masters in Computer Science, Minor in Cyber Security (Felician University)
 
 LinkedIn -> www.linkedin.com/in/moultonc
