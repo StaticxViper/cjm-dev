@@ -3,7 +3,7 @@ import httpx
 from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
-from logger import setup_logger
+from .logger import setup_logger
 
 load_dotenv()
 API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY")}
@@ -92,7 +92,7 @@ class APIManager:
         """
         self.log.info(f'Searching for API Key associated with: "{api}"')
         # Loop through API_KEYS
-        for key,value in API_KEYS.items:
+        for key,value in API_KEYS.items():
             # If API string matches key of API_KEYS, assign the value to api
             if api in key:
                 self.log.info('API Key Found!')
@@ -101,7 +101,7 @@ class APIManager:
         
         return api
 
-    def run_apify(self, actor:str = None):
+    def run_apify(self, actor:str = None, input = None, runtime:int = 60):
         """ Run a specified actor via Apify API, and then extract the acquired data via Dataset ID. 
         
         Args:
@@ -130,7 +130,7 @@ class APIManager:
                 exit()
 
             # Run Actor
-            actor_call = self.apify_client.actor(actor).call()
+            actor_call = self.apify_client.actor(actor).call(run_input=input)
             # Get data via Dataset ID
             result = self.get_apify_data(actor_call=actor_call)
             self.log.info('Results Found via Dataset ID!')
@@ -153,7 +153,7 @@ class APIManager:
         """
 
         try:
-            if actor_call is None:
+            if actor_call is not None:
                 result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
             else:
                 result = self.apify_client.dataset(str(dataset_id)).list_items().items
