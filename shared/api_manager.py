@@ -101,7 +101,7 @@ class APIManager:
         """ Run a specified actor via Apify API, and then extract the acquired data via Dataset ID. 
         
         Args:
-            
+            actor: Apify actor to be executed
 
         Returns:
             Acquired JSON Data
@@ -128,17 +128,26 @@ class APIManager:
             # Run Actor
             actor_call = self.apify_client.actor(actor).call()
             # Get data via Dataset ID
-            results = self.get_apify_data(actor_call=actor_call)
+            result = self.get_apify_data(actor_call=actor_call)
             self.log.info('Results Found via Dataset ID!')
         except RuntimeError as e:
             self.log.error(f'Actor run error: {e}')
         except Exception as e:
             self.log.error(f'Unexpected error communicating with Apify: {e}')
 
-        return results
+        return result
 
     def get_apify_data(self, actor_call = None, dataset_id = None):
+        """ Extract the acquired data via Dataset ID. 
         
+        Args:
+            actor_call: Actor Client obj reference
+            dataset_id: ID for acquirring existing data, without running an actor.
+
+        Returns:
+            Acquired JSON Data
+        """
+
         try:
             if actor_call is None:
                 result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
