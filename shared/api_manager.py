@@ -1,3 +1,4 @@
+from apify_client import ApifyClient
 import httpx
 from typing import Optional, Dict, Any
 import os
@@ -5,7 +6,11 @@ from dotenv import load_dotenv
 from logger import setup_logger
 
 load_dotenv()
-API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY")}
+API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY")}
+APIFY_USER_ID = os.getenv("APIFY_USER_ID")
+
+ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
+          'Instagram Post Scraper': 'apify/instagram-post-scraper'}
 
 logger = setup_logger(
     name="api-manager",
@@ -16,6 +21,7 @@ class APIManager:
 
     def __init__(self, url=None):
         self.log = logger
+        self.apify_client = ApifyClient(self.get_api_key('Apify'))
 
         self.default_url = 'https://httpbin.org'
         if url == None:
@@ -90,6 +96,35 @@ class APIManager:
                 break
         
         return api
+
+    def start_apify_actor(self, actor:str = None):
+
+
+        if actor is None:
+            self.log.error('Apify Actor not given...')
+            exit()
+        else:
+            actor_found = False
+            for key,value in ACTORS.items():
+                if actor in key:
+                    actor = value
+                    actor_found = True
+                    break
+        
+        if actor_found:
+            self.log.critical('Actor Found!')
+        else:
+            self.log.error('Actor not Found...')
+            exit()
+
+        actor_call = self.apify_client.actor(actor).call()
+        results = self.get_apify_data(actor_call)
+        self.log.info('Results Found via Dataset ID!')
+        return results
+
+    def get_apify_data(self, actor):
+        
+        return self.apify_client.dataset(actor['defaultDatasetId']).list_items().items
 
 if __name__ == "__main__":
     instance = APIManager()
