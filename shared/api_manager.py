@@ -97,34 +97,59 @@ class APIManager:
         
         return api
 
-    def start_apify_actor(self, actor:str = None):
-
-
-        if actor is None:
-            self.log.error('Apify Actor not given...')
-            exit()
-        else:
-            actor_found = False
-            for key,value in ACTORS.items():
-                if actor in key:
-                    actor = value
-                    actor_found = True
-                    break
+    def run_apify(self, actor:str = None):
+        """ Run a specified actor via Apify API, and then extract the acquired data via Dataset ID. 
         
-        if actor_found:
-            self.log.critical('Actor Found!')
-        else:
-            self.log.error('Actor not Found...')
-            exit()
+        Args:
+            
 
-        actor_call = self.apify_client.actor(actor).call()
-        results = self.get_apify_data(actor_call)
-        self.log.info('Results Found via Dataset ID!')
+        Returns:
+            Acquired JSON Data
+        """
+
+        try:
+            if actor is None:
+                self.log.error('Apify Actor not given...')
+                exit()
+            else:
+                actor_found = False
+                for key,value in ACTORS.items():
+                    if actor in key:
+                        actor = value
+                        actor_found = True
+                        break
+            
+            if actor_found:
+                self.log.critical('Actor Found!')
+            else:
+                self.log.error('Actor not Found...')
+                exit()
+
+            # Run Actor
+            actor_call = self.apify_client.actor(actor).call()
+            # Get data via Dataset ID
+            results = self.get_apify_data(actor_call=actor_call)
+            self.log.info('Results Found via Dataset ID!')
+        except RuntimeError as e:
+            self.log.error(f'Actor run error: {e}')
+        except Exception as e:
+            self.log.error(f'Unexpected error communicating with Apify: {e}')
+
         return results
 
-    def get_apify_data(self, actor):
+    def get_apify_data(self, actor_call = None, dataset_id = None):
         
-        return self.apify_client.dataset(actor['defaultDatasetId']).list_items().items
+        try:
+            if actor_call is None:
+                result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
+            else:
+                result = self.apify_client.dataset(str(dataset_id)).list_items().items
+        except ValueError as e:
+            self.log.error(f'Dataset error: {e}')
+        except Exception as e:
+            self.log.error(f'Unexpected error communicating with Apify: {e}')
+
+        return result
 
 if __name__ == "__main__":
     instance = APIManager()
