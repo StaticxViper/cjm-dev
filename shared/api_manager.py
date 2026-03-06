@@ -1,3 +1,4 @@
+from apify_client import ApifyClient
 import httpx
 from typing import Optional, Dict, Any
 import os
@@ -5,7 +6,11 @@ from dotenv import load_dotenv
 from logger import setup_logger
 
 load_dotenv()
-API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY")}
+API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY")}
+APIFY_USER_ID = os.getenv("APIFY_USER_ID")
+
+ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
+          'Instagram Post Scraper': 'apify/instagram-post-scraper'}
 
 logger = setup_logger(
     name="api-manager",
@@ -14,14 +19,19 @@ logger = setup_logger(
 
 class APIManager:
 
-    def __init__(self, url=None):
+    def __init__(self, url:str = None, test:bool = False):
         self.log = logger
-
-        self.default_url = 'https://httpbin.org'
-        if url == None:
-            url = self.default_url
+        if test:
+            self.log.critical('TEST MODE: ENABLED')
+            test_url = 'https://httpbin.org'
+            url = test_url
             r = httpx.get(url)
-            self.log.info(r.text)
+            self.log.info(r)
+            #self.log.info(r.text)
+        else:
+            self.apify_client = ApifyClient(self.get_api_key('Apify'))
+            self.base_url = url
+
 
     def build_request(self, base_url: str, endpoint: str, method: str = "POST",
         api: Optional[str] = None, params: Optional[Dict[str, Any]] = None,
@@ -91,5 +101,68 @@ class APIManager:
         
         return api
 
+    def run_apify(self, actor:str = None):
+        """ Run a specified actor via Apify API, and then extract the acquired data via Dataset ID. 
+        
+        Args:
+            actor: Apify actor to be executed
+
+        Returns:
+            Acquired JSON Data
+        """
+
+        try:
+            if actor is None:
+                self.log.error('Apify Actor not given...')
+                exit()
+            else:
+                actor_found = False
+                for key,value in ACTORS.items():
+                    if actor in key:
+                        actor = value
+                        actor_found = True
+                        break
+            
+            if actor_found:
+                self.log.critical('Actor Found!')
+            else:
+                self.log.error('Actor not Found...')
+                exit()
+
+            # Run Actor
+            actor_call = self.apify_client.actor(actor).call()
+            # Get data via Dataset ID
+            result = self.get_apify_data(actor_call=actor_call)
+            self.log.info('Results Found via Dataset ID!')
+        except RuntimeError as e:
+            self.log.error(f'Actor run error: {e}')
+        except Exception as e:
+            self.log.error(f'Unexpected error communicating with Apify: {e}')
+
+        return result
+
+    def get_apify_data(self, actor_call = None, dataset_id = None):
+        """ Extract the acquired data via Dataset ID. 
+        
+        Args:
+            actor_call: Actor Client obj reference
+            dataset_id: ID for acquirring existing data, without running an actor.
+
+        Returns:
+            Acquired JSON Data
+        """
+
+        try:
+            if actor_call is None:
+                result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
+            else:
+                result = self.apify_client.dataset(str(dataset_id)).list_items().items
+        except ValueError as e:
+            self.log.error(f'Dataset error: {e}')
+        except Exception as e:
+            self.log.error(f'Unexpected error communicating with Apify: {e}')
+
+        return result
+
 if __name__ == "__main__":
-    instance = APIManager()
+    instance = APIManager(test=True)
