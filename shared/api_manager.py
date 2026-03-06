@@ -19,15 +19,19 @@ logger = setup_logger(
 
 class APIManager:
 
-    def __init__(self, url=None):
+    def __init__(self, url:str = None, test:bool = False):
         self.log = logger
-        self.apify_client = ApifyClient(self.get_api_key('Apify'))
-
-        self.default_url = 'https://httpbin.org'
-        if url == None:
-            url = self.default_url
+        if test:
+            self.log.critical('TEST MODE: ENABLED')
+            test_url = 'https://httpbin.org'
+            url = test_url
             r = httpx.get(url)
-            self.log.info(r.text)
+            self.log.info(r)
+            #self.log.info(r.text)
+        else:
+            self.apify_client = ApifyClient(self.get_api_key('Apify'))
+            self.base_url = url
+
 
     def build_request(self, base_url: str, endpoint: str, method: str = "POST",
         api: Optional[str] = None, params: Optional[Dict[str, Any]] = None,
@@ -161,4 +165,4 @@ class APIManager:
         return result
 
 if __name__ == "__main__":
-    instance = APIManager()
+    instance = APIManager(test=True)
