@@ -18,7 +18,7 @@ logger = setup_logger(
 def main():
     logger.critical('Starting Stock Analysis...')
     base_url = 'https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1'#/moulton-api'
-    analyzer_endpoint = '/api/stocks/ingest'
+    analyzer_endpoint = '/stock-data/ingest'
     ticker_endpoint = '/stock-data/tickers'
 
 
