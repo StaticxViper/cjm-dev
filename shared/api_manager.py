@@ -1,9 +1,10 @@
 from apify_client import ApifyClient
 import httpx
+import json
 from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
-from logger import setup_logger
+from .logger import setup_logger
 
 load_dotenv()
 API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY")}
@@ -32,30 +33,22 @@ class APIManager:
             self.apify_client = ApifyClient(self.get_api_key('Apify'))
             self.base_url = url
 
-
-    def build_request(self, base_url: str, endpoint: str, method: str = "POST",
-        api: Optional[str] = None, params: Optional[Dict[str, Any]] = None,
+    def build_request(
+        self,
+        base_url: str,
+        endpoint: str,
+        method: str = "POST",
+        api: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
         json_body: Optional[Dict[str, Any]] = None,
-        timeout: float = 10.0) -> Dict[str, Any]:
+        timeout: float = 10.0
+    ) -> Dict[str, Any]:
         """
-        Generic API request function.
-
-        Args:
-            base_url: https://api.yourserver.com
-            endpoint: /device/data
-            method: HTTP method (GET, POST, etc.)
-            api_key: API key for authentication
-            params: Query parameters
-            json_body: JSON payload
-            timeout: Request timeout
-
-        Returns:
-            Parsed JSON response
+        Generic API request function that always returns parsed JSON (Python dict/list)
+        even if the response headers are wrong.
         """
 
-        headers = {
-            "Content-Type": "application/json",
-        }
+        headers = {"Content-Type": "application/json"}
 
         if api:
             api_key = self.get_api_key(api)
@@ -70,13 +63,16 @@ class APIManager:
                 json=json_body,
             )
 
-            # Raise for bad status codes
+            # Raise for bad HTTP status
             response.raise_for_status()
 
-        # Return JSON safely
+        # Force parse JSON manually to ensure we return dict/list
         if response.content:
-            self.log.info(response.content)
-            return response.json()
+            try:
+                return json.loads(response.content.decode("utf-8"))
+            except json.JSONDecodeError:
+                # If parsing fails, return raw string as fallback
+                return {"raw": response.text}
 
         return {}
 
@@ -92,7 +88,7 @@ class APIManager:
         """
         self.log.info(f'Searching for API Key associated with: "{api}"')
         # Loop through API_KEYS
-        for key,value in API_KEYS.items:
+        for key,value in API_KEYS.items():
             # If API string matches key of API_KEYS, assign the value to api
             if api in key:
                 self.log.info('API Key Found!')
@@ -101,7 +97,7 @@ class APIManager:
         
         return api
 
-    def run_apify(self, actor:str = None):
+    def run_apify(self, actor:str = None, input = None, runtime:int = 60):
         """ Run a specified actor via Apify API, and then extract the acquired data via Dataset ID. 
         
         Args:
@@ -130,7 +126,7 @@ class APIManager:
                 exit()
 
             # Run Actor
-            actor_call = self.apify_client.actor(actor).call()
+            actor_call = self.apify_client.actor(actor).call(run_input=input)
             # Get data via Dataset ID
             result = self.get_apify_data(actor_call=actor_call)
             self.log.info('Results Found via Dataset ID!')
@@ -153,7 +149,7 @@ class APIManager:
         """
 
         try:
-            if actor_call is None:
+            if actor_call is not None:
                 result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
             else:
                 result = self.apify_client.dataset(str(dataset_id)).list_items().items
