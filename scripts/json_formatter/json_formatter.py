@@ -1,3 +1,12 @@
+"""
+This script processes large JSON files and converts them into a compact structural representation 
+that is easier to use as context for AI tools or documentation. It recursively analyzes the JSON data, 
+replaces actual values with their data types (such as "string", "number", "boolean", etc.), and reduces arrays 
+to a single example element while preserving the overall structure. 
+
+This dramatically reduces file size while keeping the schema of the data intact. 
+The formatted result is then saved as a new JSON file in the output directory located in the same folder as the script.
+"""
 import sys
 from pathlib import Path
 
