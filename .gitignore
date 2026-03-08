@@ -7,3 +7,5 @@ __pycache__/
 *.log
 logs/
 *_PRIVATE.txt
+*output/
+*example.json
