@@ -210,17 +210,60 @@ class MotoClipGenerator:
 
     # --------------------------------------------------
     def process_date_folder(self):
-        date_folder = input("Enter date folder: ")
-        raw_date_path = os.path.join(self.raw_dir, date_folder)
 
-        if not os.path.exists(raw_date_path):
-            print("Date folder not found.")
+        # Get folders and sort newest first
+        folders = [
+            f for f in os.listdir(self.raw_dir)
+            if os.path.isdir(os.path.join(self.raw_dir, f))
+        ]
+
+        folders.sort(
+            key=lambda f: os.path.getmtime(os.path.join(self.raw_dir, f)),
+            reverse=True
+        )
+
+        if not folders:
+            print("No folders found in raw directory.")
             return
 
-        for file in os.listdir(raw_date_path):
-            if file.lower().endswith(".mp4"):
-                self.process_video(file, date_folder)
+        print("\nAvailable Ride Folders (Newest First):\n")
 
+        for i, folder in enumerate(folders, 1):
+            folder_path = os.path.join(self.raw_dir, folder)
+            modified_time = os.path.getmtime(folder_path)
+            readable_time = __import__("datetime").datetime.fromtimestamp(modified_time)
+            print(f"{i}. {folder}  |  Last Modified: {readable_time}")
+
+        # User selection
+        while True:
+            try:
+                choice = int(input("\nSelect folder number: "))
+                if 1 <= choice <= len(folders):
+                    date_folder = folders[choice - 1]
+                    break
+                else:
+                    print("Invalid selection.")
+            except ValueError:
+                print("Enter a valid number.")
+
+        raw_date_path = os.path.join(self.raw_dir, date_folder)
+
+        video_files = [
+            f for f in os.listdir(raw_date_path)
+            if f.lower().endswith(".mp4")
+        ]
+
+        total_videos = len(video_files)
+
+        print(f"\nFound {total_videos} videos in {date_folder}\n")
+
+        for idx, file in enumerate(video_files, 1):
+            print(f"\nProcessing Video {idx}/{total_videos}: {file}")
+            print("-" * 60)
+
+            self.process_video(file, date_folder)
+
+        print("\nAll videos processed.\n")
 
 if __name__ == "__main__":
     generator = MotoClipGenerator()
