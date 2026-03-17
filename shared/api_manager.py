@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from .logger import setup_logger
 
 load_dotenv()
-API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY")}
+API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
@@ -90,10 +90,13 @@ class APIManager:
         # Loop through API_KEYS
         for key,value in API_KEYS.items():
             # If API string matches key of API_KEYS, assign the value to api
-            if api in key:
-                self.log.info('API Key Found!')
-                api = value
-                break
+            try:
+                if api in key:
+                    self.log.info('API Key Found!')
+                    api = value
+                    break
+            except Exception:
+                self.log.error('Could not find API Key!')
         
         return api
 
