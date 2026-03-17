@@ -33,7 +33,7 @@ def main():
     #logger.info(stock_data)
 
     # Update dashboard with new data (Stored on dashboard database)
-    api().build_request(base_url=base_url, endpoint=analyzer_endpoint, json_body=stock_data)
+    api().build_request(base_url=base_url, endpoint=analyzer_endpoint, json_body=stock_data, api='Stock Analyzer')
 
 
 
