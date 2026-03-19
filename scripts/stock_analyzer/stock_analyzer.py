@@ -21,6 +21,7 @@ def main():
     analyzer_endpoint = '/stock-data/ingest'
     ticker_endpoint = '/stock-data/tickers'
 
+    perplexity_url = ''
 
     # Update stock tickers, if needed
     result = api().build_request(base_url=base_url, endpoint=ticker_endpoint, method='GET')
@@ -37,6 +38,13 @@ def main():
         file.write(todays_date)
         file.close()
     logger.critical(f'Prev Date: {previous_date}, Todays Date: {todays_date}')
+
+    # Call Perplexity and get analysis + recent news
+    # Could get earnings analysis, recent news, and overall stock sentiment
+    perplexity_request = ''
+    perplexity_response = api().build_request(base_url=perplexity_url, json_body=perplexity_request, api="Perplexity")
+
+    # Need to add functionality for including news data from perplexity
 
     # Temp log (Until dashboard enpoint is made)
     #logger.info(stock_data)
