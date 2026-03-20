@@ -90,7 +90,36 @@ def main():
     #logger.critical(f"TEST: {category_topics}") #test
     
     # Generate blog post based on topic + category
-    perplexity_request = ''
+    perplexity_request = { "model": "sonar-pro",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "You are a professional SEO blog writer. Output strictly valid JSON only."
+                            },
+                            {
+                                "role": "user",
+                                "content": f"""Write a high-quality blog post for the topic: "{topic}".
+
+                    Return ONLY JSON:
+                    {
+                    "title": "",
+                    "slug": "",
+                    "excerpt": "",
+                    "content": "",
+                    "tags": []
+                    }
+
+                    Rules:
+                    - 1000+ words
+                    - SEO optimized
+                    - Use markdown headings (##, ###)
+                    - No citations
+                    - No extra commentary
+                    - Clean formatting
+                    - Beginner-friendly but insightful"""
+                            }
+                        ]
+                    }
     perplexity_response = api().build_request(base_url=perplexity_url, json_body=perplexity_request, api="Perplexity")
 
     # Generate image thumbnail for blog post
