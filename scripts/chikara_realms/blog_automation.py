@@ -27,6 +27,7 @@ def topic_gen(category, gpt):
         # Need to see output of ChatGPT response, and put into a list to load back into JSON file
         # Also need to pop the first topic before loading
         # topic = response_json[response?][0]
+        logger.info(f'Topic file empty... Generating new topics based on " {category} "')
 
         response = gpt.client.chat.completions.create(
         model="gpt-5",
@@ -86,8 +87,7 @@ def main():
             for category in sub_cat: # sub_cat = list of catergories, ex. sub_cat = ["Catergory 1", "Category 2", "Category 3"]
                 # Open topic file and add category and first topic to category_topics dict
                 topic = topic_gen(category=category, gpt_url=chatgpt_client)
-
-    #logger.critical(f"TEST: {category_topics}") #test
+                logger.critical(f'Topic Acquired: "{topic}"')
     
     # Generate blog post based on topic + category
     perplexity_request = { "model": "sonar-pro",
@@ -121,7 +121,7 @@ def main():
                         ]
                     }
     perplexity_response = api().build_request(base_url=perplexity_url, json_body=perplexity_request, api="Perplexity")
-
+    logger.info(f'Perplexity AI Response: " {perplexity_response} "')
     # Generate image thumbnail for blog post
     subject = f"""Visualize the concept of: {topic}.
         Represent this with a symbolic anime-style scene or character that clearly reflects the topic. 
@@ -138,7 +138,6 @@ def main():
 
     # Extract image URL
     image_url = result.data[0].url
-
     logger.critical(f"Image generated. URL: {image_url}")
 
     # Send to Chikara
