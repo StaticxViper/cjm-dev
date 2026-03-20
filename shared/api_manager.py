@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 from .logger import setup_logger
 
 load_dotenv()
-API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN")}
+API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN"),
+            'ChatGPT': os.getenv("CHATGPT_API_KEY"), 'Perplexity': os.getenv("PERPLEXITY_API_KEY")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
