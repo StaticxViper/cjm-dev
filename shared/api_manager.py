@@ -53,7 +53,10 @@ class APIManager:
 
         if api:
             api_key = self.get_api_key(api)
-            headers["X-API-Key"] = api_key
+            if api == "Perplexity":
+                headers["Authorization"] = f"Bearer {api_key}"
+            else:
+                headers["X-API-Key"] = api_key
 
         with httpx.Client(base_url=base_url, timeout=timeout) as client:
             response = client.request(
