@@ -19,18 +19,21 @@ def topic_gen(category, gpt):
     """ Checks if topics exist within corresponding _topics.json file, if none, use API Manager to generate new topics """
 
     logger.critical(f'Checking Topic File: {category}_topics.json')
-    with open(f"{category}_topics.json", "r") as file:
-        content = json.loads(file.read())
-        file.close()
-    if content['Topic'][0] is None:
+    try:
+        with open(f"{category}_topics.json", "r") as file:
+            content = json.loads(file.read())
+    except (FileNotFoundError, json.JSONDecodeError):
+        content = {"topics": []}
+    
+    if not content.get('topics', []):
         # Gen new topics, take the first one and save the rest to JSON file
         # Need to see output of ChatGPT response, and put into a list to load back into JSON file
         # Also need to pop the first topic before loading
         # topic = response_json[response?][0]
         logger.info(f'Topic file empty... Generating new topics based on " {category} "')
 
-        response = gpt.client.chat.completions.create(
-        model="gpt-5",
+        response = gpt.chat.completions.create(
+        model="gpt-4",
         messages=[
                 {
                     "role": "system",
@@ -44,28 +47,22 @@ def topic_gen(category, gpt):
                             "Title 1", 
                             "Title 2"]
                     }}"""
-                }
-            ],
-            temperature=0.7
-        )
+                }])
 
-        content = response.choices[0].message.content
-
-        # Parse JSON
-        data = json.loads(content)
-
+        response_content = response.choices[0].message.content
+        data = json.loads(response_content)
+        topics = data["topics"]
+        topic = topics.pop(0)
         with open(f"{category}_topics.json", "w") as file:
-            new_content = json.dumps(data, indent=2)
-            topic = new_content["topics"].pop(0)
-            file.write(new_content)
-            file.close()
-
+            json.dump({"topics": topics}, file, indent=2)
     else:
         # Grab next topic
-        topic = content['Topic'][0]
+        topics = content["topics"]
+        topic = topics.pop(0)
+        with open(f"{category}_topics.json", "w") as file:
+            json.dump({"topics": topics}, file, indent=2)
     
     return topic
-
 
 def main():
     logger.critical('Starting Blog Automation...')
@@ -86,7 +83,7 @@ def main():
             #logger.critical(f"PARENT: {parent_cat}, SUB: {sub_cat}") #test
             for category in sub_cat: # sub_cat = list of catergories, ex. sub_cat = ["Catergory 1", "Category 2", "Category 3"]
                 # Open topic file and add category and first topic to category_topics dict
-                topic = topic_gen(category=category, gpt_url=chatgpt_client)
+                topic = topic_gen(category=category, gpt=chatgpt_client)
                 logger.critical(f'Topic Acquired: "{topic}"')
     
     # Generate blog post based on topic + category
@@ -120,7 +117,7 @@ def main():
                             }
                         ]
                     }
-    perplexity_response = api().build_request(base_url=perplexity_url, json_body=perplexity_request, api="Perplexity")
+    perplexity_response = api().build_request(base_url=perplexity_url, endpoint='/chat/completions', json_body=perplexity_request, api="Perplexity")
     logger.info(f'Perplexity AI Response: " {perplexity_response} "')
     # Generate image thumbnail for blog post
     subject = f"""Visualize the concept of: {topic}.
@@ -131,7 +128,7 @@ def main():
         prompt_file.close()
     
     result = chatgpt_client.images.generate(
-        model="gpt-image-1",
+        model="dall-e-3",
         prompt=chatgpt_prompt + subject,
         size="1024x1024"
     )
@@ -144,7 +141,6 @@ def main():
     # NOTE : Need to test if posts need to be sent 1 by 1, or if they can be sent in bulk ...
     # Also need JSON structure to be sent
     #api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=blog_post_data, api="Chikara Realms")
-
 
 if __name__ == "__main__":
     main()
