@@ -9,3 +9,4 @@ logs/
 *_PRIVATE.txt
 *output/
 *example.json
+.bashrc
