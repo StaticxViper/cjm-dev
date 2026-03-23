@@ -1,3 +1,5 @@
+from urllib import response
+
 from apify_client import ApifyClient
 import httpx
 import json
@@ -8,7 +10,7 @@ from .logger import setup_logger
 
 load_dotenv()
 API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN"),
-            'ChatGPT': os.getenv("CHATGPT_API_KEY"), 'Perplexity': os.getenv("PERPLEXITY_API_KEY")}
+            'ChatGPT': os.getenv("CHATGPT_API_KEY"), 'Perplexity': os.getenv("PERPLEXITY_API_KEY"), 'Chikara Realms': os.getenv("CHIKARA_REALMS_SECRET")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
@@ -66,6 +68,8 @@ class APIManager:
                 params=params,
                 json=json_body,
             )
+            print("STATUS:", response.status_code)
+            print("RESPONSE:", response.text)
 
             # Raise for bad HTTP status
             response.raise_for_status()
@@ -77,6 +81,9 @@ class APIManager:
             except json.JSONDecodeError:
                 # If parsing fails, return raw string as fallback
                 return {"raw": response.text}
+        
+        print("STATUS:", response.status_code)
+        print("RESPONSE:", response.text)
 
         return {}
 
