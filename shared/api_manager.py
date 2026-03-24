@@ -54,8 +54,9 @@ class APIManager:
         headers = {"Content-Type": "application/json"}
 
         if api:
+            bearer_token_apis = ["Stock Analyzer", "Perplexity"]
             api_key = self.get_api_key(api)
-            if api == "Perplexity":
+            if api in bearer_token_apis:
                 headers["Authorization"] = f"Bearer {api_key}"
             else:
                 headers["X-API-Key"] = api_key
