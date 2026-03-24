@@ -24,7 +24,7 @@ def main():
     run_perplexity = False
 
     # Update stock tickers, if needed
-    result = api().build_request(base_url=base_url, endpoint=ticker_endpoint, method='GET')
+    result = api().build_request(base_url=base_url, endpoint=ticker_endpoint, method='GET', api='Stock Analyzer')
     logger.critical(f"Current Stock Watchlist extracted: {result['tickers']}")
 
     # Call API Manager (Apify Functions)
@@ -65,14 +65,15 @@ def main():
                                     {
                                         "role": "user",
                                         "content": f"""Analyze the stock performance for {ticker} and provide a summary of its recent earnings, news, and overall sentiment. 
-                                            Return the response in this format: {{'ticker': str, 'earnings_analysis': str, 'news_summary': str, 'sentiment': str}}"""
+                                            Return the response in this format: {{'ticker': str, 'earnings_analysis': str, 'news_summary': str}}"""
                                     }
                                 ]
                             }
-            perplexity_response = api().build_request(base_url=perplexity_url, json_body=perplexity_request, api="Perplexity")
+            perplexity_response = api().build_request(base_url=perplexity_url, endpoint='/chat/completions', json_body=perplexity_request, api="Perplexity")
             perplexity_response_dict[ticker] = perplexity_response
         # Update dashboard with Perplexity analysis
-        # NOTE: Need to test if perplexity_response_dict can be sent as is, or if it needs to be reformatted first.
+        # NOTE: Format is ok, but would be better to have frontend accept perplexity data instead of trying to
+        # place the data in the same structure as the stock data from apify.
         api().build_request(base_url=base_url, endpoint=analyzer_endpoint, json_body=perplexity_response_dict, api='Stock Analyzer')
 
 
