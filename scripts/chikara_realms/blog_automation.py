@@ -72,7 +72,7 @@ def main():
 
     chatgpt_client = OpenAI(api_key=api().get_api_key(api='ChatGPT'))
     perplexity_url = 'https://api.perplexity.ai'
-    '''
+    
     # Gather Categories
     logger.critical("Gathering Categories...")
     with open("blog_category.json", 'r') as file:
@@ -136,25 +136,17 @@ def main():
     # Extract image URL
     image_url = result.data[0].url
     logger.critical(f"Image generated. URL: {image_url}")
-    '''
+
     # Send to Chikara
-
-
-    # GET TEST
-
-    result = api().build_request(base_url='https://rrtenkufprduezfurtwk.supabase.co/functions/v1', endpoint='/analytics-overview', api="Chikara Realms", method="GET")
-    print("GET TEST RESULT:", result)
-    
     # NOTE : Need to test if posts need to be sent 1 by 1, or if they can be sent in bulk ...
-    # Also need JSON structure to be sent
-    # NEED TO TROUBLESHOOT ISSUE ON FRONTEND ... Posts are added to DB, but not showing on frontend ...
+    # Categories are not added currently. Need to figure out on frontend.
     blog_post_data = {"title": "The Warrior's Guide to Financial Freedom",
                     "slug": "warriors-guide-financial-freedom",
                     "excerpt": "Master your finances with discipline and strategy.",
                     "content": "<p>Your blog post HTML content here...</p>",
-                    "featured_image": "{image_url}",
+                    "featured_image": f"{image_url}",
                     "categories": [
-                        "{category}"
+                        f"{category}"
                     ],
                     "publish": True
                     }
@@ -166,10 +158,10 @@ def main():
                     "categories": [
                         "discipline"
                     ],
-                    "publish": True
+                    "publish": False
                     }
 
-    api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=test_blog_post_data, api="Chikara Realms", method="POST")
+    api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=blog_post_data, api="Chikara Realms", method="POST")
 
 if __name__ == "__main__":
     main()
