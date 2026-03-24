@@ -14,14 +14,14 @@ logger = setup_logger(
     console_levels=["ERROR", "CRITICAL"]  # Only these show in console, any of them can be removed.
 )
 
-
 def main():
     logger.critical('Starting Stock Analysis...')
     base_url = 'https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1'#/moulton-api'
     analyzer_endpoint = '/stock-data/ingest'
     ticker_endpoint = '/stock-data/tickers'
 
-    perplexity_url = ''
+    perplexity_url = 'https://api.perplexity.ai'
+    run_perplexity = False
 
     # Update stock tickers, if needed
     result = api().build_request(base_url=base_url, endpoint=ticker_endpoint, method='GET')
@@ -32,6 +32,13 @@ def main():
         previous_date = file.read()
         file.close()
     todays_date = date.today().strftime("%Y-%m-%d")
+
+    if previous_date != todays_date:
+        logger.critical('New day detected. Adding Perplexity analysis and updating stock data...')
+        run_perplexity = True
+    else:
+        logger.critical('Same day detected. Skipping Perplexity analysis, but updating stock data...')
+
     apify_input = {"end_date": todays_date,"start_date": previous_date,'tickers': result['tickers']}
     stock_data = api().run_apify(actor='Yahoo Finance', input=apify_input, runtime=20)
     with open("previous_run_date.txt", 'w') as file:
@@ -39,19 +46,34 @@ def main():
         file.close()
     logger.critical(f'Prev Date: {previous_date}, Todays Date: {todays_date}')
 
-    # Call Perplexity and get analysis + recent news
-    # Could get earnings analysis, recent news, and overall stock sentiment
-    perplexity_request = ''
-    perplexity_response = api().build_request(base_url=perplexity_url, json_body=perplexity_request, api="Perplexity")
-
-    # Need to add functionality for including news data from perplexity
-
-    # Temp log (Until dashboard enpoint is made)
-    #logger.info(stock_data)
-
-    # Update dashboard with new data (Stored on dashboard database)
+    # Update dashboard with new data (Stored on dashboard database) without Perplexity analysis.
+    logger.critical('Uploading stock data to dashboard...')
     api().build_request(base_url=base_url, endpoint=analyzer_endpoint, json_body=stock_data, api='Stock Analyzer')
 
+
+    if run_perplexity:
+        # Call Perplexity and get analysis + recent news
+        # Could get earnings analysis, recent news, and overall stock sentiment
+        perplexity_response_dict = {} # {ticker: {earnings_analysis: str, news_summary: str, sentiment: str}}
+        for ticker in result['tickers']:
+            perplexity_request = { "model": "sonar-pro",
+                                "messages": [
+                                    {
+                                        "role": "system",
+                                        "content": "You are an expert stock analyst and investor. Output strictly valid JSON only."
+                                    },
+                                    {
+                                        "role": "user",
+                                        "content": f"""Analyze the stock performance for {ticker} and provide a summary of its recent earnings, news, and overall sentiment. 
+                                            Return the response in this format: {{'ticker': str, 'earnings_analysis': str, 'news_summary': str, 'sentiment': str}}"""
+                                    }
+                                ]
+                            }
+            perplexity_response = api().build_request(base_url=perplexity_url, json_body=perplexity_request, api="Perplexity")
+            perplexity_response_dict[ticker] = perplexity_response
+        # Update dashboard with Perplexity analysis
+        # NOTE: Need to test if perplexity_response_dict can be sent as is, or if it needs to be reformatted first.
+        api().build_request(base_url=base_url, endpoint=analyzer_endpoint, json_body=perplexity_response_dict, api='Stock Analyzer')
 
 
 if __name__ == "__main__":
