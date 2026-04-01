@@ -86,82 +86,83 @@ def main():
                 topic = topic_gen(category=category, gpt=chatgpt_client)
                 logger.critical(f'Topic Acquired: "{topic}"')
     
-    # Generate blog post based on topic + category
-    perplexity_request = { "model": "sonar-pro",
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": "You are a professional SEO blog writer. Output strictly valid JSON only."
-                            },
-                            {
-                                "role": "user",
-                                "content": f"""Write a high-quality blog post for the topic: "{topic}".
+                # Generate blog post based on topic + category
+                perplexity_request = { "model": "sonar-pro",
+                                    "messages": [
+                                        {
+                                            "role": "system",
+                                            "content": "You are a professional SEO blog writer. Output strictly valid JSON only."
+                                        },
+                                        {
+                                            "role": "user",
+                                            "content": """Write a high-quality blog post for the topic: "{topic}".
 
-                    Return ONLY JSON:
-                    {
-                    "title": "",
-                    "slug": "",
-                    "excerpt": "",
-                    "content": "",
-                    "tags": []
-                    }
+                                            Return ONLY JSON:
+                                            {
+                                            "title": "",
+                                            "slug": "",
+                                            "excerpt": "",
+                                            "content": "",
+                                            "tags": []
+                                            }
 
-                    Rules:
-                    - 1000+ words
-                    - SEO optimized
-                    - Use markdown headings (##, ###)
-                    - No citations
-                    - No extra commentary
-                    - Clean formatting
-                    - Beginner-friendly but insightful"""
-                            }
-                        ]
-                    }
-    perplexity_response = api().build_request(base_url=perplexity_url, endpoint='/chat/completions', json_body=perplexity_request, api="Perplexity")
-    logger.info(f'Perplexity AI Response: " {perplexity_response} "')
-    # Generate image thumbnail for blog post
-    subject = f"""Visualize the concept of: {topic}.
-        Represent this with a symbolic anime-style scene or character that clearly reflects the topic. 
-        Use metaphors, environment, and subtle visual storytelling to convey the idea."""
-    with open('img_prompt.txt', 'r') as prompt_file:
-        chatgpt_prompt = prompt_file.read()
-        prompt_file.close()
-    
-    result = chatgpt_client.images.generate(
-        model="dall-e-3",
-        prompt=chatgpt_prompt + subject,
-        size="1024x1024"
-    )
+                                            Rules:
+                                            - 1000+ words
+                                            - SEO optimized
+                                            - Use markdown headings (##, ###)
+                                            - No citations
+                                            - No extra commentary
+                                            - Clean formatting
+                                            - Beginner-friendly but insightful"""
+                                        }
+                                    ]
+                                }
+                perplexity_response = api().build_request(base_url=perplexity_url, endpoint='/chat/completions', json_body=perplexity_request, api="Perplexity", timeout=60.0)
+                logger.info(f'Perplexity AI Response: " {perplexity_response} "')
+                # Generate image thumbnail for blog post
+                subject = f"""Visualize the concept of: {topic}.
+                    Represent this with a symbolic anime-style scene or character that clearly reflects the topic. 
+                    Use metaphors, environment, and subtle visual storytelling to convey the idea."""
+                with open('img_prompt.txt', 'r') as prompt_file:
+                    chatgpt_prompt = prompt_file.read()
+                    prompt_file.close()
+                
+                result = chatgpt_client.images.generate(
+                    model="dall-e-3",
+                    prompt=chatgpt_prompt + subject,
+                    size="1024x1024"
+                )
 
-    # Extract image URL
-    image_url = result.data[0].url
-    logger.critical(f"Image generated. URL: {image_url}")
+                # Extract image URL
+                image_url = result.data[0].url
+                logger.critical(f"Image generated. URL: {image_url}")
 
-    # Send to Chikara
-    # NOTE : Need to test if posts need to be sent 1 by 1, or if they can be sent in bulk ...
-    # Categories are not added currently. Need to figure out on frontend.
-    blog_post_data = {"title": "The Warrior's Guide to Financial Freedom",
-                    "slug": "warriors-guide-financial-freedom",
-                    "excerpt": "Master your finances with discipline and strategy.",
-                    "content": "<p>Your blog post HTML content here...</p>",
-                    "featured_image": f"{image_url}",
-                    "categories": [
-                        f"{category}"
-                    ],
-                    "publish": True
-                    }
-    test_blog_post_data = {"title": "Test Post",
-                    "slug": "test-post",
-                    "excerpt": "This is a test post.",
-                    "content": "<p>This is a test post.</p>",
-                    "featured_image": "https://design.google/library/evolving-google-identity",
-                    "categories": [
-                        "discipline"
-                    ],
-                    "publish": False
-                    }
+                # Send to Chikara
+                # NOTE : Need to test if posts need to be sent 1 by 1, or if they can be sent in bulk ...
+                # Categories are not added currently. Need to figure out on frontend.
+                blog_post_data = {"title": "The Warrior's Guide to Financial Freedom",
+                                "slug": "warriors-guide-financial-freedom",
+                                "excerpt": "Master your finances with discipline and strategy.",
+                                "content": "<p>Your blog post HTML content here...</p>",
+                                "featured_image": f"{image_url}",
+                                "categories": [
+                                    f"{category}"
+                                ],
+                                "publish": True
+                                }
+                test_blog_post_data = {"title": "Test Post",
+                                "slug": "test-post",
+                                "excerpt": "This is a test post.",
+                                "content": "<p>This is a test post.</p>",
+                                "featured_image": "https://design.google/library/evolving-google-identity",
+                                "categories": [
+                                    "discipline"
+                                ],
+                                "publish": False
+                                }
+                logger.critical(f"Blog Post Data: {blog_post_data}")
 
-    api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=blog_post_data, api="Chikara Realms", method="POST")
+                api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=blog_post_data, api="Chikara Realms", method="POST", timeout=60.0)
 
 if __name__ == "__main__":
     main()
