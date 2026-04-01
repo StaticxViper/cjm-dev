@@ -95,29 +95,29 @@ def main():
                             },
                             {
                                 "role": "user",
-                                "content": f"""Write a high-quality blog post for the topic: "{topic}".
+                                "content": """Write a high-quality blog post for the topic: "{topic}".
 
-                    Return ONLY JSON:
-                    {
-                    "title": "",
-                    "slug": "",
-                    "excerpt": "",
-                    "content": "",
-                    "tags": []
-                    }
+                                Return ONLY JSON:
+                                {
+                                "title": "",
+                                "slug": "",
+                                "excerpt": "",
+                                "content": "",
+                                "tags": []
+                                }
 
-                    Rules:
-                    - 1000+ words
-                    - SEO optimized
-                    - Use markdown headings (##, ###)
-                    - No citations
-                    - No extra commentary
-                    - Clean formatting
-                    - Beginner-friendly but insightful"""
+                                Rules:
+                                - 1000+ words
+                                - SEO optimized
+                                - Use markdown headings (##, ###)
+                                - No citations
+                                - No extra commentary
+                                - Clean formatting
+                                - Beginner-friendly but insightful"""
                             }
                         ]
                     }
-    perplexity_response = api().build_request(base_url=perplexity_url, endpoint='/chat/completions', json_body=perplexity_request, api="Perplexity")
+    perplexity_response = api().build_request(base_url=perplexity_url, endpoint='/chat/completions', json_body=perplexity_request, api="Perplexity", timeout=60.0)
     logger.info(f'Perplexity AI Response: " {perplexity_response} "')
     # Generate image thumbnail for blog post
     subject = f"""Visualize the concept of: {topic}.
@@ -161,7 +161,7 @@ def main():
                     "publish": False
                     }
 
-    api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=blog_post_data, api="Chikara Realms", method="POST")
+    api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=blog_post_data, api="Chikara Realms", method="POST", timeout=30.0)
 
 if __name__ == "__main__":
     main()
