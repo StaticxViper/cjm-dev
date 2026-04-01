@@ -69,8 +69,8 @@ class APIManager:
                 params=params,
                 json=json_body,
             )
-            print("STATUS:", response.status_code)
-            print("RESPONSE:", response.text)
+            self.log.info("STATUS:", response.status_code)
+            self.log.info("RESPONSE:", response.text)
 
             # Raise for bad HTTP status
             response.raise_for_status()
@@ -82,9 +82,9 @@ class APIManager:
             except json.JSONDecodeError:
                 # If parsing fails, return raw string as fallback
                 return {"raw": response.text}
-        
-        print("STATUS:", response.status_code)
-        print("RESPONSE:", response.text)
+
+        self.log.info("STATUS:", response.status_code)
+        self.log.info("RESPONSE:", response.text)
 
         return {}
 
