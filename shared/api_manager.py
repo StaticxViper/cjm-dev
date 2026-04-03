@@ -24,14 +24,13 @@ logger = setup_logger(
 class APIManager:
 
     def __init__(self, url:str = None, test:bool = False):
-        self.log = logger
         if test:
-            self.log.critical('TEST MODE: ENABLED')
+            logger.critical('TEST MODE: ENABLED')
             test_url = 'https://httpbin.org'
             url = test_url
             r = httpx.get(url)
-            self.log.info(r)
-            #self.log.info(r.text)
+            logger.info(r)
+            #logger.info(r.text)
         else:
             self.apify_client = ApifyClient(self.get_api_key('Apify'))
             self.base_url = url
@@ -69,8 +68,8 @@ class APIManager:
                 params=params,
                 json=json_body,
             )
-            self.log.info("STATUS:", response.status_code)
-            self.log.info("RESPONSE:", response.text)
+            logger.info("STATUS:", response.status_code)
+            logger.info("RESPONSE:", response.text)
 
             # Raise for bad HTTP status
             response.raise_for_status()
@@ -83,8 +82,8 @@ class APIManager:
                 # If parsing fails, return raw string as fallback
                 return {"raw": response.text}
 
-        self.log.info("STATUS:", response.status_code)
-        self.log.info("RESPONSE:", response.text)
+        logger.info("STATUS:", response.status_code)
+        logger.info("RESPONSE:", response.text)
 
         return {}
 
@@ -98,17 +97,17 @@ class APIManager:
         Returns:
             API Key String
         """
-        self.log.info(f'Searching for API Key associated with: "{api}"')
+        logger.info(f'Searching for API Key associated with: "{api}"')
         # Loop through API_KEYS
         for key,value in API_KEYS.items():
             # If API string matches key of API_KEYS, assign the value to api
             try:
                 if api in key:
-                    self.log.info('API Key Found!')
+                    logger.info('API Key Found!')
                     api = value
                     break
             except Exception:
-                self.log.error('Could not find API Key!')
+                logger.error('Could not find API Key!')
         
         return api
 
@@ -124,7 +123,7 @@ class APIManager:
 
         try:
             if actor is None:
-                self.log.error('Apify Actor not given...')
+                logger.error('Apify Actor not given...')
                 exit()
             else:
                 actor_found = False
@@ -135,20 +134,20 @@ class APIManager:
                         break
             
             if actor_found:
-                self.log.critical('Actor Found!')
+                logger.critical('Actor Found!')
             else:
-                self.log.error('Actor not Found...')
+                logger.error('Actor not Found...')
                 exit()
 
             # Run Actor
             actor_call = self.apify_client.actor(actor).call(run_input=input)
             # Get data via Dataset ID
             result = self.get_apify_data(actor_call=actor_call)
-            self.log.info('Results Found via Dataset ID!')
+            logger.info('Results Found via Dataset ID!')
         except RuntimeError as e:
-            self.log.error(f'Actor run error: {e}')
+            logger.error(f'Actor run error: {e}')
         except Exception as e:
-            self.log.error(f'Unexpected error communicating with Apify: {e}')
+            logger.error(f'Unexpected error communicating with Apify: {e}')
 
         return result
 
@@ -169,9 +168,9 @@ class APIManager:
             else:
                 result = self.apify_client.dataset(str(dataset_id)).list_items().items
         except ValueError as e:
-            self.log.error(f'Dataset error: {e}')
+            logger.error(f'Dataset error: {e}')
         except Exception as e:
-            self.log.error(f'Unexpected error communicating with Apify: {e}')
+            logger.error(f'Unexpected error communicating with Apify: {e}')
 
         return result
 
