@@ -6,3 +6,4 @@ python-dotenv
 httpx
 apify-client
 openai
+perplexityai
