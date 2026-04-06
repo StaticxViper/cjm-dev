@@ -130,7 +130,7 @@ def main():
                 )
 
                 # Generate image thumbnail for blog post
-                subject = f"""Visualize the concept of: {topic}.
+                subject = f"""Visualize the concept of "{topic}" in relation to "{category}".
                     Represent this with a symbolic anime-style scene or character that clearly reflects the topic. 
                     Use metaphors, environment, and subtle visual storytelling to convey the idea."""
                 with open('img_prompt.txt', 'r') as prompt_file:
