@@ -7,6 +7,7 @@ repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_an
 sys.path.insert(0, str(repo_root))
 
 from openai import OpenAI
+from perplexity import Perplexity
 from shared.api_manager import APIManager as api
 from shared.logger import setup_logger
 
@@ -71,6 +72,7 @@ def main():
     category_topics = {} # {"Sub-Catergory1": "Topic1", "Sub-Catergory2": "Topic2"}
 
     chatgpt_client = OpenAI(api_key=api().get_api_key(api='ChatGPT'))
+    perplexity_client = Perplexity(api_key=api().get_api_key(api='Perplexity'))
     perplexity_url = 'https://api.perplexity.ai'
     
     # Gather Categories
@@ -87,40 +89,48 @@ def main():
                 logger.critical(f'Topic Acquired: "{topic}"')
     
                 # Generate blog post based on topic + category
-                perplexity_request = { "model": "sonar-pro",
-                                    "messages": [
-                                        {
-                                            "role": "system",
-                                            "content": "You are a professional SEO blog writer. Output strictly valid JSON only."
-                                        },
-                                        {
-                                            "role": "user",
-                                            "content": """Write a high-quality blog post for the topic: "{topic}".
+                perplexity_request = {"model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a professional SEO blog writer. Output clean, well-formatted markdown text only."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"""Research and write a compelling, thoughtful article about "{topic}" for Chikara Realms. 
+                                The article should be clear, insightful, and subtly empowering, with a calm, 
+                                reflective tone that invites readers to think deeper about the topic. 
+                                Include practical takeaways where relevant, but avoid hype or exaggerated claims. 
+                                Write in a style that feels timeless and stoic, 
+                                appealing to readers who value depth, clarity, and subtle strength.
+                                Use concise paragraphs, clear headings (H2 and H3 if needed), and short, impactful sentences. 
+                                Remove any filler or repetitive phrases. If there are any factual claims, keep them clear and neutral.
 
-                                            Return ONLY JSON:
-                                            {
-                                            "title": "",
-                                            "slug": "",
-                                            "excerpt": "",
-                                            "content": "",
-                                            "tags": []
-                                            }
+                                Requirements:
+                                - 1000+ words
+                                - SEO optimized
+                                - Beginner-friendly but insightful
+                                - Use markdown formatting:
+                                - Title as a single # heading
+                                - Sections with ## and ###
+                                - Use bullet points where appropriate, and be sure to use proper spacing for readability.
+                                - Include:
+                                - An introduction
+                                - Well-structured sections
+                                - A conclusion
 
-                                            Rules:
-                                            - 1000+ words
-                                            - SEO optimized
-                                            - Use markdown headings (##, ###)
-                                            - No citations
-                                            - No extra commentary
-                                            - Clean formatting
-                                            - Beginner-friendly but insightful"""
-                                        }
-                                    ]
-                                }
-                perplexity_response = api().build_request(base_url=perplexity_url, endpoint='/chat/completions', json_body=perplexity_request, api="Perplexity", timeout=60.0)
-                logger.info(f'Perplexity AI Response: " {perplexity_response} "')
+                                Return only the blog post content in markdown format.
+                            """
+                        }
+                    ]
+                }
+                perplexity_response = perplexity_client.chat.completions.create(
+                    model=perplexity_request["model"],
+                    messages=perplexity_request["messages"]
+                )
+
                 # Generate image thumbnail for blog post
-                subject = f"""Visualize the concept of: {topic}.
+                subject = f"""Visualize the concept of "{topic}" in relation to "{category}".
                     Represent this with a symbolic anime-style scene or character that clearly reflects the topic. 
                     Use metaphors, environment, and subtle visual storytelling to convey the idea."""
                 with open('img_prompt.txt', 'r') as prompt_file:
@@ -130,7 +140,7 @@ def main():
                 result = chatgpt_client.images.generate(
                     model="dall-e-3",
                     prompt=chatgpt_prompt + subject,
-                    size="1024x1024"
+                    size="1792x1024",
                 )
 
                 # Extract image URL
@@ -140,27 +150,29 @@ def main():
                 # Send to Chikara
                 # NOTE : Need to test if posts need to be sent 1 by 1, or if they can be sent in bulk ...
                 # Categories are not added currently. Need to figure out on frontend.
-                blog_post_data = {"title": "The Warrior's Guide to Financial Freedom",
-                                "slug": "warriors-guide-financial-freedom",
-                                "excerpt": "Master your finances with discipline and strategy.",
-                                "content": "<p>Your blog post HTML content here...</p>",
+                blog_post_data = {"title": f"{topic}",
+                                "slug": f"{topic.replace(' ', '-').lower()}",
+                                "excerpt": f"Learn about {topic} in this comprehensive blog post.",
+                                "content": f"{perplexity_response.choices[0].message.content}",
                                 "featured_image": f"{image_url}",
                                 "categories": [
                                     f"{category}"
                                 ],
+                                "citations": [citation for citation in perplexity_response.citations],
                                 "publish": True
                                 }
                 test_blog_post_data = {"title": "Test Post",
                                 "slug": "test-post",
                                 "excerpt": "This is a test post.",
-                                "content": "<p>This is a test post.</p>",
+                                "content": f"{perplexity_response.choices[0].message.content}",
                                 "featured_image": "https://design.google/library/evolving-google-identity",
                                 "categories": [
                                     "discipline"
                                 ],
+                                "citations": [citation for citation in perplexity_response.citations],
                                 "publish": False
                                 }
-                logger.critical(f"Blog Post Data: {blog_post_data}")
+                logger.critical(f"Blog Post Data: {test_blog_post_data}")
 
                 api().build_request(base_url=base_url, endpoint=blog_endpoint, json_body=blog_post_data, api="Chikara Realms", method="POST", timeout=60.0)
 
