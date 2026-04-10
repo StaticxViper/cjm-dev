@@ -1,6 +1,8 @@
 import csv
+import email
 import sys
 from pathlib import Path
+import pandas as pd
 
 # Add repo root to sys.path
 repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_analyzer/ -> scripts/ -> repo_root
@@ -15,12 +17,44 @@ logger = setup_logger(
 )
 
 
+
+def mark_contacted_and_remove_from_csv(email, csv_path="leads_output.csv"):
+    email = (email or "").strip().lower()
+    if not email:
+        return
+
+    # -----------------------------
+    # 1. Append to contacted.txt
+    # -----------------------------
+    with open("contacted.txt", "a", encoding="utf-8") as f:
+        f.write(email + "\n")
+
+    # -----------------------------
+    # 2. Remove from CSV safely
+    # -----------------------------
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception:
+        return
+
+    if df.empty or "email" not in df.columns:
+        return
+
+    # normalize emails in CSV
+    df["email"] = df["email"].fillna("").astype(str).str.lower()
+
+    # remove contacted lead
+    df = df[df["email"] != email]
+
+    # save back safely
+    df.to_csv(csv_path, index=False)
+
 def main():
     logger.critical('Starting Lead Automation...')
 
 
     # Parse leads_output.csv for lead info
-    with open("leads.csv", newline="", encoding="utf-8") as file:
+    with open("leads_output.csv", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
@@ -59,9 +93,7 @@ def main():
         message=msg,
     )'''
 
-    with open("contacted.txt", "a", encoding="utf-8") as f:
-        f.write(email + "\n")
-
+    mark_contacted_and_remove_from_csv(email)
 
 if __name__ == "__main__":
     main()
