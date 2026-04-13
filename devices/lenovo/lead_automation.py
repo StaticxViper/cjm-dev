@@ -51,6 +51,7 @@ def mark_contacted_and_remove_from_csv(email, csv_path="leads_output.csv"):
 
 def main():
     logger.critical('Starting Lead Automation...')
+    landing_page_link = "https://www.moultonventuresllc.com/contact"
 
 
     # Parse leads_output.csv for lead info
@@ -68,7 +69,40 @@ def main():
             user_ratings_total = row["user_ratings_total"]
             lead_score = row["lead_score"]
 
-            print(business_name, email, website)
+            logger.critical(f"Business: {business_name}, Email: {email}, Website: {website}")
+
+            website_status = "no website" if website.strip() == "" else "a website that could use improvement"
+
+            EMAIL_TEMPLATE = {"Subject": f"Quick idea for {business_name} website",
+                            "Body": f"""Hello,
+
+                            I hope all is well with you!
+
+                            I came across {business_name} while looking at businesses around your location ({address}), and noticed you currently have {website_status}.
+
+                            I run a small web design service where we build custom website demos for businesses before they pay anything.
+
+                            I actually put together a quick idea of how {business_name}’s site could look with a more modern design and better conversion layout.
+
+                            If you’re open to it, I can build out a free, live demo tailored to your business — no upfront cost, no obligation.
+
+                            You’d be able to:
+
+                            See a redesigned version of your site
+                            Review layout, content, and structure
+                            Decide if you want to keep it (only then is there a fee)
+
+                            If you’re interested, just reply “demo” or fill this out here:
+                            {landing_page_link}
+
+                            Takes about 30 seconds.
+
+                            Either way, keep up the great work with {business_name} — I saw you’ve got a {rating}⭐ rating, which is awesome.
+
+                            – CJ
+                            MV Software"""
+                        }
+
     
 
 
@@ -97,3 +131,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
