@@ -2,7 +2,7 @@ import csv
 import email
 import sys
 from pathlib import Path
-import pandas as pd
+#import pandas as pd
 
 # Add repo root to sys.path
 repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_analyzer/ -> scripts/ -> repo_root
@@ -17,21 +17,16 @@ logger = setup_logger(
 )
 
 
-
-def mark_contacted_and_remove_from_csv(email, csv_path="leads_output.csv"):
-    email = (email or "").strip().lower()
-    if not email:
+def mark_contacted_and_remove_from_csv(email_addr, csv_path="leads_output.csv"):
+    email_addr = (email_addr or "").strip().lower()
+    if not email_addr:
         return
 
-    # -----------------------------
-    # 1. Append to contacted.txt
-    # -----------------------------
+    # Append to contacted.txt
     with open("contacted.txt", "a", encoding="utf-8") as f:
-        f.write(email + "\n")
+        f.write(email_addr + "\n")
 
-    # -----------------------------
-    # 2. Remove from CSV safely
-    # -----------------------------
+    # Remove from CSV safely
     try:
         df = pd.read_csv(csv_path)
     except Exception:
@@ -40,96 +35,105 @@ def mark_contacted_and_remove_from_csv(email, csv_path="leads_output.csv"):
     if df.empty or "email" not in df.columns:
         return
 
-    # normalize emails in CSV
     df["email"] = df["email"].fillna("").astype(str).str.lower()
-
-    # remove contacted lead
-    df = df[df["email"] != email]
-
-    # save back safely
+    df = df[df["email"] != email_addr]
     df.to_csv(csv_path, index=False)
+
+
+def build_email_template(business_name, address, website, rating, landing_page_link):
+    website_status = "no website" if website.strip() == "" else "a website that could use improvement"
+
+    subject = f"Quick idea for {business_name} website"
+
+    body = f"""Hello,
+
+            I hope all is well with you!
+
+            I came across {business_name} while looking at businesses around your location ({address}), and noticed you currently have {website_status}.
+
+            I run a small web design service where we build custom website demos for businesses before they pay anything.
+
+            I actually put together a quick idea of how {business_name}'s site could look with a more modern design and better conversion layout.
+
+            If you're open to it, I can build out a free, live demo tailored to your business — no upfront cost, no obligation.
+
+            You'd be able to:
+
+            - See a redesigned version of your site
+            - Review layout, content, and structure
+            - Decide if you want to keep it (only then is there a fee)
+
+            If you're interested, just reply "demo" or fill this out here:
+            {landing_page_link}
+
+            Takes about 30 seconds.
+
+            Either way, keep up the great work with {business_name} — I saw you've got a {rating}⭐ rating, which is awesome.
+
+            – CJ
+            MV Software"""
+
+    return subject, body
+
+def extract_real_email(raw_email_field):
+    emails = raw_email_field.split(";")
+    for e in emails:
+        e = e.strip().lower()
+        if e and "sentry" not in e and "wixpress" not in e:
+            return e
+    return ""
 
 def main():
     logger.critical('Starting Lead Automation...')
     landing_page_link = "https://www.moultonventuresllc.com/contact"
 
+    emails_output = []  # collect all built emails
 
-    # Parse leads_output.csv for lead info
     with open("leads_output.csv", newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
             business_name = row["business_name"]
             address = row["address"]
-            phone_google = row["phone_google"]
-            phone_website = row["phone_website"]
-            email = row["email"]
+            email_addr = extract_real_email(row["email"])
             website = row["website"]
             rating = row["rating"]
-            user_ratings_total = row["user_ratings_total"]
-            lead_score = row["lead_score"]
 
-            logger.critical(f"Business: {business_name}, Email: {email}, Website: {website}")
+            logger.critical(f"Business: {business_name}, Email: {email_addr}, Website: {website}")
 
-            website_status = "no website" if website.strip() == "" else "a website that could use improvement"
+            # Skip leads with no email
+            if not email_addr.strip():
+                logger.critical(f"  → Skipping {business_name}: no email address")
+                continue
 
-            EMAIL_TEMPLATE = {"Subject": f"Quick idea for {business_name} website",
-                            "Body": f"""Hello,
+            subject, body = build_email_template(
+                business_name=business_name,
+                address=address,
+                website=website,
+                rating=rating,
+                landing_page_link=landing_page_link,
+            )
 
-                            I hope all is well with you!
+            emails_output.append({
+                "to_email": email_addr,
+                "business_name": business_name,
+                "subject": subject,
+                "body": body,
+            })
 
-                            I came across {business_name} while looking at businesses around your location ({address}), and noticed you currently have {website_status}.
+            mark_contacted_and_remove_from_csv(email_addr)
 
-                            I run a small web design service where we build custom website demos for businesses before they pay anything.
+    # Save all built emails to a CSV for easy copy-paste
+    if emails_output:
+        output_path = "emails_to_send.csv"
+        with open(output_path, "w", newline="", encoding="utf-8") as out_file:
+            writer = csv.DictWriter(out_file, fieldnames=["to_email", "business_name", "subject", "body"])
+            writer.writeheader()
+            writer.writerows(emails_output)
+        logger.critical(f"Done. {len(emails_output)} email(s) written to {output_path}")
+    else:
+        logger.critical("No leads with email addresses found.")
 
-                            I actually put together a quick idea of how {business_name}’s site could look with a more modern design and better conversion layout.
-
-                            If you’re open to it, I can build out a free, live demo tailored to your business — no upfront cost, no obligation.
-
-                            You’d be able to:
-
-                            See a redesigned version of your site
-                            Review layout, content, and structure
-                            Decide if you want to keep it (only then is there a fee)
-
-                            If you’re interested, just reply “demo” or fill this out here:
-                            {landing_page_link}
-
-                            Takes about 30 seconds.
-
-                            Either way, keep up the great work with {business_name} — I saw you’ve got a {rating}⭐ rating, which is awesome.
-
-                            – CJ
-                            MV Software"""
-                        }
-
-    
-
-
-    '''
-    # Build email message
-    msg = email_manager.build_email(
-        sender="you@gmail.com",
-        recipients=["target@email.com"],
-        subject="Test Email",
-        body_text="Hello from Python!",
-        body_html="<h1>Hello</h1><p>This is HTML</p>",
-        attachments=["file.txt"],  # optional
-    )
-
-    # Send email message
-    email_manager.send_email(
-        smtp_server="smtp.gmail.com",
-        port=587,
-        sender="you@gmail.com",
-        password="your_app_password",
-        recipients=["target@email.com"],
-        message=msg,
-    )'''
-
-    mark_contacted_and_remove_from_csv(email)
 
 if __name__ == "__main__":
     main()
-
-
