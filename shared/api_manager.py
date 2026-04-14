@@ -1,3 +1,5 @@
+from urllib import response
+
 from apify_client import ApifyClient
 import httpx
 import json
@@ -7,7 +9,8 @@ from dotenv import load_dotenv
 from .logger import setup_logger
 
 load_dotenv()
-API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY")}
+API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN"),
+            'ChatGPT': os.getenv("CHATGPT_API_KEY"), 'Perplexity': os.getenv("PERPLEXITY_API_KEY"), 'Chikara Realms': os.getenv("CHIKARA_REALMS_SECRET")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
@@ -21,14 +24,13 @@ logger = setup_logger(
 class APIManager:
 
     def __init__(self, url:str = None, test:bool = False):
-        self.log = logger
         if test:
-            self.log.critical('TEST MODE: ENABLED')
+            logger.critical('TEST MODE: ENABLED')
             test_url = 'https://httpbin.org'
             url = test_url
             r = httpx.get(url)
-            self.log.info(r)
-            #self.log.info(r.text)
+            logger.info(r)
+            #logger.info(r.text)
         else:
             self.apify_client = ApifyClient(self.get_api_key('Apify'))
             self.base_url = url
@@ -51,8 +53,12 @@ class APIManager:
         headers = {"Content-Type": "application/json"}
 
         if api:
+            bearer_token_apis = ["Stock Analyzer", "Perplexity"]
             api_key = self.get_api_key(api)
-            headers["X-API-Key"] = api_key
+            if api in bearer_token_apis:
+                headers["Authorization"] = f"Bearer {api_key}"
+            else:
+                headers["X-API-Key"] = api_key
 
         with httpx.Client(base_url=base_url, timeout=timeout) as client:
             response = client.request(
@@ -62,6 +68,8 @@ class APIManager:
                 params=params,
                 json=json_body,
             )
+            logger.info("STATUS:", response.status_code)
+            logger.info("RESPONSE:", response.text)
 
             # Raise for bad HTTP status
             response.raise_for_status()
@@ -73,6 +81,9 @@ class APIManager:
             except json.JSONDecodeError:
                 # If parsing fails, return raw string as fallback
                 return {"raw": response.text}
+
+        logger.info("STATUS:", response.status_code)
+        logger.info("RESPONSE:", response.text)
 
         return {}
 
@@ -86,14 +97,17 @@ class APIManager:
         Returns:
             API Key String
         """
-        self.log.info(f'Searching for API Key associated with: "{api}"')
+        logger.info(f'Searching for API Key associated with: "{api}"')
         # Loop through API_KEYS
         for key,value in API_KEYS.items():
             # If API string matches key of API_KEYS, assign the value to api
-            if api in key:
-                self.log.info('API Key Found!')
-                api = value
-                break
+            try:
+                if api in key:
+                    logger.info('API Key Found!')
+                    api = value
+                    break
+            except Exception:
+                logger.error('Could not find API Key!')
         
         return api
 
@@ -109,7 +123,7 @@ class APIManager:
 
         try:
             if actor is None:
-                self.log.error('Apify Actor not given...')
+                logger.error('Apify Actor not given...')
                 exit()
             else:
                 actor_found = False
@@ -120,20 +134,20 @@ class APIManager:
                         break
             
             if actor_found:
-                self.log.critical('Actor Found!')
+                logger.critical('Actor Found!')
             else:
-                self.log.error('Actor not Found...')
+                logger.error('Actor not Found...')
                 exit()
 
             # Run Actor
             actor_call = self.apify_client.actor(actor).call(run_input=input)
             # Get data via Dataset ID
             result = self.get_apify_data(actor_call=actor_call)
-            self.log.info('Results Found via Dataset ID!')
+            logger.info('Results Found via Dataset ID!')
         except RuntimeError as e:
-            self.log.error(f'Actor run error: {e}')
+            logger.error(f'Actor run error: {e}')
         except Exception as e:
-            self.log.error(f'Unexpected error communicating with Apify: {e}')
+            logger.error(f'Unexpected error communicating with Apify: {e}')
 
         return result
 
@@ -154,9 +168,9 @@ class APIManager:
             else:
                 result = self.apify_client.dataset(str(dataset_id)).list_items().items
         except ValueError as e:
-            self.log.error(f'Dataset error: {e}')
+            logger.error(f'Dataset error: {e}')
         except Exception as e:
-            self.log.error(f'Unexpected error communicating with Apify: {e}')
+            logger.error(f'Unexpected error communicating with Apify: {e}')
 
         return result
 
