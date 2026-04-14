@@ -10,3 +10,7 @@ logs/
 *output/
 *example.json
 .bashrc
+
+*emails_to_send.csv
+*contacted.txt
+*leads_output.csv
