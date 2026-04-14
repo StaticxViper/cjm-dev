@@ -5,3 +5,5 @@ beautifulsoup4
 python-dotenv
 httpx
 apify-client
+openai
+perplexityai

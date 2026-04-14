@@ -1,0 +1,8 @@
+{
+    "Category": {
+        "health": ["fitness", "mental-health", "nutrition", "strength"],
+        "investing": ["passive-income", "personal-finance", "real-estate-investing", "stock-market-trading", "wealth-building"],
+        "mindset": ["discipline", "growth", "leadership", "self-development"],
+        "philosophy": ["philosophy"]
+    }
+}
