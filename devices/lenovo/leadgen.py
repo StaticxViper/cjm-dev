@@ -33,6 +33,7 @@ MAX_WORKERS = 12
 PLACES_SLEEP = 2  # seconds between place detail / next_page_token attempts
 CSV_OUTPUT = "leads_output.csv"
 existing_place_ids = load_existing_place_ids(CSV_OUTPUT)
+CONTACTED_FILE = "contacted.txt"
 
 # Logging
 logger = setup_logger(
@@ -287,17 +288,46 @@ def process_businesses(businesses, api_key, existing_ids):
         place_id = b.get("place_id")
         if not place_id:
             continue
+
+        # 1. Skip duplicates across runs
         if not is_new_place(place_id, existing_ids):
-            continue  # skip duplicates across runs and within-run
+            continue
+
         a = analyses.get(place_id, {})
+
+        # 2. Safe email extraction (prevents None bugs)
+        emails = a.get("emails") or []
+        emails_clean = [e.strip().lower() for e in emails if e and e.strip()]
+
+        # 3. Skip leads with no emails (optional but recommended)
+        if not emails_clean:
+            continue
+
+        # 4. Skip already-contacted leads
+        if any(email in contacted_emails for email in emails_clean):
+            continue
+
+        # 5. Lead scoring
         has_website = bool(b.get("website"))
-        lead_score = score_lead(has_website, a.get("https", False), a.get("has_viewport", False), a.get("html_length", 0), a.get("emails", []), a.get("has_cta", False), b.get("rating"), b.get("user_ratings_total"))
+
+        lead_score = score_lead(
+            has_website,
+            a.get("https", False),
+            a.get("has_viewport", False),
+            a.get("html_length", 0),
+            a.get("emails", []),
+            a.get("has_cta", False),
+            b.get("rating"),
+            b.get("user_ratings_total"),
+        )
+
+        # 6. Build output row
         row = {
             "business_name": b.get("business_name"),
             "address": b.get("address"),
             "phone_google": b.get("phone_google"),
             "phone_website": ";".join(a.get("phones_website", [])) if a.get("phones_website") else None,
-            "email": ";".join(a.get("emails", [])) if a.get("emails") else None,
+            "email": ";".join(emails_clean),
             "website": b.get("website"),
             "rating": b.get("rating"),
             "user_ratings_total": b.get("user_ratings_total"),
@@ -307,7 +337,6 @@ def process_businesses(businesses, api_key, existing_ids):
             "lead_score": lead_score,
         }
         rows.append(row)
-
     return rows
 
 
@@ -339,6 +368,15 @@ def main():
     if GOOGLE_API_KEY == "YOUR_GOOGLE_API_KEY":
         logger.error("Please set GOOGLE_API_KEY in the script before running.")
         return
+    
+    logger.critical("Loading contacted emails to avoid re-contacting...")
+    # Load contacted emails to avoid re-contacting
+    if os.path.exists(CONTACTED_FILE):
+        with open(CONTACTED_FILE, "r", encoding="utf-8") as f:
+            contacted_emails = set(line.strip().lower() for line in f if line.strip())
+    else:
+        contacted_emails = set()
+
 
     logger.critical("Starting lead generation for location=%s radius=%s keywords=%s", LOCATION, SEARCH_RADIUS, KEYWORDS)
     places = get_places(LOCATION, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
