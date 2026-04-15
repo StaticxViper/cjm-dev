@@ -2,10 +2,10 @@ import csv
 import email
 import sys
 from pathlib import Path
-#import pandas as pd
+import pandas as pd
 
 # Add repo root to sys.path
-repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_analyzer/ -> scripts/ -> repo_root
+repo_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(repo_root))
 
 from scripts.email_manager import email_manager
