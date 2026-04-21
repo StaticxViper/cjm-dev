@@ -3,6 +3,7 @@ import email
 import sys
 from pathlib import Path
 #import pandas as pd
+from shared.api_manager import APIManager as api
 
 # Add repo root to sys.path
 repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_analyzer/ -> scripts/ -> repo_root
@@ -87,6 +88,9 @@ def main():
     logger.critical('Starting Lead Automation...')
     landing_page_link = "https://www.moultonventuresllc.com/contact"
 
+    base_url = 'https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1'#/moulton-api'
+    lead_endpoint = '/leads-ingest'
+
     emails_output = []  # collect all built emails
 
     with open("leads_output.csv", newline="", encoding="utf-8") as file:
@@ -98,9 +102,24 @@ def main():
             email_addr = extract_real_email(row["email"])
             website = row["website"]
             rating = row["rating"]
+            user_rating_total = row["user_rating_total"]
 
             logger.critical(f"Business: {business_name}, Email: {email_addr}, Website: {website}")
 
+            lead_data = {
+            "business_name": f"{business_name}",
+            "address": f"{address}",
+            "phone": "+1-555-123-4567",
+            "email": f"{email_addr}",
+            "website": f"{website}",
+            "rating": rating,
+            "user_ratings_total": user_rating_total
+            }
+
+            api().build_request(base_url=base_url, endpoint=lead_endpoint, json_body=lead_data, api="Lead Ingest", method="POST", timeout=60.0)
+
+
+            '''
             # Skip leads with no email
             if not email_addr.strip():
                 logger.critical(f"  → Skipping {business_name}: no email address")
@@ -119,11 +138,11 @@ def main():
                 "business_name": business_name,
                 "subject": subject,
                 "body": body,
-            })
+            })'''
 
-            mark_contacted_and_remove_from_csv(email_addr)
+            #mark_contacted_and_remove_from_csv(email_addr)
 
-    # Save all built emails to a CSV for easy copy-paste
+    '''# Save all built emails to a CSV for easy copy-paste
     if emails_output:
         output_path = "emails_to_send.csv"
         with open(output_path, "w", newline="", encoding="utf-8") as out_file:
@@ -132,7 +151,7 @@ def main():
             writer.writerows(emails_output)
         logger.critical(f"Done. {len(emails_output)} email(s) written to {output_path}")
     else:
-        logger.critical("No leads with email addresses found.")
+        logger.critical("No leads with email addresses found.")'''
 
 
 if __name__ == "__main__":
