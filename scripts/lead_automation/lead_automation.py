@@ -101,21 +101,29 @@ def main():
             address = row["address"]
             email_addr = extract_real_email(row["email"])
             website = row["website"]
+            phone = row["phone_google"]
             rating = row["rating"]
-            user_rating_total = row["user_rating_total"]
+            user_ratings_total = row["user_ratings_total"]
+            score = row["lead_score"]
 
             logger.critical(f"Business: {business_name}, Email: {email_addr}, Website: {website}")
 
             lead_data = {
             "business_name": f"{business_name}",
             "address": f"{address}",
-            "phone": "+1-555-123-4567",
+            "phone": f"{phone}",
             "email": f"{email_addr}",
             "website": f"{website}",
-            "rating": rating,
-            "user_ratings_total": user_rating_total
+            "rating": float(rating),
+            "user_ratings_total": int(user_ratings_total),
+            "category": "landscaping-leads",
+            "tags": [
+                "lead_automation",
+                "google-places-api"
+            ],
+            "score": int(score)
             }
-
+            logger.info(f"Lead Data: {lead_data}")
             api().build_request(base_url=base_url, endpoint=lead_endpoint, json_body=lead_data, api="Lead Ingest", method="POST", timeout=60.0)
 
 
