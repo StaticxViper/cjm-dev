@@ -2,13 +2,13 @@ import csv
 import email
 import sys
 from pathlib import Path
-#import pandas as pd
-from shared.api_manager import APIManager as api
 
 # Add repo root to sys.path
-repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_analyzer/ -> scripts/ -> repo_root
+repo_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(repo_root))
 
+import pandas as pd
+from shared.api_manager import APIManager as api
 from scripts.email_manager import email_manager
 from shared.logger import setup_logger
 
