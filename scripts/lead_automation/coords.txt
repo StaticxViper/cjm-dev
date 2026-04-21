@@ -1,0 +1,6 @@
+Cherry Hill, NJ = 39.9526,-75.1652
+Cinnaminson, NJ = 40.000278,-74.997194
+
+Dover, DE = 39.162361,-75.558222
+Los Angeles, CA = 33.993778,-118.344333
+San Fransisco, CA = 37.769333,-122.456028
