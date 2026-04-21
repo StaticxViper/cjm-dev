@@ -8,6 +8,11 @@ Run: python leadgen.py
 
 Fill in GOOGLE_API_KEY before running.
 """
+from pathlib import Path
+import sys
+# Add repo root to sys.path
+repo_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(repo_root))
 import requests
 import pandas as pd
 import re
@@ -27,7 +32,7 @@ load_dotenv()
 # -----------------------------
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_RADIUS = 50000  # meters
-KEYWORDS = ["landscaping", "house cleaning"]
+KEYWORDS = ["landscaping"]
 LOCATION = '39.9526,-75.1652' # "39.8027,-74.9838"  # placeholder (lat,lng)
 MAX_WORKERS = 12
 PLACES_SLEEP = 2  # seconds between place detail / next_page_token attempts
@@ -232,7 +237,7 @@ def score_lead(has_website, https, has_viewport, html_length, emails, has_cta, r
     return score
 
 
-def process_businesses(businesses, api_key, existing_ids):
+def process_businesses(businesses, api_key, existing_ids, contacted_emails):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
     enriched = []
     logger.critical("Fetching place details for %d businesses", len(businesses))
@@ -383,7 +388,7 @@ def main():
     if not places:
         logger.critical("No places found; exiting")
         return
-    rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids)
+    rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
     save_results(rows, CSV_OUTPUT)
 
 
