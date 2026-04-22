@@ -40,8 +40,9 @@ def main():
             rating = row["rating"]
             user_ratings_total = row["user_ratings_total"]
             score = row["lead_score"]
+            niche_key = row["niche_key"]
 
-            logger.critical(f"Business: {business_name}, Email: {email_addr}, Website: {website}")
+            logger.critical(f"Business: {business_name}, Email: {email_addr}, Website: {website}, Niche Key: {niche_key}")
 
             lead_data = {
             "business_name": f"{business_name}",
@@ -51,7 +52,7 @@ def main():
             "website": f"{website}",
             "rating": float(rating),
             "user_ratings_total": int(user_ratings_total),
-            "category": "landscaping-leads",
+            "category": niche_key,
             "tags": [
                 "lead_automation",
                 "google-places-api"
