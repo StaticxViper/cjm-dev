@@ -17,6 +17,7 @@ import requests
 import pandas as pd
 import re
 import time
+import json
 from shared.logger import setup_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -32,8 +33,8 @@ load_dotenv()
 # -----------------------------
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_RADIUS = 50000  # meters
-KEYWORDS = ["landscaping"]
-LOCATION = '39.9526,-75.1652' # "39.8027,-74.9838"  # placeholder (lat,lng)
+KEYWORDS = json.load(open("keywords.json")).keys()
+LOCATION = json.load(open("coords.json"))
 MAX_WORKERS = 12
 PLACES_SLEEP = 2  # seconds between place detail / next_page_token attempts
 CSV_OUTPUT = "leads_output.csv"
@@ -254,6 +255,7 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             "website": details.get("website"),
             "rating": b.get("rating"),
             "user_ratings_total": b.get("user_ratings_total"),
+            "niche_key": b.get("niche_key")
         }
         enriched.append(entry)
 
@@ -340,6 +342,7 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             "has_viewport": a.get("has_viewport", False),
             "html_length": a.get("html_length", 0),
             "lead_score": lead_score,
+            "niche_key": b.get("niche_key")
         }
         rows.append(row)
     return rows
@@ -382,14 +385,19 @@ def main():
     else:
         contacted_emails = set()
 
-
-    logger.critical("Starting lead generation for location=%s radius=%s keywords=%s", LOCATION, SEARCH_RADIUS, KEYWORDS)
-    places = get_places(LOCATION, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
-    if not places:
-        logger.critical("No places found; exiting")
-        return
-    rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
-    save_results(rows, CSV_OUTPUT)
+    for state, locations in LOCATION.items():
+        for city, coords in locations.items():
+            try:
+                logger.critical(f"Starting lead generation for {city}, {state}. Using Coords: {coords}")
+                places = get_places(coords, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
+                if not places:
+                    logger.critical("No places found; exiting")
+                    return
+                rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
+                save_results(rows, f"{CSV_OUTPUT}")
+            except Exception as e:
+                logger.error(f"Error processing businesses for {city}, {state}: {e}")
+                continue
 
 
 if __name__ == "__main__":
