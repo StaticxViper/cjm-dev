@@ -6,8 +6,8 @@ repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_an
 sys.path.insert(0, str(repo_root))
 
 from datetime import date
-from shared.api_manager import APIManager as api
-from shared.logger import setup_logger
+from helper_scripts.api_manager import APIManager as api
+from helper_scripts.utilities.logger import setup_logger
 
 logger = setup_logger(
     name="stock-analyzer",

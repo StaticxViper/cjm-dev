@@ -6,7 +6,7 @@ import json
 from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
-from .logger import setup_logger
+from utilities.logger import setup_logger
 
 load_dotenv()
 API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN"),
