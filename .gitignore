@@ -5,7 +5,6 @@ __pycache__/
 .vscode/
 *log.txt
 *.log
-logs/
 *_PRIVATE.txt
 *output/
 *example.json
