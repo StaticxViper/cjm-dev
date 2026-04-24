@@ -44,7 +44,7 @@ CONTACTED_FILE = "contacted.txt"
 # Logging
 logger = setup_logger(
     name="leadgen",
-    console_levels=["CRITICAL"]  # Only these show in console, any of them can be removed.
+    console_levels=["INFO", "ERROR", "CRITICAL"]  # Only these show in console, any of them can be removed.
 )
 
 def get_places(location, radius, keywords, api_key):
@@ -55,6 +55,7 @@ def get_places(location, radius, keywords, api_key):
     base = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     places = {}
     for kw in keywords:
+        logger.critical("Searching for keyword '%s' around location %s", kw, location)
         params = {
             "location": location,
             "radius": radius,
@@ -307,8 +308,8 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
         emails_clean = [e.strip().lower() for e in emails if e and e.strip()]
 
         # 3. Skip leads with no emails (optional but recommended)
-        if not emails_clean:
-            continue
+        #if not emails_clean:
+            #continue
 
         # 4. Skip already-contacted leads
         if any(email in contacted_emails for email in emails_clean):
@@ -391,8 +392,8 @@ def main():
                 logger.critical(f"Starting lead generation for {city}, {state}. Using Coords: {coords}")
                 places = get_places(coords, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
                 if not places:
-                    logger.critical("No places found; exiting")
-                    return
+                    logger.critical("No places found; Moving to next location.")
+                    continue
                 rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
                 save_results(rows, f"{CSV_OUTPUT}")
             except Exception as e:
