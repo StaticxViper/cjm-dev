@@ -7,7 +7,7 @@ from datetime import datetime
 # ---- PATH SETUP ----
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent   # if you want logs at repo root
-LOG_DIR = BASE_DIR / "logs"
+LOG_DIR = REPO_ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 # ---- GLOBAL LOG FILE (created once per execution) ----
