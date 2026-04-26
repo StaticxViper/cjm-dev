@@ -17,6 +17,7 @@ import requests
 import pandas as pd
 import re
 import time
+import json
 from shared.logger import setup_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -32,8 +33,8 @@ load_dotenv()
 # -----------------------------
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_RADIUS = 50000  # meters
-KEYWORDS = ["landscaping"]
-LOCATION = '39.9526,-75.1652' # "39.8027,-74.9838"  # placeholder (lat,lng)
+KEYWORDS = json.load(open("keywords.json")).keys()
+LOCATION = json.load(open("coords.json"))
 MAX_WORKERS = 12
 PLACES_SLEEP = 2  # seconds between place detail / next_page_token attempts
 CSV_OUTPUT = "leads_output.csv"
@@ -43,7 +44,7 @@ CONTACTED_FILE = "contacted.txt"
 # Logging
 logger = setup_logger(
     name="leadgen",
-    console_levels=["CRITICAL"]  # Only these show in console, any of them can be removed.
+    console_levels=["INFO", "ERROR", "CRITICAL"]  # Only these show in console, any of them can be removed.
 )
 
 def get_places(location, radius, keywords, api_key):
@@ -54,6 +55,7 @@ def get_places(location, radius, keywords, api_key):
     base = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     places = {}
     for kw in keywords:
+        logger.critical("Searching for keyword '%s' around location %s", kw, location)
         params = {
             "location": location,
             "radius": radius,
@@ -89,6 +91,7 @@ def get_places(location, radius, keywords, api_key):
                     "rating": p.get("rating"),
                     "user_ratings_total": p.get("user_ratings_total"),
                     "address": p.get("vicinity") or p.get("formatted_address"),
+                    "niche_key": kw,
                 }
             # handle pagination
             next_token = data.get("next_page_token")
@@ -254,6 +257,7 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             "website": details.get("website"),
             "rating": b.get("rating"),
             "user_ratings_total": b.get("user_ratings_total"),
+            "niche_key": b.get("niche_key")
         }
         enriched.append(entry)
 
@@ -305,8 +309,8 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
         emails_clean = [e.strip().lower() for e in emails if e and e.strip()]
 
         # 3. Skip leads with no emails (optional but recommended)
-        if not emails_clean:
-            continue
+        #if not emails_clean:
+            #continue
 
         # 4. Skip already-contacted leads
         if any(email in contacted_emails for email in emails_clean):
@@ -340,6 +344,7 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             "has_viewport": a.get("has_viewport", False),
             "html_length": a.get("html_length", 0),
             "lead_score": lead_score,
+            "niche_key": b.get("niche_key")
         }
         rows.append(row)
     return rows
@@ -382,14 +387,19 @@ def main():
     else:
         contacted_emails = set()
 
-
-    logger.critical("Starting lead generation for location=%s radius=%s keywords=%s", LOCATION, SEARCH_RADIUS, KEYWORDS)
-    places = get_places(LOCATION, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
-    if not places:
-        logger.critical("No places found; exiting")
-        return
-    rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
-    save_results(rows, CSV_OUTPUT)
+    for state, locations in LOCATION.items():
+        for city, coords in locations.items():
+            try:
+                logger.critical(f"Starting lead generation for {city}, {state}. Using Coords: {coords}")
+                places = get_places(coords, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
+                if not places:
+                    logger.critical("No places found; Moving to next location.")
+                    continue
+                rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
+                save_results(rows, f"{CSV_OUTPUT}")
+            except Exception as e:
+                logger.error(f"Error processing businesses for {city}, {state}: {e}")
+                continue
 
 
 if __name__ == "__main__":
