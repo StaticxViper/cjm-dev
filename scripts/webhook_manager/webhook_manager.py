@@ -7,7 +7,7 @@ repo_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(repo_root))
 
 from scripts.email_manager import email_manager
-from shared.logger import setup_logger
+from helper_scripts.utilities.logger import setup_logger
 
 logger = setup_logger(
     name="webhook-manager",
