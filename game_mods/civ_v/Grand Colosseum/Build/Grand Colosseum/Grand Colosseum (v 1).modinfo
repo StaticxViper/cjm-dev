@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="6bd925aa-a91b-4ef4-93bf-ae0cd7f599cf" version="1">
+  <Properties>
+    <Name>Grand Colosseum</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This is an upgrade to the default Colosseum...</Teaser>
+    <Description>This is an upgrade to the default Colosseum. The default Colossuem produces +3 happiness, while the Grand Colosseum produces +10 ADDITIONAL happiness.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="E836BA8E09EE0D0ECC88CE4033FA6DD3" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="2D1515667C1057CFF125D00876D406F1" import="0">XML/CIV5BuildingClasses.xml</File>
+    <File md5="137BFCBE890DC1E93AC71D7351B8DBCF" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

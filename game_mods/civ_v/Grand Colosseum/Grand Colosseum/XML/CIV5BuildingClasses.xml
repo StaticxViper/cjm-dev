@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:47 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_GRAND_COLOSSEUM</Type>
+			<DefaultBuilding>BUILDING_GRAND_COLOSSEUM</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_GRAND_COLOSSEUM</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

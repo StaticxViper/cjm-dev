@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_GRANARY_UPGRADE">
+			<Text>Granary Upgrade</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_GRANARY_UPGRADE_STRATEGY">
+			<Text>A Granary Upgrade is an upgrade to the default Granary, adding more [ICON_FOOD] food and [ICON_PRODUCTION] production to your city. A Granary must be in the city before a Granary Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANARYUPGRADE_TEXT">
+			<Text>A Granary Upgrade is an upgrade to the default Granary, adding more [ICON_FOOD] food and [ICON_PRODUCTION] production to your city. A Granary must be in the city before a Granary Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_GRANARY_UPGRADE_HELP">
+			<Text>A Granary Upgrade is an upgrade to the default Granary, adding more [ICON_FOOD] food and [ICON_PRODUCTION] production to your city. A Granary must be in the city before a Granary Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANARYUPGRADE_HEADING">
+			<Text>Granary Upgrade</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

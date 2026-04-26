@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="3e48a0d8-a48a-44ce-9fe2-82774e92e1b3" version="1">
+  <Properties>
+    <Name>Better Training</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This is an upgrade to the "Barracks" building.</Teaser>
+    <Description>This is an upgrade to the "Barracks" building, and adds a stupid amount of XP to any unit trained in the city. Seriously, its a very, very, very stupid amount. (1500 XP to be exact)
+
+With that being said, this mod is only for fun!
+
+Also adds the "Woodsman" promotion to all land units, which allows them to ignore the terrain costs of forests and jungles.
+
+Also made it so that no AI civs will build this upgrade in their own cities.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="D725ADABDD9ECE40F5DB3583C6B9CC98" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="0FB5BBDB24B620E3CFB9CEDD69E28ED5" import="0">XML/CIV5BuildingClassses.xml</File>
+    <File md5="F6561CF4C01FADA9C18F842F28135B5D" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5BuildingClassses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

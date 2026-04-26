@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/13/2020 11:24:06 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_WATERMILL_UPGRADE">
+			<Text>Watermill Upgrade</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_WATERMILL_UPGRADE_STRATEGY">
+			<Text>A Watermill Upgrade is an upgrade to the default Watermill, adding more [ICON_PRODUCTION] production and [ICON_FOOD] food to your city. A Watermill must  be in the city before the Watermill Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_WATERMILLUPGRADE_TEXT">
+			<Text>A Watermill Upgrade is an upgrade to the default Watermill, adding more [ICON_PRODUCTION] production and [ICON_FOOD] food to your city. A Watermill must  be in the city before the Watermill Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_WATERMILL_UPGRADE_HELP">
+			<Text>A Watermill Upgrade is an upgrade to the default Watermill, adding more [ICON_PRODUCTION] production and [ICON_FOOD] food to your city. A Watermill must  be in the city before the Watermill Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_WATERMILLUPGRADE_HEADING">
+			<Text>Watermill Upgrade</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

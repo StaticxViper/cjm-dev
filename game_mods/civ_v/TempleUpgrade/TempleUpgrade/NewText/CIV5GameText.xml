@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/17/2021 3:12:44 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_TEMPLE_UPGRADE">
+			<Text>Temple Upgrade</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_TEMPLE_UPGRADE_STRATEGY">
+			<Text>The Temple Upgrade increases the [ICON_CULTURE] Culture, [ICON_PEACE] Faith, and [ICON_HAPPINESS] Happainess of a city.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_TEMPLEUPGRADE_TEXT">
+			<Text>An upgrade for the Temple in a city.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_TEMPLE_UPGRADE_HELP">
+			<Text>City must have the defualt Temple.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_TEMPLEUPGRADE_HEADING">
+			<Text>Temple Upgrade</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

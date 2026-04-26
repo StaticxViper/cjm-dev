@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/2/2024 12:08:55 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_VIPERIAN_PYRAMIDS">
+			<Text>Viper Relic</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_VIPERIAN_PYRAMIDS_TEXT">
+			<Text>Placeholder</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_VIPERIAN_PYRAMIDS_STRATEGY">
+			<Text>Placeholder</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

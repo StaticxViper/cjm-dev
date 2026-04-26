@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 5/26/2021 1:58:35 AM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_CARTOGRAPHER</Type>
+			<DefaultBuilding>BUILDING_CARTOGRAPHER</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_CARTOGRAPHER</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

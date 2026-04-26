@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 2/4/2020 9:56:49 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_BARRACKS_UPGRADE</Type>
+			<DefaultBuilding>BUILDING_BARRACKS_UPGRADE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_BARRACKS_UPGRADE</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/17/2021 3:13:15 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_TEMPLE_UPGRADE</Type>
+			<DefaultBuilding>BUILDING_TEMPLE_UPGRADE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_TEMPLE_UPGRADE</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

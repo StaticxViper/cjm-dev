@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/13/2020 10:52:41 PM -->
+<GameData>
+	<Buildings>
+		<Row>
+			<Type>BUILDING_WORKSHOP_UPGRADE</Type>
+			<BuildingClass>BUILDINGCLASS_WORKSHOP_UPGRADE</BuildingClass>
+			<Cost>50</Cost>
+			<GoldMaintenance>0</GoldMaintenance>
+			<PrereqTech>TECH_METAL_CASTING</PrereqTech>
+			<Description>TXT_KEY_BUILDING_WORKSHOP_UPGRADE</Description>
+			<Civilopedia>TXT_KEY_CIV5_BUILDINGS_WORKSHOPUPGRADE_TEXT</Civilopedia>
+			<Strategy>TXT_KEY_BUILDING_WORKSHOP_UPGRADE_STRATEGY</Strategy>
+			<Help>TXT_KEY_BUILDING_WORKSHOP_UPGRADE_HELP</Help>
+			<ArtDefineTag>ART_DEF_BUILDING_FORGE</ArtDefineTag>
+			<MinAreaSize>-1</MinAreaSize>
+			<ConquestProb>66</ConquestProb>
+			<HurryCostModifier>25</HurryCostModifier>
+			<IconAtlas>BW_ATLAS_1</IconAtlas>
+			<PortraitIndex>28</PortraitIndex>
+		</Row>
+	</Buildings>
+	<Building_ClassesNeededInCity>
+		<Row>
+			<BuildingType>BUILDING_WORKSHOP_UPGRADE</BuildingType>
+			<BuildingClassType>BUILDINGCLASS_WORKSHOP</BuildingClassType>
+		</Row>
+	</Building_ClassesNeededInCity>
+	<Building_Flavors>
+		<Row>
+			<BuildingType>BUILDING_WORKSHOP_UPGRADE</BuildingType>
+			<FlavorType>FLAVOR_PRODUCTION</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+	</Building_Flavors>
+	<Building_YieldChanges>
+		<Row>
+			<BuildingType>BUILDING_WORKSHOP_UPGRADE</BuildingType>
+			<YieldType>YIELD_PRODUCTION</YieldType>
+			<Yield>10</Yield>
+		</Row>
+	</Building_YieldChanges>
+	<Building_YieldModifiers>
+		<Row>
+			<BuildingType>BUILDING_WORKSHOP_UPGRADE</BuildingType>
+			<YieldType>YIELD_PRODUCTION</YieldType>
+			<Yield>25</Yield>
+		</Row>
+	</Building_YieldModifiers>
+</GameData>

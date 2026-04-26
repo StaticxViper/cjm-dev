@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="45e4d3b2-24b9-441d-8455-34426cc88b92" version="1">
+  <Properties>
+    <Name>Watermill Upgrade</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This is an upgrade to the default watermill...</Teaser>
+    <Description>This is an upgrade to the default watermill...
+
+Adds +5 production and +5 food.
+Made it so that other AI civs cant build this in their cities.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>0</AffectsSavedGames>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="934FA5ECFE6F4AB397BA5E8B0438918B" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="407123F669944915FB3AA90574906A28" import="0">XML/CIV5BuildingClasses.xml</File>
+    <File md5="10FFBF44A6CE7C989B01AAF2A017A12A" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

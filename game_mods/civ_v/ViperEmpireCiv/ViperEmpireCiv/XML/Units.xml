@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+	<Units>
+		<Row>
+			<Type>UNIT_JAPANESE_SAMURAI</Type>
+			<Description>TXT_KEY_UNIT_JAPANESE_SAMURAI</Description>
+			<Civilopedia>TXT_KEY_CIVILOPEDIA_UNITS_MEDIEVAL_SAMURAI_TEXT</Civilopedia>
+			<Strategy>TXT_KEY_UNIT_JAPANESE_SAMURAI_STRATEGY</Strategy>
+			<Help>TXT_KEY_UNIT_HELP_SAMURAI</Help>
+			<Requirements></Requirements>
+			<Combat>35</Combat>
+			<RangedCombat>0</RangedCombat>
+			<Cost>50</Cost>
+			<FaithCost>50</FaithCost>
+			<RequiresFaithPurchaseEnabled>1</RequiresFaithPurchaseEnabled>
+			<Moves>4</Moves>
+			<Immobile>0</Immobile>
+			<Range>0</Range>
+			<BaseSightRange>2</BaseSightRange>
+			<Class>UNITCLASS_LONGSWORDSMAN</Class>
+			<Special></Special>
+			<Capture></Capture>
+			<CombatClass>UNITCOMBAT_MELEE</CombatClass>
+			<Domain>DOMAIN_LAND</Domain>
+			<CivilianAttackPriority></CivilianAttackPriority>
+			<DefaultUnitAI>UNITAI_ATTACK</DefaultUnitAI>
+			<Food>0</Food>
+			<NoBadGoodies>0</NoBadGoodies>
+			<RivalTerritory>0</RivalTerritory>
+			<MilitarySupport>1</MilitarySupport>
+			<MilitaryProduction>1</MilitaryProduction>
+			<Pillage>1</Pillage>
+			<PillagePrereqTech></PillagePrereqTech>
+			<Found>0</Found>
+			<FoundAbroad>0</FoundAbroad>
+			<CultureBombRadius>0</CultureBombRadius>
+			<GoldenAgeTurns>0</GoldenAgeTurns>
+			<FreePolicies>0</FreePolicies>
+			<OneShotTourism>0</OneShotTourism>
+			<OneShotTourismPercentOthers>0</OneShotTourismPercentOthers>
+			<IgnoreBuildingDefense>0</IgnoreBuildingDefense>
+			<PrereqResources>0</PrereqResources>
+			<Mechanized>0</Mechanized>
+			<Suicide>0</Suicide>
+			<CaptureWhileEmbarked>0</CaptureWhileEmbarked>
+			<PrereqTech>TECH_MINING</PrereqTech>
+			<ObsoleteTech>TECH_METALLURGY</ObsoleteTech>
+			<GoodyHutUpgradeUnitClass>UNITCLASS_MUSKETMAN</GoodyHutUpgradeUnitClass>
+			<HurryCostModifier>0</HurryCostModifier>
+			<AdvancedStartCost>25</AdvancedStartCost>
+			<MinAreaSize>-1</MinAreaSize>
+			<AirInterceptRange>0</AirInterceptRange>
+			<AirUnitCap>0</AirUnitCap>
+			<NukeDamageLevel>-1</NukeDamageLevel>
+			<WorkRate>0</WorkRate>
+			<NumFreeTechs>0</NumFreeTechs>
+			<BaseBeakersTurnsToCount>0</BaseBeakersTurnsToCount>
+			<BaseCultureTurnsToCount>0</BaseCultureTurnsToCount>
+			<RushBuilding>0</RushBuilding>
+			<BaseHurry>0</BaseHurry>
+			<HurryMultiplier>0</HurryMultiplier>
+			<BaseGold>0</BaseGold>
+			<NumGoldPerEra>0</NumGoldPerEra>
+			<SpreadReligion>0</SpreadReligion>
+			<RemoveHeresy>0</RemoveHeresy>
+			<ReligionSpreads>0</ReligionSpreads>
+			<ReligiousStrength>0</ReligiousStrength>
+			<FoundReligion>0</FoundReligion>
+			<RequiresEnhancedReligion>0</RequiresEnhancedReligion>
+			<ProhibitsSpread>0</ProhibitsSpread>
+			<CanBuyCityState>0</CanBuyCityState>
+			<CombatLimit>100</CombatLimit>
+			<RangeAttackOnlyInDomain>0</RangeAttackOnlyInDomain>
+			<RangeAttackIgnoreLOS>0</RangeAttackIgnoreLOS>
+			<Trade>0</Trade>
+			<NumExoticGoods>0</NumExoticGoods>
+			<RangedCombatLimit>0</RangedCombatLimit>
+			<XPValueAttack>3</XPValueAttack>
+			<XPValueDefense>3</XPValueDefense>
+			<SpecialCargo></SpecialCargo>
+			<DomainCargo></DomainCargo>
+			<Conscription>3</Conscription>
+			<ExtraMaintenanceCost>0</ExtraMaintenanceCost>
+			<NoMaintenance>1</NoMaintenance>
+			<Unhappiness>0</Unhappiness>
+			<UnitArtInfo>ART_DEF_UNIT_U_JAPANESE_SAMURAI</UnitArtInfo>
+			<UnitArtInfoCulturalVariation>0</UnitArtInfoCulturalVariation>
+			<UnitArtInfoEraVariation>0</UnitArtInfoEraVariation>
+			<ProjectPrereq></ProjectPrereq>
+			<SpaceshipProject></SpaceshipProject>
+			<LeaderPromotion></LeaderPromotion>
+			<LeaderExperience>0</LeaderExperience>
+			<DontShowYields>0</DontShowYields>
+			<ShowInPedia>1</ShowInPedia>
+			<MoveRate>BIPED</MoveRate>
+			<UnitFlagIconOffset>36</UnitFlagIconOffset>
+			<PortraitIndex>37</PortraitIndex>
+			<IconAtlas>UNIT_ATLAS_1</IconAtlas>
+			<UnitFlagAtlas>UNIT_FLAG_ATLAS</UnitFlagAtlas>
+		</Row>
+
+		<!--TESTING-->
+		<Row>
+			<Class>UNITCLASS_BATTLESHIP</Class>
+			<Type>UNIT_BATTLESHIP</Type>
+			<PrereqTech>TECH_TELEGRAPH</PrereqTech>
+			<Combat>60</Combat>
+			<RangedCombat>32</RangedCombat>
+			<Cost>375</Cost>
+			<Moves>13</Moves>
+			<Range>30</Range>
+			<CombatClass>UNITCOMBAT_NAVAL</CombatClass>
+			<Domain>DOMAIN_SEA</Domain>
+			<DefaultUnitAI>UNITAI_ATTACK_SEA</DefaultUnitAI>
+			<Description>TXT_KEY_UNIT_BATTLESHIP</Description>
+			<Civilopedia>TXT_KEY_CIV5_INDUSTRIAL_BATTLESHIP_TEXT</Civilopedia>
+			<Strategy>TXT_KEY_UNIT_BATTLESHIP_STRATEGY</Strategy>
+			<Help>TXT_KEY_UNIT_HELP_BATTLESHIP</Help>
+			<MilitarySupport>true</MilitarySupport>
+			<MilitaryProduction>true</MilitaryProduction>
+			<Pillage>true</Pillage>
+			<IgnoreBuildingDefense>true</IgnoreBuildingDefense>
+			<Mechanized>true</Mechanized>
+			<AdvancedStartCost>60</AdvancedStartCost>
+			<MinAreaSize>20</MinAreaSize>
+			<XPValueAttack>3</XPValueAttack>
+			<XPValueDefense>3</XPValueDefense>
+			<UnitArtInfo>ART_DEF_UNIT_BATTLESHIP</UnitArtInfo>
+			<UnitFlagIconOffset>68</UnitFlagIconOffset>
+			<IconAtlas>UNIT_ATLAS_2</IconAtlas>
+			<PortraitIndex>21</PortraitIndex>
+			<MoveRate>BOAT</MoveRate>
+		</Row>
+		
+	</Units>
+
+	<Unit_AITypes>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<UnitAIType>UNITAI_ATTACK</UnitAIType>
+		</Row>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<UnitAIType>UNITAI_DEFENSE</UnitAIType>
+		</Row>
+
+		<!--TESTING-->
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<UnitAIType>UNITAI_ATTACK_SEA</UnitAIType>
+		</Row>
+		
+	</Unit_AITypes>
+	<!-- Unit_Buildings -->
+	<!-- Unit_BuildingClassRequireds -->
+	<!-- Unit_ProductionModifierBuildings -->
+	<!-- Unit_Builds -->
+	<Unit_ClassUpgrades>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<UnitClassType>UNITCLASS_MUSKETMAN</UnitClassType>
+		</Row>
+
+		
+		
+	</Unit_ClassUpgrades>
+	<Unit_FreePromotions>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<PromotionType>PROMOTION_SHOCK_1</PromotionType>
+		</Row>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<PromotionType>PROMOTION_SPAWN_GENERALS_II</PromotionType>
+		</Row>
+	</Unit_FreePromotions>
+	<Unit_Flavors>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<FlavorType>FLAVOR_OFFENSE</FlavorType>
+			<Flavor>11</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<FlavorType>FLAVOR_DEFENSE</FlavorType>
+			<Flavor>9</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<FlavorType>FLAVOR_GREAT_PEOPLE</FlavorType>
+			<Flavor>6</Flavor>
+		</Row>
+
+		<!--TESTING-->
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_OFFENSE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_DEFENSE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_NAVAL</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		
+	</Unit_Flavors>
+	<!-- Unit_GreatPersons -->
+	
+	<!-- Unit_UniqueNames -->
+	<!-- Unit_YieldFromKills -->
+	<!-- Unit_NotAITypes -->
+	<!-- Unit_ProductionTraits -->
+	<!-- Unit_TechTypes -->
+	<!-- UnitPromotions_CivilianUnitType -->
+	<UnitGameplay2DScripts>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<SelectionSound>AS2D_SELECT_JAPANESE_SAMURAI</SelectionSound>
+			<FirstSelectionSound>AS2D_BIRTH_JAPANESE_SAMURAI</FirstSelectionSound>
+		</Row>
+	</UnitGameplay2DScripts>
+
+	
+
+	<Language_en_US>
+		<Row Tag="TXT_KEY_UNIT_JAPANESE_SAMURAI">
+			<Text>Viperian Viper</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIVILOPEDIA_UNITS_MEDIEVAL_SAMURAI_TEXT">
+			<Text>
+				<!-- Add Civilopedia text here -->
+			</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_JAPANESE_SAMURAI_STRATEGY">
+			<Text>The Vipers are the unique unit for the Viper Empire, replacing the Longswordsman. As powerful as the Swordsman, the Viper automatically receives the "Shock I" promotion, giving it a bonus when fighting in open terrain. Success in combat with a Samurai has an increased chance of generating Great Generals.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_HELP_SAMURAI">
+			<Text>Powerful Medieval infantry Unit. Only the Viper Empire may build it. This Unit fights more effectively and helps produce Great Generals more quickly than the Longswordsman, which it replaces.</Text>
+		</Row>
+
+		<!--TESTING-->
+		<Row Tag="TXT_KEY_UNIT_BATTLESHIP">
+			<Text>Viperian Battleship</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_HELP_BATTLESHIP">
+			<Text>TEST</Text>
+		</Row>
+		
+	</Language_en_US>
+	
+</GameData>

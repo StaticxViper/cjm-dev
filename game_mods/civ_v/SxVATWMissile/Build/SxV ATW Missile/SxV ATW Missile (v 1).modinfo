@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="061d514a-bcf2-4031-b972-82478bf53130" version="1">
+  <Properties>
+    <Name>SxV ATW Missile</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This is an overpowered nuclear missile that has added damage, and UNLIMITED range.
+
+ATW = Around The World</Teaser>
+    <Description>This is an overpowered nuclear missile that has added damage, and UNLIMITED range.
+
+ATW = Around The World</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="CA0D4ADCFA35B18195C60F66C72716CB" import="0">CIV5Units.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>CIV5Units.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>
