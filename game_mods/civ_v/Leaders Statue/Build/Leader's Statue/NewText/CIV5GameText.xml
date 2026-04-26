@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_LEADERS_STATUE">
+			<Text>Leader's Statue</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_LEADERS_STATUE_STRATEGY">
+			<Text>A Leader's Statue is a statue that adds +10 [ICON_CULTURE] culture, +10 [ICON_PEACE] faith, and +5 [ICON_HAPPINESS_1] happiness. A Monument must be built in a city before the Leader's Statue!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_LEADERSSTATUE_TEXT">
+			<Text>A Leader's Statue is a statue that adds +10 [ICON_CULTURE] culture, +10 [ICON_PEACE] faith, and +5 [ICON_HAPPINESS_1] happiness. A Monument must be built in a city before the Leader's Statue!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_LEADERS_STATUE_HELP">
+			<Text>A Leader's Statue is a statue that adds +10 [ICON_CULTURE] culture, +10 [ICON_PEACE] faith, and +5 [ICON_HAPPINESS_1] happiness. A Monument must be built in a city before the Leader's Statue!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_LEADERSSTATUE_HEADING">
+			<Text>Leader's Statue</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+  <Buildings>
+    <Row>
+      <Type>BUILDING_MARKET</Type>
+      <Description>TXT_KEY_BUILDING_MARKET</Description>
+      <Civilopedia>TXT_KEY_CIV5_BUILDINGS_MARKET_TEXT</Civilopedia>
+      <Strategy>TXT_KEY_BUILDING_MARKET_STRATEGY</Strategy>
+      <Help>TXT_KEY_BUILDING_MARKET_STRATEGY</Help>
+      <ThemingBonusHelp></ThemingBonusHelp>
+      <Quote></Quote>
+      <GoldMaintenance>0</GoldMaintenance>
+      <MutuallyExclusiveGroup>-1</MutuallyExclusiveGroup>
+      <TeamShare>0</TeamShare>
+      <Water>0</Water>
+      <River>0</River>
+      <FreshWater>0</FreshWater>
+      <Mountain>0</Mountain>
+      <NearbyMountainRequired>0</NearbyMountainRequired>
+      <Hill>0</Hill>
+      <Flat>0</Flat>
+      <FoundsReligion>0</FoundsReligion>
+      <IsReligious>0</IsReligious>
+      <BorderObstacle>0</BorderObstacle>
+      <PlayerBorderObstacle>0</PlayerBorderObstacle>
+      <Capital>0</Capital>
+      <GoldenAge>0</GoldenAge>
+      <MapCentering>0</MapCentering>
+      <NeverCapture>0</NeverCapture>
+      <NukeImmune>0</NukeImmune>
+      <AllowsWaterRoutes>0</AllowsWaterRoutes>
+      <ExtraLuxuries>0</ExtraLuxuries>
+      <DiplomaticVoting>0</DiplomaticVoting>
+      <AffectSpiesNow>0</AffectSpiesNow>
+      <NullifyInfluenceModifier>0</NullifyInfluenceModifier>
+      <Cost>10</Cost>
+      <FaithCost>0</FaithCost>
+      <LeagueCost>0</LeagueCost>
+      <UnlockedByBelief>0</UnlockedByBelief>
+      <UnlockedByLeague>0</UnlockedByLeague>
+      <HolyCity>0</HolyCity>
+      <NumCityCostMod>0</NumCityCostMod>
+      <HurryCostModifier>25</HurryCostModifier>
+      <MinAreaSize>-1</MinAreaSize>
+      <ConquestProb>66</ConquestProb>
+      <CitiesPrereq>0</CitiesPrereq>
+      <LevelPrereq>0</LevelPrereq>
+      <CultureRateModifier>0</CultureRateModifier>
+      <GlobalCultureRateModifier>0</GlobalCultureRateModifier>
+      <GreatPeopleRateModifier>0</GreatPeopleRateModifier>
+      <GlobalGreatPeopleRateModifier>0</GlobalGreatPeopleRateModifier>
+      <GreatGeneralRateModifier>0</GreatGeneralRateModifier>
+      <GreatPersonExpendGold>0</GreatPersonExpendGold>
+      <GoldenAgeModifier>0</GoldenAgeModifier>
+      <UnitUpgradeCostMod>0</UnitUpgradeCostMod>
+      <Experience>0</Experience>
+      <GlobalExperience>0</GlobalExperience>
+      <FoodKept>0</FoodKept>
+      <Airlift>0</Airlift>
+      <AirModifier>0</AirModifier>
+      <NukeModifier>0</NukeModifier>
+      <NukeExplosionRand>0</NukeExplosionRand>
+      <HealRateChange>0</HealRateChange>
+      <Happiness>10</Happiness>
+      <UnmoddedHappiness>0</UnmoddedHappiness>
+      <UnhappinessModifier>0</UnhappinessModifier>
+      <HappinessPerCity>0</HappinessPerCity>
+      <HappinessPerXPolicies>0</HappinessPerXPolicies>
+      <CityCountUnhappinessMod>0</CityCountUnhappinessMod>
+      <NoOccupiedUnhappiness>0</NoOccupiedUnhappiness>
+      <WorkerSpeedModifier>0</WorkerSpeedModifier>
+      <MilitaryProductionModifier>0</MilitaryProductionModifier>
+      <SpaceProductionModifier>0</SpaceProductionModifier>
+      <GlobalSpaceProductionModifier>0</GlobalSpaceProductionModifier>
+      <BuildingProductionModifier>0</BuildingProductionModifier>
+      <WonderProductionModifier>0</WonderProductionModifier>
+      <CityConnectionTradeRouteModifier>0</CityConnectionTradeRouteModifier>
+      <CapturePlunderModifier>0</CapturePlunderModifier>
+      <PolicyCostModifier>0</PolicyCostModifier>
+      <PlotCultureCostModifier>0</PlotCultureCostModifier>
+      <GlobalPlotCultureCostModifier>0</GlobalPlotCultureCostModifier>
+      <PlotBuyCostModifier>0</PlotBuyCostModifier>
+      <GlobalPlotBuyCostModifier>0</GlobalPlotBuyCostModifier>
+      <GlobalPopulationChange>0</GlobalPopulationChange>
+      <TechShare>0</TechShare>
+      <FreeTechs>0</FreeTechs>
+      <FreePolicies>0</FreePolicies>
+      <FreeGreatPeople>0</FreeGreatPeople>
+      <MedianTechPercentChange>0</MedianTechPercentChange>
+      <Gold>0</Gold>
+      <AllowsRangeStrike>0</AllowsRangeStrike>
+      <Espionage>0</Espionage>
+      <AllowsFoodTradeRoutes>0</AllowsFoodTradeRoutes>
+      <AllowsProductionTradeRoutes>0</AllowsProductionTradeRoutes>
+      <Defense>0</Defense>
+      <ExtraCityHitPoints>0</ExtraCityHitPoints>
+      <GlobalDefenseMod>0</GlobalDefenseMod>
+      <MinorFriendshipChange>0</MinorFriendshipChange>
+      <VictoryPoints>0</VictoryPoints>
+      <ExtraMissionarySpreads>0</ExtraMissionarySpreads>
+      <ReligiousPressureModifier>0</ReligiousPressureModifier>
+      <EspionageModifier>0</EspionageModifier>
+      <GlobalEspionageModifier>0</GlobalEspionageModifier>
+      <ExtraSpies>0</ExtraSpies>
+      <SpyRankChange>0</SpyRankChange>
+      <InstantSpyRankChange>0</InstantSpyRankChange>
+      <TradeRouteRecipientBonus>1</TradeRouteRecipientBonus>
+      <TradeRouteTargetBonus>1</TradeRouteTargetBonus>
+      <NumTradeRouteBonus>0</NumTradeRouteBonus>
+      <LandmarksTourismPercent>0</LandmarksTourismPercent>
+      <InstantMilitaryIncrease>0</InstantMilitaryIncrease>
+      <GreatWorksTourismModifier>0</GreatWorksTourismModifier>
+      <XBuiltTriggersIdeologyChoice>0</XBuiltTriggersIdeologyChoice>
+      <TradeRouteSeaDistanceModifier>0</TradeRouteSeaDistanceModifier>
+      <TradeRouteSeaGoldBonus>0</TradeRouteSeaGoldBonus>
+      <TradeRouteLandDistanceModifier>0</TradeRouteLandDistanceModifier>
+      <TradeRouteLandGoldBonus>0</TradeRouteLandGoldBonus>
+      <CityStateTradeRouteProductionModifier>0</CityStateTradeRouteProductionModifier>
+      <GreatScientistBeakerModifier>0</GreatScientistBeakerModifier>
+      <BuildingClass>BUILDINGCLASS_MARKET</BuildingClass>
+      <ArtDefineTag>ART_DEF_BUILDING_MARKET</ArtDefineTag>
+      <NearbyTerrainRequired></NearbyTerrainRequired>
+      <ProhibitedCityTerrain></ProhibitedCityTerrain>
+      <VictoryPrereq></VictoryPrereq>
+      <FreeStartEra>ERA_INDUSTRIAL</FreeStartEra>
+      <MaxStartEra></MaxStartEra>
+      <ObsoleteTech></ObsoleteTech>
+      <EnhancedYieldTech></EnhancedYieldTech>
+      <TechEnhancedTourism>0</TechEnhancedTourism>
+      <FreeBuilding></FreeBuilding>
+      <FreeBuildingThisCity></FreeBuildingThisCity>
+      <FreePromotion></FreePromotion>
+      <TrainedFreePromotion></TrainedFreePromotion>
+      <FreePromotionRemoved></FreePromotionRemoved>
+      <ReplacementBuildingClass></ReplacementBuildingClass>
+      <PrereqTech>TECH_CURRENCY</PrereqTech>
+      <PolicyBranchType></PolicyBranchType>
+      <SpecialistType>SPECIALIST_MERCHANT</SpecialistType>
+      <SpecialistCount>1</SpecialistCount>
+      <GreatWorkSlotType></GreatWorkSlotType>
+      <FreeGreatWork></FreeGreatWork>
+      <GreatWorkCount>0</GreatWorkCount>
+      <SpecialistExtraCulture>0</SpecialistExtraCulture>
+      <GreatPeopleRateChange>0</GreatPeopleRateChange>
+      <ExtraLeagueVotes>0</ExtraLeagueVotes>
+      <CityWall>0</CityWall>
+      <DisplayPosition>0</DisplayPosition>
+      <PortraitIndex>16</PortraitIndex>
+      <WonderSplashImage></WonderSplashImage>
+      <WonderSplashAnchor>R,T</WonderSplashAnchor>
+      <WonderSplashAudio></WonderSplashAudio>
+      <IconAtlas>BW_ATLAS_1</IconAtlas>
+      <ArtInfoCulturalVariation>0</ArtInfoCulturalVariation>
+      <ArtInfoEraVariation>0</ArtInfoEraVariation>
+      <ArtInfoRandomVariation>0</ArtInfoRandomVariation>
+    </Row>
+  </Buildings>
+
+  <!-- Building_AreaYieldModifiers -->
+  <!-- Building_BuildingClassHappiness -->
+  <!-- Building_BuildingClassYieldChanges -->
+  <!-- Building_ClassesNeededInCity -->
+  <!-- Building_FreeUnits -->
+  <!-- Building_DomainFreeExperiences -->
+  <!-- Building_DomainFreeExperiencePerGreatWork -->
+  <!-- Building_DomainProductionModifiers -->
+  <!-- Building_FreeSpecialistCounts -->
+  <Building_Flavors>
+    <Row>
+      <BuildingType>BUILDING_MARKET</BuildingType>
+      <FlavorType>FLAVOR_GOLD</FlavorType>
+      <Flavor>25</Flavor>
+    </Row>
+    <Row>
+      <BuildingType>BUILDING_MARKET</BuildingType>
+      <FlavorType>FLAVOR_I_TRADE_ORIGIN</FlavorType>
+      <Flavor>25</Flavor>
+    </Row>
+    <Row>
+      <BuildingType>BUILDING_MARKET</BuildingType>
+      <FlavorType>FLAVOR_I_TRADE_DESTINATION</FlavorType>
+      <Flavor>25</Flavor>
+    </Row>
+    <Row>
+      <BuildingType>BUILDING_MARKET</BuildingType>
+      <FlavorType>FLAVOR_GREAT_PEOPLE</FlavorType>
+      <Flavor>2</Flavor>
+    </Row>
+  </Building_Flavors>
+  <!-- Building_GlobalYieldModifiers -->
+  <!-- Building_HurryModifiers -->
+  <!-- Building_LocalResourceAnds -->
+  <!-- Building_LocalResourceOrs -->
+  <!-- Building_LockedBuildingClasses -->
+  <!-- Building_PrereqBuildingClasses -->
+  <!-- Building_ResourceQuantity -->
+  <!-- Building_ResourceQuantityRequirements -->
+  <!-- Building_ResourceYieldModifiers -->
+  <!-- Building_ResourceCultureChanges -->
+  <!-- Building_ResourceFaithChanges -->
+  <!-- Building_RiverPlotYieldChanges -->
+  <!-- Building_SeaPlotYieldChanges -->
+  <!-- Building_LakePlotYieldChanges -->
+  <!-- Building_SeaResourceYieldChanges -->
+  <!-- Building_ResourceYieldChanges -->
+  <!-- Building_FeatureYieldChanges -->
+  <!-- Building_TerrainYieldChanges -->
+  <!-- Building_SpecialistYieldChanges -->
+  <!-- Building_UnitCombatFreeExperiences -->
+  <!-- Building_UnitCombatProductionModifiers -->
+  <!-- Building_TechAndPrereqs -->
+  <Building_YieldChanges>
+    <Row>
+      <BuildingType>BUILDING_MARKET</BuildingType>
+      <YieldType>YIELD_GOLD</YieldType>
+      <Yield>100</Yield>
+    </Row>
+  </Building_YieldChanges>
+  <!-- Building_YieldChangesPerPop -->
+  <!-- Building_YieldChangesPerReligion -->
+  <!-- Building_TechEnhancedYieldChanges -->
+  <Building_YieldModifiers>
+    <Row>
+      <BuildingType>BUILDING_MARKET</BuildingType>
+      <YieldType>YIELD_GOLD</YieldType>
+      <Yield>25</Yield>
+    </Row>
+  </Building_YieldModifiers>
+  <!-- Building_ThemingBonuses -->
+
+  <Language_en_US>
+    <Row Tag="TXT_KEY_BUILDING_MARKET">
+      <Text>Market</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_BUILDINGS_MARKET_TEXT">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_BUILDING_MARKET_STRATEGY">
+      <Text>Markets increase the amount of [ICON_GOLD] Gold a city generates. Trade routes other players make to a city with a Market will generate an extra 1 [ICON_GOLD] Gold for the city owner and the trade route owner gains an additional 1 [ICON_GOLD] Gold for the trade route.</Text>
+    </Row>
+    <Row Tag="TXT_KEY_BUILDING_MARKET_STRATEGY">
+      <Text>Markets increase the amount of [ICON_GOLD] Gold a city generates. Trade routes other players make to a city with a Market will generate an extra 1 [ICON_GOLD] Gold for the city owner and the trade route owner gains an additional 1 [ICON_GOLD] Gold for the trade route.</Text>
+    </Row>
+  </Language_en_US>
+</GameData>

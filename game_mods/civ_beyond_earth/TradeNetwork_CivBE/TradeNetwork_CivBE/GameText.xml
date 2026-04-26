@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/8/2024 12:33:56 PM -->
+<GameData>
+	<LocalizedText>
+		<!--Trade Network-->
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_TRADE_NETWORK_DESC">
+			<Text>Trade Network</Text>
+		</Row>
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_TRADE_NETWORK_PEDIA">
+			<Text>Made by StaticxViper</Text>
+		</Row>
+		<!--Trade Network: Upgrade-->
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_TRADE_NETWORK_UPGRADE_DESC">
+			<Text>Trade Network: Upgrade</Text>
+		</Row>
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_TRADE_NETWORK_UPGRADE_PEDIA">
+			<Text>Made by StaticxViper</Text>
+		</Row>
+	</LocalizedText>
+</GameData>

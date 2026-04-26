@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/30/2020 7:07:55 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_SHRINE_UPGRADE">
+			<Text>Shrine Upgrade</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_SHRINE_UPGRADE_STRATEGY">
+			<Text>The Shrine Upgrade is an upgrade to the default Shrine. This gives your city +10 [ICON_CULTURE] Culture, +10 [ICON_PEACE] Faith, +20% [ICON_CULTURE] Culture, +5 [ICON_HAPPINESS_1] Happiness, and +25% Border Growth Rate.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_SHRINEUPGRADE_TEXT">
+			<Text>The Shrine Upgrade is an upgrade to the default Shrine. This gives your city +10 [ICON_CULTURE] Culture, +10 [ICON_PEACE] Faith, +20% [ICON_CULTURE] Culture, +5 [ICON_HAPPINESS_1] Happiness, and +25% Border Growth Rate.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_SHRINE_UPGRADE_HELP">
+			<Text>The Shrine Upgrade is an upgrade to the default Shrine. This gives your city +10 [ICON_CULTURE] Culture, +10 [ICON_PEACE] Faith, +20% [ICON_CULTURE] Culture, +5 [ICON_HAPPINESS_1] Happiness, and +25% Border Growth Rate.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_SHRINEUPGRADE_HEADING">
+			<Text>Shrine Upgrade</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

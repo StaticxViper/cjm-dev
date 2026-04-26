@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:59 PM -->
+<GameData>
+	<Buildings>
+		<Row>
+			<Type>BUILDING_INFINITY</Type>
+			<BuildingClass>BUILDINGCLASS_INFINITY</BuildingClass>
+			<Cost>40</Cost>
+			<ConquestProbability>67</ConquestProbability>
+			<PrereqTech>TECH_HABITATION</PrereqTech>
+			<Description>TXT_KEY_BUILDING_INFINITY_DESC</Description>
+			<Civilopedia>TXT_KEY_BUILDING_INFINITY_PEDIA</Civilopedia>
+			<ArtDefineTag>ART_DEF_BUILDING_RELIC</ArtDefineTag>
+			<IconAtlas>BW_ATLAS_1</IconAtlas>
+			<PortraitIndex>33</PortraitIndex>
+			
+			<Defense>50000</Defense>
+			<ExtraCityHitPoints>500</ExtraCityHitPoints>
+			<Health>50</Health>
+			
+			<!--TESTING-->
+			<Experience>5000</Experience>
+			
+			
+			<!--TESTING END-->
+			
+		</Row>
+	</Buildings>
+	
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_INFINITY</Type>
+			<DefaultBuilding>BUILDING_INFINITY</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_INFINITY_DESC</Description>
+		</Row>
+	</BuildingClasses>
+	
+	<Building_YieldChanges>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_PRODUCTION</YieldType>
+			<Yield>25</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_ENERGY</YieldType>
+			<Yield>25</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_FOOD</YieldType>
+			<Yield>15</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_CULTURE</YieldType>
+			<Yield>20</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_SCIENCE</YieldType>
+			<Yield>15</Yield>
+		</Row>
+	</Building_YieldChanges>
+
+	<Building_YieldModifiers>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_SCIENCE</YieldType>
+			<Yield>10</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_ENERGY</YieldType>
+			<Yield>10</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<YieldType>YIELD_PRODUCTION</YieldType>
+			<Yield>10</Yield>
+		</Row>
+	</Building_YieldModifiers>
+	
+	<Building_Flavors>
+		<Row>
+			<BuildingType>BUILDING_INFINITY</BuildingType>
+			<FlavorType>FLAVOR_FOOD</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+	</Building_Flavors>
+	
+</GameData>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 11/4/2022 4:36:50 PM -->
+<GameData>
+	<Units>
+		<Row>
+			<Class>UNITCLASS_NUCLEAR_MISSILE</Class>
+			<Type>UNIT_SXV_ATW_MISSILE</Type>
+			<PrereqTech>TECH_ADVANCED_BALLISTICS</PrereqTech>
+			<Cost>1000</Cost>
+			<Moves>2</Moves>
+			<Immobile>true</Immobile>
+			<Range>1000</Range>
+			<Special>SPECIALUNIT_MISSILE</Special>
+			<Domain>DOMAIN_AIR</Domain>
+			<DefaultUnitAI>UNITAI_ICBM</DefaultUnitAI>
+			<Description>TXT_KEY_UNIT_SXV_ATW_MISSILE</Description>
+			<Civilopedia>TXT_KEY_CIVILOPEDIA_UNITS_MODERN_SXVATWMISSILE_TEXT</Civilopedia>
+			<Strategy>TXT_KEY_UNIT_SXV_ATW_MISSILE_STRATEGY</Strategy>
+			<Help>TXT_KEY_UNIT_HELP_SXV_ATW_MISSILE</Help>
+			<ProjectPrereq>PROJECT_MANHATTAN_PROJECT</ProjectPrereq>
+			<MilitarySupport>true</MilitarySupport>
+			<MilitaryProduction>true</MilitaryProduction>
+			<IgnoreBuildingDefense>true</IgnoreBuildingDefense>
+			<Mechanized>true</Mechanized>
+			<Suicide>true</Suicide>
+			<AdvancedStartCost>80</AdvancedStartCost>
+			<NukeDamageLevel>100</NukeDamageLevel>
+			<RangedCombatLimit>1000</RangedCombatLimit>
+			<CombatLimit>0</CombatLimit>
+			<XPValueDefense>2</XPValueDefense>
+			<UnitArtInfo>ART_DEF_UNIT_NUCLEAR_MISSILE</UnitArtInfo>
+			<UnitFlagIconOffset>82</UnitFlagIconOffset>
+			<IconAtlas>UNIT_ATLAS_2</IconAtlas>
+			<PortraitIndex>35</PortraitIndex>
+			<MoveRate>AIR_REBASE</MoveRate>
+		</Row>
+
+		<Row Tag="TXT_KEY_UNIT_SXV_ATW_MISSILE">
+			<Text>SxV A.T.W. Missile</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_HELP_SXV_ATW_MISSILE">
+			<Text>TEST UNIT</Text>
+		</Row>
+	</Units>
+
+
+</GameData>

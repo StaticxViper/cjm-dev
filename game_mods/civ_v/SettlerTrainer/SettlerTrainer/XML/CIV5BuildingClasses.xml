@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 10/15/2020 1:35:39 AM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_SETTLER_TRAINER</Type>
+			<DefaultBuilding>BUILDING_SETTLER_TRAINER</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_SETTLER_TRAINER</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

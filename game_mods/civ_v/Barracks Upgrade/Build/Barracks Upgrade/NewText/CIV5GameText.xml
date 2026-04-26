@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 2/4/2020 9:56:23 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_BARRACKS_UPGRADE">
+			<Text>Barracks Upgrade</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_BARRACKS_UPGRADE_STRATEGY">
+			<Text>This upgrade adds +50% [ICON_PRODUCTION] Production towards all units, +15% Strength when fighting in friendly territory, and +30 experience to any unit built in this city.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_BARRACKSUPGRADE_TEXT">
+			<Text>This upgrade adds +50% [ICON_PRODUCTION] Production towards all units, +15% Strength when fighting in friendly territory, and +30 experience to any unit built in this city.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_BARRACKS_UPGRADE_HELP">
+			<Text>This upgrade adds +50% [ICON_PRODUCTION] Production towards all units, +15% Strength when fighting in friendly territory, and +30 experience to any unit built in this city.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_BARRACKSUPGRADE_HEADING">
+			<Text>Barracks Upgrade</Text>
+		</Row>
+	</Language_en_US>
+</GameData>
