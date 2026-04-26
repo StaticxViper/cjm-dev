@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:47 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_LEADERS_STATUE</Type>
+			<DefaultBuilding>BUILDING_LEADERS_STATUE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_LEADERS_STATUE</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

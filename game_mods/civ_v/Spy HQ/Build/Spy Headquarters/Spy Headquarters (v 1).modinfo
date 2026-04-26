@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="85483b42-c509-43f4-93c4-8cb9217807f6" version="1">
+  <Properties>
+    <Name>Spy Headquarters</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This building adds +2 spies, per city,  to your Civilization...</Teaser>
+    <Description>This building adds +2 spies to your Civilization, because we dont get many spies throughout an entire game. Also added +15 to city defenses, and -25% enemy spy stealing rate. 
+
+Also made it so that other AI Civs cant build this, BUT if youd like a version so that they CAN build it (to make it fair), let me know and ill make one. 
+
+This requires DLC, as anything to do with espionage is not in the base game.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>0</AffectsSavedGames>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>0</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="1E50347DD3E2CF2F320149FF72FEC7CC" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="F208E663B6D7E3D699D845B2337DDC06" import="0">XML/CIV5BuildingClasses.xml</File>
+    <File md5="CA3D90620BE1F337C5D4A46737BB3C1D" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

@@ -1,0 +1,41 @@
+-- TEST SQL
+
+
+UPDATE Units 
+SET Range = 30 
+WHERE Type = 'UNIT_BATTLESHIP';
+
+UPDATE Units 
+SET Moves = 13
+WHERE Type = 'UNIT_BATTLESHIP';
+
+UPDATE Units 
+SET Combat = 60
+WHERE Type = 'UNIT_BATTLESHIP';
+
+UPDATE Units 
+SET RangedCombat = 60 
+WHERE Type = 'UNIT_BATTLESHIP';
+
+UPDATE Unit_Flavors
+SET Flavor = -999
+WHERE UnitType = 'UNIT_BATTLESHIP';
+
+
+
+UPDATE Units
+SET Range = 100
+WHERE Type = 'UNIT_NUCLEAR_MISSILE';
+
+UPDATE Unit_Flavors
+SET Flavor = -999
+WHERE UnitType = 'UNIT_NUCLEAR_MISSILE';
+
+
+UPDATE Units
+SET Combat = 31
+WHERE Type = 'UNIT_JAPANESE_SAMURAI';
+
+UPDATE Units
+SET Cost = 25
+WHERE Type = 'UNIT_JAPANESE_SAMURAI';

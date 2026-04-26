@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 11/26/2022 10:31:21 AM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_WORKER_TRAINER</Type>
+			<DefaultBuilding>BUILDING_WORKER_TRAINER</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_WORKER_TRAINER</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

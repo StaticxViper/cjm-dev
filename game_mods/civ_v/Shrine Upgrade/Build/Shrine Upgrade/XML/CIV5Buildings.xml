@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/30/2020 7:08:23 PM -->
+<GameData>
+	<Buildings>
+		<Row>
+			<Type>BUILDING_SHRINE_UPGRADE</Type>
+			<BuildingClass>BUILDINGCLASS_SHRINE_UPGRADE</BuildingClass>
+			<Cost>30</Cost>
+			<GoldMaintenance>0</GoldMaintenance>
+			<PrereqTech>TECH_POTTERY</PrereqTech>
+			<Description>TXT_KEY_BUILDING_SHRINE_UPGRADE</Description>
+			<Civilopedia>TXT_KEY_CIV5_BUILDINGS_SHRINEUPGRADE_TEXT</Civilopedia>
+			<Strategy>TXT_KEY_BUILDING_SHRINE_UPGRADE_STRATEGY</Strategy>
+			<Help>TXT_KEY_BUILDING_SHRINE_UPGRADE_HELP</Help>
+			<ArtDefineTag>ART_DEF_SHRINE</ArtDefineTag>
+			<MinAreaSize>-1</MinAreaSize>
+			<ConquestProb>66</ConquestProb>
+			<HurryCostModifier>25</HurryCostModifier>
+			<IconAtlas>EXPANSION_BW_ATLAS_1</IconAtlas>
+			<PortraitIndex>9</PortraitIndex>
+			<Happiness>5</Happiness>
+			<PlotCultureCostModifier>-25</PlotCultureCostModifier>
+		</Row>
+	</Buildings>
+	<Building_ClassesNeededInCity>
+		<Row>
+			<BuildingType>BUILDING_SHRINE_UPGRADE</BuildingType>
+			<BuildingClassType>BUILDINGCLASS_SHRINE</BuildingClassType>
+		</Row>
+	</Building_ClassesNeededInCity>
+	<Building_Flavors>
+		<Row>
+			<BuildingType>BUILDING_SHRINE_UPGRADE</BuildingType>
+			<FlavorType>FLAVOR_RELIGION</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+	</Building_Flavors>
+	<Building_YieldChanges>
+		<Row>
+			<BuildingType>BUILDING_SHRINE_UPGRADE</BuildingType>
+			<YieldType>YIELD_CULTURE</YieldType>
+			<Yield>10</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_SHRINE_UPGRADE</BuildingType>
+			<YieldType>YIELD_FAITH</YieldType>
+			<Yield>10</Yield>
+		</Row>
+	</Building_YieldChanges>
+	<Building_YieldModifiers>
+		<Row>
+			<BuildingType>BUILDING_SHRINE_UPGRADE</BuildingType>
+			<YieldType>YIELD_CULTURE</YieldType>
+			<Yield>20</Yield>
+		</Row>
+	</Building_YieldModifiers>
+</GameData>

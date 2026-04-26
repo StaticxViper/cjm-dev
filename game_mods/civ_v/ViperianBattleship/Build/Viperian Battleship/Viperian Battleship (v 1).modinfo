@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="c62faf93-c620-483a-b280-53a0c5b4db57" version="1">
+  <Properties>
+    <Name>Viperian Battleship</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>Test unit for viperian battleship
+
+With added range and sight</Teaser>
+    <Description>Test unit for viperian battleship
+
+With added range and sight</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="0A9320B5467D70C4439A559273C07032" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="52B11D41E51720BD3F4E8F462BF35561" import="0">XML/CIV5UnitClasses.xml</File>
+    <File md5="9B1B0A6AE8DFC1F5629C87CC856076FF" import="0">XML/CIV5Units.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5UnitClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Units.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

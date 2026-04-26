@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/27/2020 2:32:08 AM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_TRADE_HEADQUARTERS_OP</Type>
+			<DefaultBuilding>BUILDING_TRADE_HEADQUARTERS_OP</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_TRADE_HEADQUARTERS_OP</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

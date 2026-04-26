@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="fc63a77f-74fc-48a1-9031-db7a9603b470" version="1">
+  <Properties>
+    <Name>Grand Market</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This mod is an upgrade to the market building...</Teaser>
+    <Description>This mod adds a better market building.
+
+The defual market building only adds +1 gold, where as the Grand Market adds +10 gold and +25% gold.
+
+(This is basically an upgrade to the default market building, therefore, youll need to buld the market FIRST, and THEN the Grand Market)</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>0</AffectsSavedGames>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>0</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="D9EB46E7FD1ADEFB08C08E7288515A01" import="0">XML/Buildings/CIV5BuildingClasses.xml</File>
+    <File md5="36EE258B92039132857F807B55676C94" import="0">XML/Buildings/CIV5Buildings.xml</File>
+    <File md5="4B24801EC63F71A10014CA26C08306FB" import="0">XML/NewText/CIV5GameText.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>XML/Buildings/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/Buildings/CIV5Buildings.xml</UpdateDatabase>
+      <UpdateDatabase>XML/NewText/CIV5GameText.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

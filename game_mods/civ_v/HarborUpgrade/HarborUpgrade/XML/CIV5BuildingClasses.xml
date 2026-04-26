@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 10/24/2022 7:24:00 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_GRAND_MARKET</Type>
+			<DefaultBuilding>BUILDING_GRAND_MARKET</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_GRAND_MARKET</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

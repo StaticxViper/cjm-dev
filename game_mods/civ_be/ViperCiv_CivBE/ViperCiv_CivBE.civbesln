@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# ModBuddy Solution File, Format Version 11.00
+Project("{FF29AF93-936E-4A94-AC5A-E8CE6F9A12D0}") = "ViperCiv_CivBE", "ViperCiv_CivBE\ViperCiv_CivBE.civbeproj", "{17FA6C8E-5957-4E7A-8524-54A89EF193B3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|x86 = Default|x86
+		Deploy Only|x86 = Deploy Only|x86
+		Package Only|x86 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{17FA6C8E-5957-4E7A-8524-54A89EF193B3}.Default|x86.ActiveCfg = Default|x86
+		{17FA6C8E-5957-4E7A-8524-54A89EF193B3}.Default|x86.Build.0 = Default|x86
+		{17FA6C8E-5957-4E7A-8524-54A89EF193B3}.Deploy Only|x86.ActiveCfg = Deploy Only|x86
+		{17FA6C8E-5957-4E7A-8524-54A89EF193B3}.Deploy Only|x86.Build.0 = Deploy Only|x86
+		{17FA6C8E-5957-4E7A-8524-54A89EF193B3}.Package Only|x86.ActiveCfg = Package Only|x86
+		{17FA6C8E-5957-4E7A-8524-54A89EF193B3}.Package Only|x86.Build.0 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

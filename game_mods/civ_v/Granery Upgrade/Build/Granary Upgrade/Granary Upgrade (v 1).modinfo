@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="b06f2eff-c2af-4d32-b0f5-bddf8e31eb9f" version="1">
+  <Properties>
+    <Name>Granary Upgrade</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>An upgrade to the defualt Granery.</Teaser>
+    <Description>An upgrade to the defualt Granery. After the default Granery is built, an upgrade will show, adding +10 Food and +5 Production to your Civ's city, and a boost to the overall output of the cities food by 25%.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>0</AffectsSavedGames>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="9AC70D71BDAB10DAA9AB79BDE1EAFBB6" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="9208F3959C0740D642386ADE80EBA699" import="0">XML/CIV5BuildingClasses.xml</File>
+    <File md5="D987EEA642606D36873ED76CF26BDB31" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

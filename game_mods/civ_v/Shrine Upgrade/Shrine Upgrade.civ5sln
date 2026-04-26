@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# ModBuddy Solution File, Format Version 11.00
+Project("{F5FC21B5-7CC2-458A-ABBA-992F515BBA20}") = "Shrine Upgrade", "Shrine Upgrade\Shrine Upgrade.civ5proj", "{47715566-33C3-448F-A66F-12C03A3460A3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|x86 = Default|x86
+		Deploy Only|x86 = Deploy Only|x86
+		Package Only|x86 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{47715566-33C3-448F-A66F-12C03A3460A3}.Default|x86.ActiveCfg = Default|x86
+		{47715566-33C3-448F-A66F-12C03A3460A3}.Default|x86.Build.0 = Default|x86
+		{47715566-33C3-448F-A66F-12C03A3460A3}.Deploy Only|x86.ActiveCfg = Deploy Only|x86
+		{47715566-33C3-448F-A66F-12C03A3460A3}.Deploy Only|x86.Build.0 = Deploy Only|x86
+		{47715566-33C3-448F-A66F-12C03A3460A3}.Package Only|x86.ActiveCfg = Package Only|x86
+		{47715566-33C3-448F-A66F-12C03A3460A3}.Package Only|x86.Build.0 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

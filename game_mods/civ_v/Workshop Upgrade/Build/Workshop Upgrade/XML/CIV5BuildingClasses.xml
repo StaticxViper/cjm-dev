@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/13/2020 10:52:59 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_WORKSHOP_UPGRADE</Type>
+			<DefaultBuilding>BUILDING_WORKSHOP_UPGRADE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_WORKSHOP_UPGRADE</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

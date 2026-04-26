@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# ModBuddy Solution File, Format Version 11.00
+Project("{F5FC21B5-7CC2-458A-ABBA-992F515BBA20}") = "Granary Upgrade", "Granery Upgrade\Granary Upgrade.civ5proj", "{6A5ADC14-9BB9-4AA9-8A42-266F7A351FA4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|x86 = Default|x86
+		Deploy Only|x86 = Deploy Only|x86
+		Package Only|x86 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6A5ADC14-9BB9-4AA9-8A42-266F7A351FA4}.Default|x86.ActiveCfg = Default|x86
+		{6A5ADC14-9BB9-4AA9-8A42-266F7A351FA4}.Default|x86.Build.0 = Default|x86
+		{6A5ADC14-9BB9-4AA9-8A42-266F7A351FA4}.Deploy Only|x86.ActiveCfg = Deploy Only|x86
+		{6A5ADC14-9BB9-4AA9-8A42-266F7A351FA4}.Deploy Only|x86.Build.0 = Deploy Only|x86
+		{6A5ADC14-9BB9-4AA9-8A42-266F7A351FA4}.Package Only|x86.ActiveCfg = Package Only|x86
+		{6A5ADC14-9BB9-4AA9-8A42-266F7A351FA4}.Package Only|x86.Build.0 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
