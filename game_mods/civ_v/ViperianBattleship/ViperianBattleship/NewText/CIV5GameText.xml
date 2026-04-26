@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 11/4/2022 7:20:41 PM -->
+<GameData>
+	<Row Tag="TXT_KEY_UNIT_VIPERIAN_BATTLESHIP">
+		<Text>Viperian Battleship</Text>
+	</Row>
+	<Row Tag="TXT_KEY_UNIT_HELP_VIPERIAN_BATTLESHIP">
+		<Text>TEST</Text>
+	</Row>
+</GameData>

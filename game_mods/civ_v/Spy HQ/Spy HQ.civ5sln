@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# ModBuddy Solution File, Format Version 11.00
+Project("{F5FC21B5-7CC2-458A-ABBA-992F515BBA20}") = "Spy HQ", "Spy HQ\Spy HQ.civ5proj", "{1FE8FC60-EA3C-458B-9FEF-CD83D971D8DC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|x86 = Default|x86
+		Deploy Only|x86 = Deploy Only|x86
+		Package Only|x86 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1FE8FC60-EA3C-458B-9FEF-CD83D971D8DC}.Default|x86.ActiveCfg = Default|x86
+		{1FE8FC60-EA3C-458B-9FEF-CD83D971D8DC}.Default|x86.Build.0 = Default|x86
+		{1FE8FC60-EA3C-458B-9FEF-CD83D971D8DC}.Deploy Only|x86.ActiveCfg = Deploy Only|x86
+		{1FE8FC60-EA3C-458B-9FEF-CD83D971D8DC}.Deploy Only|x86.Build.0 = Deploy Only|x86
+		{1FE8FC60-EA3C-458B-9FEF-CD83D971D8DC}.Package Only|x86.ActiveCfg = Package Only|x86
+		{1FE8FC60-EA3C-458B-9FEF-CD83D971D8DC}.Package Only|x86.Build.0 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# ModBuddy Solution File, Format Version 11.00
+Project("{FF29AF93-936E-4A94-AC5A-E8CE6F9A12D0}") = "ViperCitadel", "ViperCitadel\ViperCitadel.civbeproj", "{B71D0FF8-7BCC-47EF-AC1B-29A638BE4714}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|x86 = Default|x86
+		Deploy Only|x86 = Deploy Only|x86
+		Package Only|x86 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B71D0FF8-7BCC-47EF-AC1B-29A638BE4714}.Default|x86.ActiveCfg = Default|x86
+		{B71D0FF8-7BCC-47EF-AC1B-29A638BE4714}.Default|x86.Build.0 = Default|x86
+		{B71D0FF8-7BCC-47EF-AC1B-29A638BE4714}.Deploy Only|x86.ActiveCfg = Deploy Only|x86
+		{B71D0FF8-7BCC-47EF-AC1B-29A638BE4714}.Deploy Only|x86.Build.0 = Deploy Only|x86
+		{B71D0FF8-7BCC-47EF-AC1B-29A638BE4714}.Package Only|x86.ActiveCfg = Package Only|x86
+		{B71D0FF8-7BCC-47EF-AC1B-29A638BE4714}.Package Only|x86.Build.0 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

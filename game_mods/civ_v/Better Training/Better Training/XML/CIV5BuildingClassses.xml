@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 5/27/2021 2:06:17 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_BETTER_TRAINING</Type>
+			<DefaultBuilding>BUILDING_BETTER_TRAINING</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_BETTER_TRAINING</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

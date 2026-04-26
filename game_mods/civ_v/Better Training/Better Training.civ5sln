@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# ModBuddy Solution File, Format Version 11.00
+Project("{F5FC21B5-7CC2-458A-ABBA-992F515BBA20}") = "Better Training", "Better Training\Better Training.civ5proj", "{65B5B204-FEE7-495F-A862-A39E71C759AF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|x86 = Default|x86
+		Deploy Only|x86 = Deploy Only|x86
+		Package Only|x86 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{65B5B204-FEE7-495F-A862-A39E71C759AF}.Default|x86.ActiveCfg = Default|x86
+		{65B5B204-FEE7-495F-A862-A39E71C759AF}.Default|x86.Build.0 = Default|x86
+		{65B5B204-FEE7-495F-A862-A39E71C759AF}.Deploy Only|x86.ActiveCfg = Deploy Only|x86
+		{65B5B204-FEE7-495F-A862-A39E71C759AF}.Deploy Only|x86.Build.0 = Deploy Only|x86
+		{65B5B204-FEE7-495F-A862-A39E71C759AF}.Package Only|x86.ActiveCfg = Package Only|x86
+		{65B5B204-FEE7-495F-A862-A39E71C759AF}.Package Only|x86.Build.0 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

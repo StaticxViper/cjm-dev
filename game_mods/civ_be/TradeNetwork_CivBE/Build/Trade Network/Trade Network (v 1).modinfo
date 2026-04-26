@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="f2f26bd6-74bc-4c0d-b094-d57d89b65dec" version="1">
+  <Properties>
+    <Name>Trade Network</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This mod adds two Trade Network buildings that add production and energy to the players city. (AI cannot build)
+
+
+Trade Netw</Teaser>
+    <Description>This mod adds two Trade Network buildings that add production and energy to the players city. (AI cannot build)
+
+
+Trade Network:
++25 Energy
++15 Production
++10% Science
+
+Trade Network Upgrade:
++50% Energy
++25% Production
++50 Culture</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadLandmarkSystem>1</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>1</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>1</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="7E39EC75C19D6C7D7D6B29B82A1BCAF0" import="0">GameText.xml</File>
+    <File md5="EDA308E06FBB13B09CC24EAC83BB427E" import="0">TradeNetwork.xml</File>
+    <File md5="6F6CAB6C8A9E0D37F70C4396412A967A" import="0">TradeNetwork_Upgrade.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>GameText.xml</UpdateDatabase>
+      <UpdateDatabase>TradeNetwork.xml</UpdateDatabase>
+      <UpdateDatabase>TradeNetwork_Upgrade.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>
