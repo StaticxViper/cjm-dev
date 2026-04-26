@@ -91,6 +91,7 @@ def get_places(location, radius, keywords, api_key):
                     "rating": p.get("rating"),
                     "user_ratings_total": p.get("user_ratings_total"),
                     "address": p.get("vicinity") or p.get("formatted_address"),
+                    "niche_key": kw,
                 }
             # handle pagination
             next_token = data.get("next_page_token")
