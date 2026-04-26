@@ -18,7 +18,7 @@ import pandas as pd
 import re
 import time
 import json
-from shared.logger import setup_logger
+from helper_scripts.utilities.logger import setup_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse

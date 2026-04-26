@@ -3,8 +3,6 @@
 __pycache__/
 *.pyc
 .vscode/
-*log.txt
-*.log
 *_PRIVATE.txt
 *output/
 *example.json
@@ -13,3 +11,6 @@ __pycache__/
 *emails_to_send.csv
 *contacted.txt
 *leads_output.csv
+
+*log.txt
+*.log
