@@ -14,8 +14,7 @@ API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API
             'Lead Ingest': os.getenv("LEAD_INGEST_KEY")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
-ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
-          'Instagram Post Scraper': 'apify/instagram-post-scraper'}
+ACTORS = json.load(open("apify_actors.json"))
 
 logger = setup_logger(
     name="api-manager",
