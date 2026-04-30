@@ -1,10 +1,3 @@
-import sys
-from pathlib import Path
-
-# Add repo root to sys.path
-repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_analyzer/ -> scripts/ -> repo_root
-sys.path.insert(0, str(repo_root))
-
 from datetime import date
 from helper_scripts.api_manager import APIManager as api
 from helper_scripts.utilities.logger import setup_logger

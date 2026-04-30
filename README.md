@@ -27,6 +27,16 @@ Masters in Computer Science, Minor in Cyber Security (Felician University)
 
 LinkedIn: [www.linkedin.com/in/moultonc](https://www.linkedin.com/in/moultonc)
 
+## Development setup
+
+From the repository root, with your virtual environment activated, install the project in editable mode so `helper_scripts` (and `scripts` subpackages used as imports) resolve without `sys.path` hacks:
+
+```bash
+pip install -e .
+```
+
+Repeat `pip install -e .` after cloning or when you create a new venv.
+
 ## Roadmap
 
 This README is a high-level overview.  

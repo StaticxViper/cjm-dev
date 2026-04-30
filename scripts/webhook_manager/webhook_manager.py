@@ -1,10 +1,4 @@
 import requests
-import sys
-from pathlib import Path
-
-
-repo_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(repo_root))
 
 from scripts.email_manager import email_manager
 from helper_scripts.utilities.logger import setup_logger

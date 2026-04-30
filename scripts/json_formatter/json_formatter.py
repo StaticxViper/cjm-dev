@@ -7,14 +7,8 @@ to a single example element while preserving the overall structure.
 This dramatically reduces file size while keeping the schema of the data intact. 
 The formatted result is then saved as a new JSON file in the output directory located in the same folder as the script.
 """
-import sys
-from pathlib import Path
-
-# Add repo root to sys.path
-repo_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(repo_root))
-
 import json
+import sys
 import os
 from helper_scripts.utilities.logger import setup_logger
 

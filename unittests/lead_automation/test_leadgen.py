@@ -23,8 +23,6 @@ def _import_leadgen():
         os.chdir(_LEADGEN_DIR)
         if str(_LEADGEN_DIR) not in sys.path:
             sys.path.insert(0, str(_LEADGEN_DIR))
-        if str(_REPO_ROOT) not in sys.path:
-            sys.path.insert(0, str(_REPO_ROOT))
         return importlib.import_module("leadgen")
     finally:
         os.chdir(_prev)

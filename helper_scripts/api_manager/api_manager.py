@@ -3,10 +3,11 @@ from urllib import response
 from apify_client import ApifyClient
 import httpx
 import json
+from pathlib import Path
 from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
-from utilities.logger import setup_logger
+from helper_scripts.utilities.logger import setup_logger
 
 load_dotenv()
 API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN"),
@@ -14,7 +15,8 @@ API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API
             'Lead Ingest': os.getenv("LEAD_INGEST_KEY")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
-ACTORS = json.load(open("apify_actors.json"))
+_ACTORS_PATH = Path(__file__).resolve().parent / "apify_actors.json"
+ACTORS = json.loads(_ACTORS_PATH.read_text(encoding="utf-8"))
 
 logger = setup_logger(
     name="api-manager",
@@ -145,9 +147,9 @@ class APIManager:
             result = self.get_apify_data(actor_call=actor_call)
             logger.info('Results Found via Dataset ID!')
         except RuntimeError as e:
-            logger.error(f'Actor run error: {e}')
+            logger.error(f'Actor run error:\n {e}')
         except Exception as e:
-            logger.error(f'Unexpected error communicating with Apify: {e}')
+            logger.error(f'Unexpected error communicating with Apify:\n {e}')
 
         return result
 

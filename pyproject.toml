@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cjm-dev"
+version = "0.1.0"
+description = "Personal dev scripts and helper_scripts library"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "pandas",
+    "beautifulsoup4",
+    "python-dotenv",
+    "httpx",
+    "apify-client",
+    "openai",
+    "perplexityai",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["helper_scripts*", "scripts*"]

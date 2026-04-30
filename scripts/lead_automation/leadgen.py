@@ -8,11 +8,6 @@ Run: python leadgen.py
 
 Fill in GOOGLE_API_KEY before running.
 """
-from pathlib import Path
-import sys
-# Add repo root to sys.path
-repo_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(repo_root))
 import requests
 import pandas as pd
 import re
