@@ -16,3 +16,5 @@ __pycache__/
 
 *log.txt
 *.log
+
+scripts/json_formatter/input.json

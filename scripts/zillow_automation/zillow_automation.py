@@ -35,7 +35,8 @@ def main():
 
     # TODO: Add logic to get multiple listings at once.
     input_data = {
-        "addresses": [str(address)]
+        "addresses": [str(address)],
+        "extractBuildingUnits": "all"
     }
     listing_data = api.run_apify(actor='Zillow Detail Scraper', input=input_data)
 
@@ -47,6 +48,12 @@ def main():
         # TODO
 
     logger.critical(f'OUTPUT DATA:\n {output_data}')
+
+    """  
+    Need the following data:
+    - General Property Info (Address, Price, Beds, Baths, Sqft, etc.)
+    - Agent Info (Name, Contact, etc.) -> 'attributionInfo' (But not similar homes in modules)
+    """
 
 
 
