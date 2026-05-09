@@ -2,20 +2,20 @@
 <!-- Created by ModBuddy on 10/24/2022 7:24:34 PM -->
 <GameData>
 	<Language_en_US>
-		<Row Tag="TXT_KEY_BUILDING_GRAND_MARKET">
-			<Text>Grand Market</Text>
+		<Row Tag="TXT_KEY_BUILDING_HARBOR_UPGRADE">
+			<Text>Harbor Upgrade</Text>
 		</Row>
-		<Row Tag="TXT_KEY_BUILDING_GRAND_MARKET_STRATEGY">
-			<Text>A Grand Market is an upgrade to the default Market, adding more [ICON_GOLD] gold to your city. A Market must  be in the city before a Grand Market.</Text>
+		<Row Tag="TXT_KEY_BUILDING_HARBOR_UPGRADE_STRATEGY">
+			<Text>The Harbor Upgrade upgrades the Harbor with +5 [ICON_FOOD] Food, +5 [ICON_RESEARCH] Science, +5 [ICON_GOLD] Gold, and +5 [ICON_PRODUCTION] Production on surrounding water tiles.</Text>
 		</Row>
-		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANDMARKET_TEXT">
-			<Text>An upgrade for a bigger Market for a city.</Text>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_HARBORUPGRADE_TEXT">
+			<Text>An upgrade for a bigger Harbor for a city.</Text>
 		</Row>
-		<Row Tag="TXT_KEY_BUILDING_GRAND_MARKET_HELP">
-			<Text>City must have the defualt Market.</Text>
+		<Row Tag="TXT_KEY_BUILDING_HARBOR_UPGRADE_HELP">
+			<Text>City must have the defualt Harbor.</Text>
 		</Row>
-		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANDMARKET_HEADING">
-			<Text>Grand Market</Text>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_HARBORUPGRADE_HEADING">
+			<Text>Harbor Upgrade</Text>
 		</Row>
 	</Language_en_US>
 </GameData>

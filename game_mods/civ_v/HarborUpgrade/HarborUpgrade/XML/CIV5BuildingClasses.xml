@@ -3,9 +3,9 @@
 <GameData>
 	<BuildingClasses>
 		<Row>
-			<Type>BUILDINGCLASS_GRAND_MARKET</Type>
-			<DefaultBuilding>BUILDING_GRAND_MARKET</DefaultBuilding>
-			<Description>TXT_KEY_BUILDING_GRAND_MARKET</Description>
+			<Type>BUILDINGCLASS_HARBOR_UPGRADE</Type>
+			<DefaultBuilding>BUILDING_HARBOR_UPGRADE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_HARBOR_UPGRADE</Description>
 		</Row>
 	</BuildingClasses>
 </GameData>
