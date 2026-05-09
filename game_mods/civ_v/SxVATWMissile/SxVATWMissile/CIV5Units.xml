@@ -2,60 +2,60 @@
 <!-- Created by ModBuddy on 11/4/2022 4:36:50 PM -->
 <GameData>
 
-  <UnitClasses>
-    <Row>
-      <Type>UNITCLASS_SXV_ATW_MISSILE</Type>
-      <DefaultUnit>UNIT_SXV_ATW_MISSILE</DefaultUnit>
-    </Row>
-  </UnitClasses>
+	<UnitClasses>
+		<Row>
+			<Type>UNITCLASS_SXV_ATW_MISSILE</Type>
+			<DefaultUnit>UNIT_SXV_ATW_MISSILE</DefaultUnit>
+		</Row>
+	</UnitClasses>
 
-  <Units>
-    <Row>
-      <Class>UNITCLASS_SXV_ATW_MISSILE</Class>
-      <Type>UNIT_SXV_ATW_MISSILE</Type>
-      <PrereqTech>TECH_ADVANCED_BALLISTICS</PrereqTech>
-      <Cost>1000</Cost>
-      <Moves>2</Moves>
-      <Immobile>true</Immobile>
-      <Range>1000</Range>
-      <Special>SPECIALUNIT_MISSILE</Special>
-      <Domain>DOMAIN_AIR</Domain>
-      <DefaultUnitAI>UNITAI_ICBM</DefaultUnitAI>
-      <Description>TXT_KEY_UNIT_SXV_ATW_MISSILE</Description>
-      <Help>TXT_KEY_UNIT_HELP_SXV_ATW_MISSILE</Help>
-      <ProjectPrereq>PROJECT_MANHATTAN_PROJECT</ProjectPrereq>
-      <Suicide>true</Suicide>
-      <NukeDamageLevel>100</NukeDamageLevel>
-      <RangedCombatLimit>1000</RangedCombatLimit>
-      <UnitArtInfo>ART_DEF_UNIT_NUCLEAR_MISSILE</UnitArtInfo>
-      <IconAtlas>UNIT_ATLAS_2</IconAtlas>
-      <PortraitIndex>35</PortraitIndex>
-      <MoveRate>AIR_REBASE</MoveRate>
-    </Row>
-  </Units>
+	<Units>
+		<Row>
+			<Class>UNITCLASS_SXV_ATW_MISSILE</Class>
+			<Type>UNIT_SXV_ATW_MISSILE</Type>
+			<PrereqTech>TECH_ADVANCED_BALLISTICS</PrereqTech>
+			<Cost>1000</Cost>
+			<Immobile>true</Immobile>
+			<Range>100</Range>
+			<Special>SPECIALUNIT_MISSILE</Special>
+			<Domain>DOMAIN_AIR</Domain>
+			<DefaultUnitAI>UNITAI_ICBM</DefaultUnitAI>
+			<Description>TXT_KEY_UNIT_SXV_ATW_MISSILE</Description>
+			<Help>TXT_KEY_UNIT_HELP_SXV_ATW_MISSILE</Help>
+			<ProjectPrereq>PROJECT_MANHATTAN_PROJECT</ProjectPrereq>
+			<Suicide>true</Suicide>
+			<NukeDamageLevel>3</NukeDamageLevel>
+			<RangedCombat>1</RangedCombat>
+			<RangedCombatLimit>100</RangedCombatLimit>
+			<UnitArtInfo>ART_DEF_UNIT_NUCLEAR_MISSILE</UnitArtInfo>
+			<IconAtlas>UNIT_ATLAS_2</IconAtlas>
+			<PortraitIndex>35</PortraitIndex>
+			<MoveRate>AIR_REBASE</MoveRate>
+		</Row>
+	</Units>
 
-  <Unit_AITypes>
-    <Row>
-      <UnitType>UNIT_SXV_ATW_MISSILE</UnitType>
-      <UnitAIType>UNITAI_ICBM</UnitAIType>
-    </Row>
-  </Unit_AITypes>
+	<Unit_AITypes>
+		<Row>
+			<UnitType>UNIT_SXV_ATW_MISSILE</UnitType>
+			<UnitAIType>UNITAI_ICBM</UnitAIType>
+		</Row>
+	</Unit_AITypes>
 
-  <Unit_Flavors>
-	<Row>
-		<UnitType>UNIT_SXV_ATW_MISSILE</UnitType>
-		<FlavorType>FLAVOR_NUKE</FlavorType>
-		<Flavor>-999</Flavor>
-	</Row>
-  </Unit_Flavors>
+	<Unit_Flavors>
+		<Row>
+			<UnitType>UNIT_SXV_ATW_MISSILE</UnitType>
+			<FlavorType>FLAVOR_NUKE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+	</Unit_Flavors>
 
-  <Language_en_US>
-    <Row Tag="TXT_KEY_UNIT_SXV_ATW_MISSILE">
-      <Text>SxV A.T.W. Missile</Text>
-    </Row>
-    <Row Tag="TXT_KEY_UNIT_HELP_SXV_ATW_MISSILE">
-      <Text>TEST UNIT</Text>
-    </Row>
-  </Language_en_US>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_UNIT_SXV_ATW_MISSILE">
+			<Text>SxV A.T.W. Missile</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_HELP_SXV_ATW_MISSILE">
+			<Text>TEST UNIT</Text>
+		</Row>
+	</Language_en_US>
 
 </GameData>
