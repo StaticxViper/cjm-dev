@@ -26,7 +26,7 @@ ATW = Around The World</Description>
   <References />
   <Blocks />
   <Files>
-    <File md5="CA0D4ADCFA35B18195C60F66C72716CB" import="0">CIV5Units.xml</File>
+    <File md5="8FD1F14D0D50334CA7E3EAC9C11A3F8F" import="0">CIV5Units.xml</File>
   </Files>
   <Actions>
     <OnModActivated>
