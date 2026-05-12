@@ -3,9 +3,9 @@
 <GameData>
 	<BuildingClasses>
 		<Row>
-			<Type>BUILDINGCLASS_GRAND_MARKET</Type>
-			<DefaultBuilding>BUILDING_GRAND_MARKET</DefaultBuilding>
-			<Description>TXT_KEY_BUILDING_GRAND_MARKET</Description>
+			<Type>BUILDINGCLASS_TRADE_BOAT_TRAINER</Type>
+			<DefaultBuilding>BUILDING_TRADE_BOAT_TRAINER</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_TRADE_BOAT_TRAINER</Description>
 		</Row>
 	</BuildingClasses>
 </GameData>
