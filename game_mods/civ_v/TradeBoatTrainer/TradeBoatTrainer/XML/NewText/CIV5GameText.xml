@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_TRADE_BOAT_TRAINER">
+			<Text>Trade Boat Trainer</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_TRADE_BOAT_TRAINER_STRATEGY">
+			<Text>Build this in a city that already has a Market to receive three Cargo Ships when the building completes. Use them to establish sea trade routes.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_TRADEBOATTRAINER_TEXT">
+			<Text>The Trade Boat Trainer is a mercantile dock and training hall. When the building is completed, the city gains three Cargo Ships for international trade. A Market must already exist in the city.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_TRADE_BOAT_TRAINER_HELP">
+			<Text>Requires a Market in this city. Grants 3 Cargo Ships when built.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_TRADEBOATTRAINER_HEADING">
+			<Text>Trade Boat Trainer</Text>
+		</Row>
+	</Language_en_US>
+</GameData>
