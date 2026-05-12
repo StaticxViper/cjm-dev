@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/2/2024 12:04:09 PM -->
+<GameData>
+  <!-- TODO: Take old earth relic and replace it with a building that shows as gene pool, call it viper relic or something. -->
+	<!--Make sure everything mathes, this should work as if its the pyramid replacing the monument in other mod.-->
+	
+	<Buildings>
+		<Row>
+			<Type>BUILDING_VIPER_RELIC</Type>
+			<Description>TXT_KEY_BUILDING_VIPER_RELIC</Description>
+			<Civilopedia>TXT_KEY_BUILDINGS_VIPER_RELIC_PEDIA</Civilopedia>
+			<Strategy>TXT_KEY_BUILDING_VIPER_RELIC_STRATEGY</Strategy>
+			<Help></Help>
+			<ThemingBonusHelp></ThemingBonusHelp>
+			<Quote></Quote>
+			<MutuallyExclusiveGroup>-1</MutuallyExclusiveGroup>
+
+			<Cost>50</Cost>
+			<ConquestProb>100</ConquestProb>
+			
+			<CultureRateModifier>0</CultureRateModifier>
+			<GlobalCultureRateModifier>0</GlobalCultureRateModifier>
+			<GreatPeopleRateModifier>0</GreatPeopleRateModifier>
+			
+			<!--TESTING-->
+			
+			<UnmoddedHappiness>0</UnmoddedHappiness>
+			<UnhappinessModifier>-75</UnhappinessModifier>
+			<HappinessPerCity>0</HappinessPerCity>
+			
+			<Defense>75000</Defense>
+			<ExtraCityHitPoints>750</ExtraCityHitPoints>
+			
+			
+			<BuildingClass>BUILDINGCLASS_RELIC</BuildingClass>
+			<ArtDefineTag>THE PYRAMIDS</ArtDefineTag>
+			
+			<PrereqTech>TECH_HABITATION</PrereqTech>
+			<!--TECH_MINING-->
+			
+			
+			<DisplayPosition>4</DisplayPosition>
+			<PortraitIndex>0</PortraitIndex>
+			
+			<IconAtlas>BW_ATLAS_2</IconAtlas>
+			
+
+
+			<!--Testing Code-->
+
+		</Row>
+	</Buildings>
+
+	<!-- Building_AreaYieldModifiers -->
+	<!-- Building_BuildingClassHappiness -->
+	<!-- Building_BuildingClassYieldChanges -->
+
+	<!-- Building_FreeUnits -->
+	<!-- Building_DomainFreeExperiences -->
+	<!-- Building_DomainFreeExperiencePerGreatWork -->
+	<!-- Building_DomainProductionModifiers -->
+	<!-- Building_FreeSpecialistCounts -->
+
+
+
+	<Building_Flavors>
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<FlavorType>FLAVOR_CULTURE</FlavorType>
+			<Flavor>70</Flavor>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<FlavorType>FLAVOR_ENERGY</FlavorType>
+			<Flavor>40</Flavor>
+		</Row>
+	</Building_Flavors>
+	
+	<!-- Building_GlobalYieldModifiers -->
+	<!-- Building_HurryModifiers -->
+	<!-- Building_LocalResourceAnds -->
+	<!-- Building_LocalResourceOrs -->
+	<!-- Building_LockedBuildingClasses -->
+	<!-- Building_PrereqBuildingClasses -->
+	<!-- Building_ResourceQuantity -->
+	<!-- Building_ResourceQuantityRequirements -->
+	<!-- Building_ResourceYieldModifiers -->
+	<!-- Building_ResourceCultureChanges -->
+	<!-- Building_ResourceFaithChanges -->
+	<!-- Building_RiverPlotYieldChanges -->
+	<!-- Building_SeaPlotYieldChanges -->
+	<!-- Building_LakePlotYieldChanges -->
+	<!-- Building_SeaResourceYieldChanges -->
+	<!-- Building_ResourceYieldChanges -->
+	<!-- Building_FeatureYieldChanges -->
+	<!-- Building_TerrainYieldChanges -->
+	<!-- Building_SpecialistYieldChanges -->
+	<!-- Building_UnitCombatFreeExperiences -->
+	<!-- Building_UnitCombatProductionModifiers -->
+	<!-- Building_TechAndPrereqs -->
+	<Building_YieldChanges>
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<YieldType>YIELD_CULTURE</YieldType>
+			<Yield>50</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<YieldType>YIELD_ENERGY</YieldType>
+			<Yield>50</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<YieldType>YIELD_SCIENCE</YieldType>
+			<Yield>25</Yield>
+		</Row>
+	</Building_YieldChanges>
+	<Building_GlobalYieldModifiers>
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<YieldType>YIELD_FOOD</YieldType>
+			<Yield>15</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<YieldType>YIELD_CULTURE</YieldType>
+			<Yield>20</Yield>
+		</Row>
+	</Building_GlobalYieldModifiers>
+	<Building_DomainProductionModifiers>
+		<!--30% production for sea and land units-->
+		<Row>
+			<BuildingType>BUILDING_VIPER_RELIC</BuildingType>
+			<DomainType>DOMAIN_SEA</DomainType>
+			<Modifier>30</Modifier>
+		</Row>
+	</Building_DomainProductionModifiers>
+	<!-- Building_YieldChangesPerPop -->
+	<!-- Building_YieldChangesPerReligion -->
+	<!-- Building_TechEnhancedYieldChanges -->
+	<!-- Building_YieldModifiers -->
+	<!-- Building_ThemingBonuses -->
+
+	
+</GameData>

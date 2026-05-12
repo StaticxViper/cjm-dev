@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_LIBRARY_UPGRADE">
+			<Text>Library Upgrade</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_LIBRARY_UPGRADE_STRATEGY">
+			<Text>A Library Upgrade is an upgrade to the default Library , adding more [ICON_RESEARCH] science and [ICON_CULTURE] culture to your city. A Library must be in the city before a Library Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_LIBRARYUPGRADE_TEXT">
+			<Text>A Library Upgrade is an upgrade to the default Library , adding more [ICON_RESEARCH] science and [ICON_CULTURE] culture to your city. A Library must be in the city before a Library Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_LIBRARY_UPGRADE_HELP">
+			<Text>A Library Upgrade is an upgrade to the default Library , adding more [ICON_RESEARCH] science and [ICON_CULTURE] culture to your city. A Library must be in the city before a Library Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_LIBRARYUPGRADE_HEADING">
+			<Text>Library Upgrade</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

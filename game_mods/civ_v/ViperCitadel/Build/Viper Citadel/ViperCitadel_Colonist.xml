@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/2/2024 1:54:20 PM -->
+<GameData>
+	<Buildings>
+		<Row>
+			<Type>BUILDING_VIPER_CITADEL_COLONIST</Type>
+			<BuildingClass>BUILDINGCLASS_VIPER_CITADEL_COLONIST</BuildingClass>
+			<Cost>30</Cost>
+			<ConquestProbability>67</ConquestProbability>
+			<PrereqTech>TECH_GENETICS</PrereqTech>
+			<Description>TXT_KEY_BUILDING_VIPER_CITADEL_COLONIST_DESC</Description>
+			<Civilopedia>TXT_KEY_BUILDING_VIPER_CITADEL_COLONIST_PEDIA</Civilopedia>
+			<ArtDefineTag>ART_DEF_BUILDING_RELIC</ArtDefineTag>
+			<IconAtlas>BW_ATLAS_1</IconAtlas>
+			<PortraitIndex>33</PortraitIndex>
+
+			<Health>50</Health>
+
+			<!--TESTING-->
+			
+
+
+			<!--TESTING END-->
+
+		</Row>
+	</Buildings>
+
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_VIPER_CITADEL_COLONIST</Type>
+			<DefaultBuilding>BUILDING_VIPER_CITADEL_COLONIST</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_VIPER_CITADEL_COLONIST_DESC</Description>
+		</Row>
+	</BuildingClasses>
+
+	<Building_FreeUnits>
+		<Row>
+			<BuildingType>BUILDING_VIPER_CITADEL_COLONIST</BuildingType>
+			<UnitType>UNIT_SETTLER</UnitType>
+			<NumUnits>1</NumUnits>
+		</Row>
+	</Building_FreeUnits>
+	
+	<Building_YieldModifiers>
+		<Row>
+			<BuildingType>BUILDING_VIPER_CITADEL_COLONIST</BuildingType>
+			<YieldType>YIELD_SCIENCE</YieldType>
+			<Yield>15</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_VIPER_CITADEL_COLONIST</BuildingType>
+			<YieldType>YIELD_FOOD</YieldType>
+			<Yield>25</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_VIPER_CITADEL_COLONIST</BuildingType>
+			<YieldType>YIELD_CULTURE</YieldType>
+			<Yield>25</Yield>
+		</Row>
+	</Building_YieldModifiers>
+
+	<Building_Flavors>
+		<Row>
+			<BuildingType>BUILDING_VIPER_CITADEL_COLONIST</BuildingType>
+			<FlavorType>FLAVOR_FOOD</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_VIPER_CITADEL_COLONIST</BuildingType>
+			<FlavorType>FLAVOR_SCIENCE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+	</Building_Flavors>
+</GameData>

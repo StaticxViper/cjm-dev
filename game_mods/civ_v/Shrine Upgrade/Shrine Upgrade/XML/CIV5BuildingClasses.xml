@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/30/2020 7:08:11 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_SHRINE_UPGRADE</Type>
+			<DefaultBuilding>BUILDING_SHRINE_UPGRADE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_SHRINE_UPGRADE</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

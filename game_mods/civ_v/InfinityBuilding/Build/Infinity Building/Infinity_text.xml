@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<LocalizedText>
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_INFINITY_DESC">
+			<Text>Infinity</Text>
+		</Row>
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_INFINITY_PEDIA">
+			<Text>many forms, and served to refutu colonial settlementsilt: meeting hall, librhil and diveri the buileless rem.</Text>
+		</Row>
+	</LocalizedText>
+</GameData>

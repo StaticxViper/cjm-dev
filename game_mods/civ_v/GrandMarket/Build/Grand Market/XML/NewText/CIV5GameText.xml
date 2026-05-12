@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_GRAND_MARKET">
+			<Text>Grand Market</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_GRAND_MARKET_STRATEGY">
+			<Text>A Grand Market is an upgrade to the default Market, adding more [ICON_GOLD] Gold to your city. A Market must be in the city before a Grand Market.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANDMARKET_TEXT">
+			<Text>A Grand Market is an upgrade to the default Market, adding more [ICON_GOLD] Gold to your city. A Market must be in the city before a Grand Market.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_GRAND_MARKET_HELP">
+			<Text>A Grand Market is an upgrade to the default Market, adding more [ICON_GOLD] Gold to your city. A Market must be in the city before a Grand Market.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANDMARKET_HEADING">
+			<Text>Grand Market</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

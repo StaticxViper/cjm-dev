@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="f980a620-689f-4953-b21c-87055927ab89" version="1">
+  <Properties>
+    <Name>BuildAllANCIENT</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This building is a shortcut for later game cities.</Teaser>
+    <Description>This building is a shortcut for later game cities. Once built in a city, this will build all Ancient Era buildings. (Excluding any that are unique to certain Civilizations, any buildings that require a city to be in a specific location, or any buildings that cost a resource)
+
+I was running into an issue later in the game where it felt tedious to have younger/newer cities catch up with others, and I didn't want to sit there and buy every building for every city. Especially since I tend to expand a lot and create giant Civilizations.
+
+So here's a fix!</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="01F0C315E81A9C4778F97858C6CA7308" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="585A8F7A2ED843DE982498FA3C19C8D1" import="0">XML/CIV5BuildingClasses.xml</File>
+    <File md5="8BC9A62595BB954CC23CB7690CF8954D" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>XML/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/27/2020 2:32:34 AM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_TRADE_HEADQUARTERS">
+			<Text>Trade Headquarters</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_TRADE_HEADQUARTERS_STRATEGY">
+			<Text>The Trade Headquarters adds +2 [ICON_SWAP] Trade Routes, +10 [ICON_GOLD] Gold, +25% [ICON_GOLD] Gold, and +3 [ICON_HAPPINESS_1] Happiness to your city. A Market must be built before the Trade Headquarters!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_TRADEHEADQUARTERS_TEXT">
+			<Text>The Trade Headquarters adds +2 [ICON_SWAP] Trade Routes, +10 [ICON_GOLD] Gold, +25% [ICON_GOLD] Gold, and +3 [ICON_HAPPINESS_1] Happiness to your city. A Market must be built before the Trade Headquarters!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_TRADE_HEADQUARTERS_HELP">
+			<Text>The Trade Headquarters adds +2 [ICON_SWAP] Trade Routes, +10 [ICON_GOLD] Gold, +25% [ICON_GOLD] Gold, and +3 [ICON_HAPPINESS_1] Happiness to your city. A Market must be built before the Trade Headquarters!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_TRADEHEADQUARTERS_HEADING">
+			<Text>Trade Headquarters</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

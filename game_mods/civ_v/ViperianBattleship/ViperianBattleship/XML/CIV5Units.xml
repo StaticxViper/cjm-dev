@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 11/4/2022 7:20:22 PM -->
+<GameData>
+	<Row>
+		<Class>UNITCLASS_VIPERIAN_BATTLESHIP</Class>
+		<Type>UNIT_VIPERIAN_BATTLESHIP</Type>
+		<PrereqTech>TECH_TELEGRAPH</PrereqTech>
+		<Combat>60</Combat>
+		<RangedCombat>32</RangedCombat>
+		<Cost>375</Cost>
+		<Moves>13</Moves>
+		<Range>30</Range>
+		<CombatClass>UNITCOMBAT_NAVAL</CombatClass>
+		<Domain>DOMAIN_SEA</Domain>
+		<DefaultUnitAI>UNITAI_ATTACK_SEA</DefaultUnitAI>
+		<Description>TXT_KEY_UNIT_VIPERIAN_BATTLESHIP</Description>
+		<Civilopedia>TXT_KEY_CIV5_INDUSTRIAL_BATTLESHIP_TEXT</Civilopedia>
+		<Strategy>TXT_KEY_UNIT_VIPERIAN_BATTLESHIP_STRATEGY</Strategy>
+		<Help>TXT_KEY_UNIT_HELP_VIPERIAN_BATTLESHIP</Help>
+		<MilitarySupport>true</MilitarySupport>
+		<MilitaryProduction>true</MilitaryProduction>
+		<Pillage>true</Pillage>
+		<IgnoreBuildingDefense>true</IgnoreBuildingDefense>
+		<Mechanized>true</Mechanized>
+		<AdvancedStartCost>60</AdvancedStartCost>
+		<MinAreaSize>20</MinAreaSize>
+		<XPValueAttack>3</XPValueAttack>
+		<XPValueDefense>3</XPValueDefense>
+		<UnitArtInfo>ART_DEF_UNIT_BATTLESHIP</UnitArtInfo>
+		<UnitFlagIconOffset>68</UnitFlagIconOffset>
+		<IconAtlas>UNIT_ATLAS_2</IconAtlas>
+		<PortraitIndex>21</PortraitIndex>
+		<MoveRate>BOAT</MoveRate>
+	</Row>
+
+	<Unit_AITypes>
+		<Row>
+			<UnitType>UNIT_VIPERIAN_BATTLESHIP</UnitType>
+			<UnitAIType>UNITAI_ATTACK_SEA</UnitAIType>
+		</Row>
+	</Unit_AITypes>
+
+	<Unit_Flavors>
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_OFFENSE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_DEFENSE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_NAVAL</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+	</Unit_Flavors>
+</GameData>

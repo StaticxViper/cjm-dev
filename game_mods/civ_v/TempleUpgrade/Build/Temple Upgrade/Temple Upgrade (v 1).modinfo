@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="d8ae5d63-c945-4f96-a687-672b565bef0e" version="1">
+  <Properties>
+    <Name>Temple Upgrade</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This is an upgrade to the default temple building, so players must have the temple built before building this temple upgrade.</Teaser>
+    <Description>This is an upgrade to the default temple building, so players must have the temple built before building this temple upgrade.
+
+This upgrade gives each city: 
++25 Culture
++25% Culture
++5 Happiness
++15 Faith</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="7D3671FB85B6BE7819FEA267A86C80C2" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="5246107747D9B5E594DE4C2936D699F6" import="0">XML/CIV5BuildingClasses.xml</File>
+    <File md5="17EB3BBC42D0929CAA3693EE3757AC1F" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

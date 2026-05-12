@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/13/2020 11:24:32 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_WATERMILL_UPGRADE</Type>
+			<DefaultBuilding>BUILDING_WATERMILL_UPGRADE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_WATERMILL_UPGRADE</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

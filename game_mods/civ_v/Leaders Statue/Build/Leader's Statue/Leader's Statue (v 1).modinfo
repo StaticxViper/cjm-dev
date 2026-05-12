@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="4c8342bf-acc9-466f-a07b-aed9605e7150" version="1">
+  <Properties>
+    <Name>Leader's Statue</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>A Leader's Statue is similar to a Monument or a Shrine, but adds +10 Culture, +10 Faith, and +5 Happiness to your Civ's city.</Teaser>
+    <Description>A Leader's Statue is similar to a Monument or a Shrine, but adds +10 Culture, +10 Faith, and +5 Happiness to your Civ's city.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>0</AffectsSavedGames>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="B687D4B2C1DCAED502FF49505B5330B2" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="EBAA38BDAEC91B70BCB0CD9B53117342" import="0">XML/CIV5BuildingClasses.xml</File>
+    <File md5="DE9BC1A6011D20D922F46547A6D9C356" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5BuildingClasses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

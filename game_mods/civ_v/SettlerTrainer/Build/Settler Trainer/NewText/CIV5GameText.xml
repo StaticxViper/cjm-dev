@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 10/15/2020 1:56:26 AM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_SETTLER_TRAINER">
+			<Text>Settler Trainer</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_SETTLER_TRAINER_STRATEGY">
+			<Text>This upgrade spawns 2 settler units near the city in which this upgrade was built.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_SETTLERTRAINER_TEXT">
+			<Text>This upgrade spawns 2 settler units near the city in which this upgrade was built.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_SETTLER_TRAINER_HELP">
+			<Text>This upgrade spawns 2 settler units near the city in which this upgrade was built.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_SETTLERTRAINER_HEADING">
+			<Text>Settler Trainer</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

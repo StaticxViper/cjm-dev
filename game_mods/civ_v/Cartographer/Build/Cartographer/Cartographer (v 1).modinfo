@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="b4347854-1b16-4d43-8c29-a011765f117c" version="1">
+  <Properties>
+    <Name>Cartographer</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>The Cartographer building adds the same promotion that scouts have to every unit built in the city that has the Cartography bui</Teaser>
+    <Description>The Cartographer building adds the same promotion that scouts have to every unit built in the city that has the Cartography building.
+
+This means that if this building is built in a city, every unit produced in said city will be able to move while ignoring terrain costs, just as scouts do.
+
+Also made so that AI Civs cannot build in their own cities.
+
+Note: This mod is very, very, very over powered. This is just for fun.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="BF2A9099C222D1D403262558CF2A006A" import="0">NewText/CIV5GameText.xml</File>
+    <File md5="5F3570508870E90033AACD7C605658B4" import="0">XML/CIV5BuildingClassses.xml</File>
+    <File md5="C3FF04A0BD39A5928D9218B450B1723E" import="0">XML/CIV5Buildings.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>XML/CIV5BuildingClassses.xml</UpdateDatabase>
+      <UpdateDatabase>XML/CIV5Buildings.xml</UpdateDatabase>
+      <UpdateDatabase>NewText/CIV5GameText.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

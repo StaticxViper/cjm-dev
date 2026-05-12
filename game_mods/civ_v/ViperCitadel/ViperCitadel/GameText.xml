@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/2/2024 1:54:55 PM -->
+<GameData>
+	<LocalizedText>
+		<!--Viper Citadel: Colonist-->
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_VIPER_CITADEL_COLONIST_DESC">
+			<Text>Viper Citadel: Colonist</Text>
+		</Row>
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_VIPER_CITADEL_COLONIST_PEDIA">
+			<Text>The Viper Citadel: Colonist is the cornerstone of genetic perfection and territorial expansion. Equipped with cutting-edge bioengineering labs and advanced growth chambers, this formidable facility creates top-of-the-line, perfectly genetic colonists. Each colonist is meticulously designed for optimal performance, ensuring rapid adaptation and superior capabilities in any environment. The Viper Citadel guarantees that every individual is crafted to excel, enabling swift and efficient colonization of new lands, driving the frontier forward with unparalleled precision and effectiveness.</Text>
+		</Row>
+		<!--Viper Citadel: Worker-->
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_VIPER_CITADEL_WORKER_DESC">
+			<Text>Viper Citadel: Worker</Text>
+		</Row>
+		<Row Language="en_US" Tag="TXT_KEY_BUILDING_VIPER_CITADEL_WORKER_PEDIA">
+			<Text>The Viper Citadel: Worker takes the original citadel's prowess to new heights by focusing on the creation of elite worker units. These top-tier workers are engineered with enhanced physical and cognitive abilities, tailored for rapid development and exceptional productivity. Within this upgraded facility, sophisticated automation and innovative bioengineering techniques converge to produce workers capable of accelerating infrastructure growth and resource management. The Viper Citadel: Upgrade is an essential asset for any expanding empire, ensuring that development keeps pace with colonization through unmatched efficiency and skill.</Text>
+		</Row>
+	</LocalizedText>
+</GameData>

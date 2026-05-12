@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_GRAND_COLOSSEUM">
+			<Text>Grand Colosseum</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_GRAND_COLOSSEUM_STRATEGY">
+			<Text>A Grand Colosseum is an upgrade to the default Colosseum, adding more [ICON_HAPPINESS_1] happiness and [ICON_GOLD] gold to your city. A Colosseum must be in the city before a Grand Colosseum.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANDCOLOSSEUM_TEXT">
+			<Text>A Grand Colosseum is an upgrade to the default Colosseum, adding more [ICON_HAPPINESS_1] happiness and [ICON_GOLD] gold to your city. A Colosseum must be in the city before a Grand Colosseum.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_GRAND_COLOSSEUM_HELP">
+			<Text>A Grand Colosseum is an upgrade to the default Colosseum, adding more [ICON_HAPPINESS_1] happiness and [ICON_GOLD] gold to your city. A Colosseum must be in the city before a Grand Colosseum.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_GRANDCOLOSSEUM_HEADING">
+			<Text>Grand Colosseum</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="4ff92bcf-752f-420a-a868-0c90063ac077" version="10">
+  <Properties>
+    <Name>Infinity Building</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>TEST MOD</Teaser>
+    <Description>This is just a first test mod to add a bunch of things to a city from a single building</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadLandmarkSystem>1</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>1</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>1</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="4AA38E40279686662FE919058276DC21" import="0">Infinity.xml</File>
+    <File md5="DC498B431E2DD78108ECAFF06699B233" import="0">Infinity_text.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>Infinity.xml</UpdateDatabase>
+      <UpdateDatabase>Infinity_text.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

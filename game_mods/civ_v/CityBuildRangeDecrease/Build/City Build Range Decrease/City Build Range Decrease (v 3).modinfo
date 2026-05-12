@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="cb83c6a5-e788-49cd-92e2-77e1c212c44c" version="3">
+  <Properties>
+    <Name>City Build Range Decrease</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>WORK IN PROGRESS</Teaser>
+    <Description>This modifies the rule where a city cannot be built within 3 tiles of another city.
+
+This mod decreases the limit from 3 to 1.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadLandmarkSystem>1</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>1</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>1</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="69CE17DA1DF96C5FCFBEE81255FA88A8" import="0">GameRules.xml</File>
+    <File md5="87FE96B36F3C2EDA3E52A0C648A70484" import="0">GameRules.sql</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>GameRules.sql</UpdateDatabase>
+      <UpdateDatabase>GameRules.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

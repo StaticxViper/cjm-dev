@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 5/27/2021 2:06:33 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_BETTER_TRAINING">
+			<Text>Better Training</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_BETTER_TRAINING_STRATEGY">
+			<Text>This upgrade adds a stupid amount of XP to any unit built in this city. (+1500 XP) Also adds the "Woodsman" promotion to all land units, which allows them to ignore the terrain costs of forests and jungles.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_BETTERTRAINING_TEXT">
+			<Text>This upgrade adds a stupid amount of XP to any unit built in this city. (+1500 XP) Also adds the "Woodsman" promotion to all land units, which allows them to ignore the terrain costs of forests and jungles.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_BETTER_TRAINING_HELP">
+			<Text>This upgrade adds a stupid amount of XP to any unit built in this city. (+1500 XP) Also adds the "Woodsman" promotion to all land units, which allows them to ignore the terrain costs of forests and jungles.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_BETTERTRAINING_HEADING">
+			<Text>Better Training</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

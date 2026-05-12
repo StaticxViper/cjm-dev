@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/2/2024 12:05:00 PM -->
+<GameData>
+	<Units>
+		<Row>
+			<Type>UNIT_MARINE</Type>
+			<Class>UNITCLASS_MARINE</Class>
+			<Combat>10</Combat>
+			<Cost>50</Cost>
+			<PrereqTech>TECH_HABITATION</PrereqTech>
+			<Description>TXT_KEY_UNIT_MARINE</Description>
+			<Civilopedia>TXT_KEY_UNIT_MARINE_PEDIA</Civilopedia>
+			<Help>TXT_KEY_UNIT_MARINE_HELP</Help>
+			<Moves>2</Moves>
+			<CombatClass>UNITCOMBAT_MELEE</CombatClass>
+			<Domain>DOMAIN_LAND</Domain>
+			<DefaultUnitAI>UNITAI_ATTACK</DefaultUnitAI>
+			<MilitarySupport>true</MilitarySupport>
+			<MilitaryProduction>true</MilitaryProduction>
+			<Pillage>true</Pillage>
+			<AdvancedStartCost>10</AdvancedStartCost>
+			<XPValueAttack>3</XPValueAttack>
+			<XPValueDefense>3</XPValueDefense>
+			<Conscription>1</Conscription>
+			<UnitArtInfo>ART_DEF_UNIT_MARINE</UnitArtInfo>
+			<UnitArtInfoUpgradeVariation>true</UnitArtInfoUpgradeVariation>
+		
+
+		<!--TESTING-->
+
+		</Row>
+	</Units>
+
+	<Unit_AITypes>
+		<Row>
+			<UnitType>UNIT_MARINE</UnitType>
+			<UnitAIType>UNITAI_ATTACK</UnitAIType>
+		</Row>
+		<Row>
+			<UnitType>UNIT_MARINE</UnitType>
+			<UnitAIType>UNITAI_DEFENSE</UnitAIType>
+		</Row>
+
+		<!--TESTING-->
+	</Unit_AITypes>
+	<!-- Unit_Buildings -->
+	<!-- Unit_BuildingClassRequireds -->
+	<!-- Unit_ProductionModifierBuildings -->
+	<!-- Unit_Builds -->
+	<Unit_FreePromotions>
+		<Row>
+			<UnitType>UNIT_MARINE</UnitType>
+			<PromotionType>PROMOTION_IGNORE_TERRAIN_COST</PromotionType>
+		</Row>
+		<Row>
+			<UnitType>UNIT_MARINE</UnitType>
+			<PromotionType>PROMOTION_SPAWN_GENERALS_II</PromotionType>
+		</Row>
+	</Unit_FreePromotions>
+	<Unit_Flavors>
+		<!--TESTING-->
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_OFFENSE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_DEFENSE</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<UnitType>UNIT_BATTLESHIP</UnitType>
+			<FlavorType>FLAVOR_NAVAL</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+
+	</Unit_Flavors>
+	<!-- Unit_GreatPersons -->
+
+	<!-- Unit_UniqueNames -->
+	<!-- Unit_YieldFromKills -->
+	<!-- Unit_NotAITypes -->
+	<!-- Unit_ProductionTraits -->
+	<!-- Unit_TechTypes -->
+	<!-- UnitPromotions_CivilianUnitType -->
+	<UnitGameplay2DScripts>
+		<Row>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+			<SelectionSound>AS2D_SELECT_JAPANESE_SAMURAI</SelectionSound>
+			<FirstSelectionSound>AS2D_BIRTH_JAPANESE_SAMURAI</FirstSelectionSound>
+		</Row>
+	</UnitGameplay2DScripts>
+
+
+
+	<Language_en_US>
+		<Row Tag="TXT_KEY_UNIT_JAPANESE_SAMURAI">
+			<Text>Viperian Viper</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIVILOPEDIA_UNITS_MEDIEVAL_SAMURAI_TEXT">
+			<Text>
+				<!-- Add Civilopedia text here -->
+			</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_JAPANESE_SAMURAI_STRATEGY">
+			<Text>The Vipers are the unique unit for the Viper Empire, replacing the Longswordsman. As powerful as the Swordsman, the Viper automatically receives the "Shock I" promotion, giving it a bonus when fighting in open terrain. Success in combat with a Samurai has an increased chance of generating Great Generals.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_HELP_SAMURAI">
+			<Text>Powerful Medieval infantry Unit. Only the Viper Empire may build it. This Unit fights more effectively and helps produce Great Generals more quickly than the Longswordsman, which it replaces.</Text>
+		</Row>
+
+		<!--TESTING-->
+		<Row Tag="TXT_KEY_UNIT_BATTLESHIP">
+			<Text>Viperian Battleship</Text>
+		</Row>
+		<Row Tag="TXT_KEY_UNIT_HELP_BATTLESHIP">
+			<Text>TEST</Text>
+		</Row>
+
+	</Language_en_US>
+</GameData>

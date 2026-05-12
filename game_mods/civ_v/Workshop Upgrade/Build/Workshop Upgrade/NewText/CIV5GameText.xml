@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/13/2020 10:52:31 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_WORKSHOP_UPGRADE">
+			<Text>Workshop Upgrade</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_WORKSHOP_UPGRADE_STRATEGY">
+			<Text>A Workshop Upgrade is an upgrade to the default Workshop, adding more [ICON_PRODUCTION] Production to your city. A Workshop must  be in the city before the Workshop Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_WORKSHOPUPGRADE_TEXT">
+			<Text>A Workshop Upgrade is an upgrade to the default Workshop, adding more [ICON_PRODUCTION] Production to your city. A Workshop must  be in the city before the Workshop Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_WORKSHOP_UPGRADE_HELP">
+			<Text>A Workshop Upgrade is an upgrade to the default Workshop, adding more [ICON_PRODUCTION] Production to your city. A Workshop must  be in the city before the Workshop Upgrade.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_WORKSHOPUPGRADE_HEADING">
+			<Text>Workshop Upgrade</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

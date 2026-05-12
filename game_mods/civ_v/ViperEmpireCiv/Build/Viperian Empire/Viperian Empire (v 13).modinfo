@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="c6ef1b8e-f6d2-4e85-bd2f-e632ab00f29b" version="13">
+  <Properties>
+    <Name>Viperian Empire</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>My very first modded civilization!</Teaser>
+    <Description>My very first modded civilization! This has a load of mods that basically makes the civ OP.</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="52301EE74A4DC66F3E5A1594188D9241" import="0">SQL/Units.sql</File>
+    <File md5="4E57BD58FCCF4127451359014CBAD138" import="0">XML/Buildings.xml</File>
+    <File md5="C637C3B178C84DB7B73E39DE077FD442" import="0">XML/Civilization.xml</File>
+    <File md5="E268AE93AB2D0A88FE9BD2800326836F" import="0">XML/Leader.xml</File>
+    <File md5="F43A907136CFB38458954AB0CDACC1F1" import="0">XML/Trait.xml</File>
+    <File md5="F1754BFC65DBEF4B797F4C24CFB3A6B1" import="0">XML/Units.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>XML/Buildings.xml</UpdateDatabase>
+      <UpdateDatabase>XML/Civilization.xml</UpdateDatabase>
+      <UpdateDatabase>XML/Leader.xml</UpdateDatabase>
+      <UpdateDatabase>XML/Trait.xml</UpdateDatabase>
+      <UpdateDatabase>XML/Units.xml</UpdateDatabase>
+      <UpdateDatabase>SQL/Units.sql</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

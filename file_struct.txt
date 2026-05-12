@@ -1,13 +1,10 @@
 *** This file is just for reference, depicting this repos file hierarchy
 
 
-cjm-dev: (Repo)
-    /devices
-        /lenovo
-            /video_editing
-
-        /rpi
-
-    /experiments
-    /scripts
-    /shared
+cjm-dev/
+    ../logs = Place for untracked logs files
+    ../scripts = Main scripts, can be run anywhere from any device
+    ../helper_scripts = Scripts that support main scripts
+        ../../utilities = Utility helper scripts to handle device updates, logger, etc.
+    ../requirements = Dir for requirements.txt
+    ../unittests = Dir unittests

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/25/2020 2:22:41 AM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_SPY_HEADQUARTERS">
+			<Text>Spy Headquarters</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_SPY_HEADQUARTERS_STRATEGY">
+			<Text>The Spy Headquarters adds +2 [ICON_SPY] Spies, +15 [ICON_STRENGTH] Defense, and -25% enemy spy stealing rate.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_SPYHEADQUARTERS_TEXT">
+			<Text>The Spy Headquarters adds +2 [ICON_SPY] Spies, +15 [ICON_STRENGTH] Defense, and -25% enemy spy stealing rate.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_SPY_HEADQUARTERS_HELP">
+			<Text>The Spy Headquarters adds +2 [ICON_SPY] Spies, +15 [ICON_STRENGTH] Defense, and -25% enemy spy stealing rate.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_SPYHEADQUARTERS_HEADING">
+			<Text>Spy Headquarters</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

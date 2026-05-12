@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/25/2020 2:23:03 AM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_SPY_HEADQUARTERS</Type>
+			<DefaultBuilding>BUILDING_SPY_HEADQUARTERS</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_SPY_HEADQUARTERS</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

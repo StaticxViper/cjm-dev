@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 5/26/2021 1:59:07 AM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_CARTOGRAPHER">
+			<Text>Cartographer</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_CARTOGRAPHER_STRATEGY">
+			<Text>A Cartographer allows each unit made in this city to move without terrain costs.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_CARTOGRAPHER_TEXT">
+			<Text>Gives units scout maneuverability.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_CARTOGRAPHERT_HELP">
+			<Text>City must have a Barracks before the Cartographer can be built.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_CARTOGRAPHER_HEADING">
+			<Text>Cartographer</Text>
+		</Row>
+	</Language_en_US>
+</GameData>

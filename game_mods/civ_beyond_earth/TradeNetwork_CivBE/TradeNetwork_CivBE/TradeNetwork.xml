@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 6/8/2024 12:34:16 PM -->
+<GameData>
+	<Buildings>
+		<Row>
+			<Type>BUILDING_TRADE_NETWORK</Type>
+			<BuildingClass>BUILDINGCLASS_TRADE_NETWORK</BuildingClass>
+			<Cost>50</Cost>
+			<ConquestProbability>67</ConquestProbability>
+			<PrereqTech>TECH_PIONEERING</PrereqTech>
+			<Description>TXT_KEY_BUILDING_TRADE_NETWORK_DESC</Description>
+			<Civilopedia>TXT_KEY_BUILDING_TRADE_NETWORK_PEDIA</Civilopedia>
+			<ArtDefineTag>ART_DEF_BUILDING_RELIC</ArtDefineTag>
+			<IconAtlas>BW_ATLAS_1</IconAtlas>
+			<PortraitIndex>33</PortraitIndex>
+
+			<!--TESTING-->
+			
+
+			<!--TESTING END-->
+
+		</Row>
+	</Buildings>
+
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_TRADE_NETWORK</Type>
+			<DefaultBuilding>BUILDING_TRADE_NETWORK</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_TRADE_NETWORK_DESC</Description>
+		</Row>
+	</BuildingClasses>
+
+	<Building_YieldChanges>
+		<Row>
+			<BuildingType>BUILDING_TRADE_NETWORK</BuildingType>
+			<YieldType>YIELD_PRODUCTION</YieldType>
+			<Yield>15</Yield>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_TRADE_NETWORK</BuildingType>
+			<YieldType>YIELD_ENERGY</YieldType>
+			<Yield>25</Yield>
+		</Row>
+	</Building_YieldChanges>
+
+	<Building_YieldModifiers>
+		<Row>
+			<BuildingType>BUILDING_TRADE_NETWORK</BuildingType>
+			<YieldType>YIELD_SCIENCE</YieldType>
+			<Yield>10</Yield>
+		</Row>
+	</Building_YieldModifiers>
+
+	<Building_Flavors>
+		<Row>
+			<BuildingType>BUILDING_TRADE_NETWORK</BuildingType>
+			<FlavorType>FLAVOR_ENERGY</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+		<Row>
+			<BuildingType>BUILDING_TRADE_NETWORK</BuildingType>
+			<FlavorType>FLAVOR_PRODUCTION</FlavorType>
+			<Flavor>-999</Flavor>
+		</Row>
+	</Building_Flavors>
+</GameData>

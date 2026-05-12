@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 11/30/2022 6:28:07 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_BUILD_ALL_ANCIENT</Type>
+			<DefaultBuilding>BUILDING_BUILD_ALL_ANCIENT</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_BUILD_ALL_ANCIENT</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>

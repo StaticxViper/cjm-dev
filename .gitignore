@@ -3,14 +3,15 @@
 __pycache__/
 *.pyc
 .vscode/
-*log.txt
-*.log
-logs/
 *_PRIVATE.txt
 *output/
 *example.json
 .bashrc
+*.egg-info/
 
 *emails_to_send.csv
 *contacted.txt
 *leads_output.csv
+
+*log.txt
+*.log

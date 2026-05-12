@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<VSTemplate Version="3.0.0" Type="Project" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.microsoft.com/developer/vstemplate/2005">
+  <TemplateData>
+    <Name>Empty Mod</Name>
+    <Description>A Civilization 5 mod containing no generated items.</Description>
+    <Icon>Empty Mod.ico</Icon>
+    <ProjectType>Civ5Mod</ProjectType>
+    <!--<RequiredFrameworkVersion>3.0</RequiredFrameworkVersion>-->
+    <CreateNewFolder>true</CreateNewFolder>
+    <DefaultName>Civ5Mod</DefaultName>
+    <ProvideDefaultName>true</ProvideDefaultName>
+    <PromptForSaveOnCreation>false</PromptForSaveOnCreation>
+    <EnableLocationBrowseButton>true</EnableLocationBrowseButton>
+  </TemplateData>
+  <TemplateContent>
+    <Project File="Empty Mod.civ5proj" ReplaceParameters="true" />
+  </TemplateContent>
+  <WizardExtension>
+    <Assembly>ModBuddy.Civ5ModProjectWizards, Version=1.0.0.0, Culture=neutral, PublicKeyToken=26bc9d539e350d27</Assembly>
+    <FullClassName>Firaxis.ModBuddy.ProjectWizards.Civ5BasicNewModWizard</FullClassName>
+  </WizardExtension>
+</VSTemplate>

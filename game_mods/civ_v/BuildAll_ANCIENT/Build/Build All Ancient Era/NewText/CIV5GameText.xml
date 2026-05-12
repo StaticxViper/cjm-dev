@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 11/30/2022 6:28:22 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_BUILD_ALL_ANCIENT">
+			<Text>Build All: Ancient Era</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_BUILD_ALL_ANCIENT_STRATEGY">
+			<Text>Builds all Ancient Era buildings!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_BUILDALLANCIENT_TEXT">
+			<Text>Builds all Ancient Era buildings!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_BUILD_ALL_ANCIENT_HELP">
+			<Text>Builds all Ancient Era buildings!</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_BUILDALLANCIENT_HEADING">
+			<Text>Build All: Ancient Era</Text>
+		</Row>
+	</Language_en_US>
+</GameData>
