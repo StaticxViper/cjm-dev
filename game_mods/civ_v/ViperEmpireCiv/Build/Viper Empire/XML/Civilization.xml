@@ -1,0 +1,545 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameData>
+  <Civilizations>
+    <Row>
+      <Type>CIVILIZATION_VIPERIAN</Type>
+      <Description>TXT_KEY_CIV_VIPERIAN_DESC</Description>
+      <Civilopedia></Civilopedia>
+      <CivilopediaTag>TXT_KEY_CIV5_VIPERIAN</CivilopediaTag>
+      <Strategy></Strategy>
+      <Playable>1</Playable>
+      <AIPlayable>0</AIPlayable>
+      <ShortDescription>TXT_KEY_CIV_VIPERIAN_SHORT_DESC</ShortDescription>
+      <Adjective>TXT_KEY_CIV_VIPERIAN_ADJECTIVE</Adjective>
+      <DefaultPlayerColor>PLAYERCOLOR_VIPERIAN</DefaultPlayerColor>
+      <ArtDefineTag>ART_DEF_CIVILIZATION_JAPAN</ArtDefineTag>
+      <ArtStyleType>ARTSTYLE_ASIAN</ArtStyleType>
+      <ArtStyleSuffix>_ASIA</ArtStyleSuffix>
+      <ArtStylePrefix>ASIAN</ArtStylePrefix>
+      <DerivativeCiv></DerivativeCiv>
+		<PortraitIndex>17</PortraitIndex>
+		<IconAtlas>CIV_COLOR_ATLAS</IconAtlas>
+		<AlphaIconAtlas>CIV_ALPHA_ATLAS</AlphaIconAtlas>
+		<MapImage>MapRome512.dds</MapImage>
+      <DawnOfManQuote>TXT_KEY_CIV5_DAWN_VIPERIAN_TEXT</DawnOfManQuote>
+		<DawnOfManImage>DOM_Augustus.dds</DawnOfManImage>
+      <DawnOfManAudio>AS2D_DOM_SPEECH_VIPERIAN</DawnOfManAudio>
+      <SoundtrackTag></SoundtrackTag>
+    </Row>
+  </Civilizations>
+
+  <Civilization_BuildingClassOverrides>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <BuildingClassType>BUILDINGCLASS_MONUMENT</BuildingClassType>
+      <BuildingType>BUILDING_VIPERIAN_PYRAMIDS</BuildingType>
+    </Row>
+  </Civilization_BuildingClassOverrides>
+
+	<Civilization_UnitClassOverrides>
+		<Row>
+			<CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+			<UnitClassType>UNITCLASS_LONGSWORDSMAN</UnitClassType>
+			<UnitType>UNIT_JAPANESE_SAMURAI</UnitType>
+		</Row>
+
+		
+	</Civilization_UnitClassOverrides>
+	
+  <Civilization_CityNames>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_0</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_1</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_2</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_3</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_4</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_5</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_6</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_7</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_8</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_9</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_10</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_11</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_12</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_13</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_14</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_15</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_16</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_17</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_18</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_19</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_20</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_21</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_22</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_23</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_24</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_25</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_26</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_27</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_28</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_29</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_30</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_31</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_32</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_33</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_34</CityName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <CityName>TXT_KEY_CITY_NAME_VIPERIAN_35</CityName>
+    </Row>
+  </Civilization_CityNames>
+  <!-- Civilization_DisableTechs -->
+  <Civilization_FreeBuildingClasses>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <BuildingClassType>BUILDINGCLASS_PALACE</BuildingClassType>
+    </Row>
+  </Civilization_FreeBuildingClasses>
+  <Civilization_FreeTechs>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <TechType>TECH_AGRICULTURE</TechType>
+    </Row>
+  </Civilization_FreeTechs>
+  <Civilization_FreeUnits>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <UnitClassType>UNITCLASS_SETTLER</UnitClassType>
+      <UnitAIType>UNITAI_SETTLE</UnitAIType>
+      <Count>1</Count>
+    </Row>
+  </Civilization_FreeUnits>
+  <Civilization_Leaders>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <LeaderheadType>LEADER_SXVI</LeaderheadType>
+    </Row>
+  </Civilization_Leaders>
+  <Civilization_Religions>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <ReligionType>RELIGION_CHRISTIANITY</ReligionType>
+    </Row>
+  </Civilization_Religions>
+  <Civilization_SpyNames>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_0</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_1</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_2</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_3</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_4</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_5</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_6</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_7</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_8</SpyName>
+    </Row>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <SpyName>TXT_KEY_SPY_NAME_VIPERIAN_9</SpyName>
+    </Row>
+  </Civilization_SpyNames>
+  
+  <!-- Civilization_Start_Along_Ocean -->
+
+	<Civilization_Start_Along_Ocean>true</Civilization_Start_Along_Ocean> <!--TESTING-->
+	
+  <!-- Civilization_Start_Along_River -->
+	
+<!--<Civilization_Start_Region_Priority>
+    <Row>
+      <CivilizationType>CIVILIZATION_VIPERIAN</CivilizationType>
+      <RegionType>REGION_FOREST</RegionType>
+    </Row>
+  </Civilization_Start_Region_Priority>-->
+	
+  <!-- Civilization_Start_Region_Avoid -->
+  <!-- Civilization_Start_Place_First_Along_Ocean -->
+
+  <PlayerColors>
+    <Row>
+      <Type>PLAYERCOLOR_VIPERIAN</Type>
+      <PrimaryColor>COLOR_PLAYER_VIPERIAN_ICON</PrimaryColor>
+      <SecondaryColor>COLOR_PLAYER_VIPERIAN_BACKGROUND</SecondaryColor>
+      <TextColor>COLOR_PLAYER_WHITE_TEXT</TextColor>
+    </Row>
+  </PlayerColors>
+  <Colors>
+    <Row>
+      <Type>COLOR_PLAYER_VIPERIAN_BACKGROUND</Type>
+      <Red>0.0</Red>
+      <Green>0.0</Green>
+      <Blue>0.0</Blue>
+      <Alpha>1.0</Alpha>
+    </Row>
+  </Colors>
+  <Colors>
+    <Row>
+      <Type>COLOR_PLAYER_VIPERIAN_ICON</Type>
+		<Red>0.4471</Red>
+		<Green>0.0431</Green>
+		<Blue>0.5961</Blue>
+      <Alpha>1.0</Alpha>
+    </Row>
+  </Colors>
+
+  <Language_en_US>
+    <Row Tag="TXT_KEY_CIV_VIPERIAN_DESC">
+      <Text>Viperian Empire</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_FACTOID_HEADING">
+      <Text>Factoids</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_FACTOID_TEXT">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_1">
+      <Text>History</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_10">
+      <Text>The Viper Language</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_11">
+      <Text>Modern Ancestry</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_2">
+      <Text>Terrain and Climate</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_3">
+      <Text>Viperian Origins</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_4">
+      <Text>Viperian</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_5">
+      <Text>The Viperians</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_6">
+      <Text>The Empire</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_7">
+      <Text>The Viper Empire Conquest</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_8">
+      <Text>Influence of Viper Culture</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_HEADING_9">
+      <Text>Viperian Religion</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_1">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_10">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_11">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_2">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_3">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_4">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_5">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_6">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_7">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_8">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TEXT_9">
+      <Text><!-- Add Civilopedia text here --></Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_VIPERIAN_TITLE">
+      <Text>Viperian Empire</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV_VIPERIAN_SHORT_DESC">
+      <Text>Viperians</Text>
+      <Plurality>2</Plurality>
+    </Row>
+    <Row Tag="TXT_KEY_CIV_VIPERIAN_ADJECTIVE">
+      <Text>Viperian</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CIV5_DAWN_VIPERIAN_TEXT">
+      <Text>StaticxViper's Modded Civ</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_0">
+      <Text>Viper</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_1">
+      <Text>Marsia</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_2">
+      <Text>Raizzia</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_3">
+      <Text>Zondirth</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_4">
+      <Text>Mazzul</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_5">
+      <Text>Polrool</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_6">
+      <Text>Vythiss</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_7">
+      <Text>Vulore</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_8">
+      <Text>Titan</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_9">
+      <Text>Udraal</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_10">
+      <Text>Sorvess</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_11">
+      <Text>Champion</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_12">
+      <Text>Piran</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_13">
+      <Text>Duzzo</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_14">
+      <Text>Irsy</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_15">
+      <Text>Zove</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_16">
+      <Text>Ryrmil</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_17">
+      <Text>Frozond</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_18">
+      <Text>Tuse</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_19">
+      <Text>Basan</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_20">
+      <Text>Uvor</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_21">
+      <Text>Omer</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_22">
+      <Text>Norsed</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_23">
+      <Text>Akatz</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_24">
+      <Text>Monique</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_25">
+      <Text>Galway</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_26">
+      <Text>Vari</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_27">
+      <Text>Mez</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_28">
+      <Text>Xavier</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_29">
+      <Text>Onchan</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_30">
+      <Text>Haniko</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_31">
+      <Text>Killua</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_32">
+      <Text>Vyzeria</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_33">
+      <Text>Zooneth</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_34">
+      <Text>Lorient</Text>
+    </Row>
+    <Row Tag="TXT_KEY_CITY_NAME_VIPERIAN_35">
+      <Text>Mazaria</Text>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_0">
+      <Text>Crìsdean</Text>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_1">
+      <Text>Siobhán</Text>
+      <Gender>feminine</Gender>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_2">
+      <Text>Seamus</Text>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_3">
+      <Text>Ffion</Text>
+      <Gender>feminine</Gender>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_4">
+      <Text>Pádraig</Text>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_5">
+      <Text>Deirdre</Text>
+      <Gender>feminine</Gender>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_6">
+      <Text>Mr. Quinn</Text>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_7">
+      <Text>Éadaoin</Text>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_8">
+      <Text>Alwyn</Text>
+    </Row>
+    <Row Tag="TXT_KEY_SPY_NAME_VIPERIAN_9">
+      <Text>Col Ceathar</Text>
+    </Row>
+  </Language_en_US>
+</GameData>

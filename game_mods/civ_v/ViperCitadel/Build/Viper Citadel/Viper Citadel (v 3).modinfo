@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="bdd84973-2e2e-4c31-86c1-2257c5d63549" version="3">
+  <Properties>
+    <Name>Viper Citadel</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>This mod comes with 2 buildings for the player's Civ. (AI cannot build)
+
+First Building: "Citadel"
+- Give the player 2 colon</Teaser>
+    <Description>This mod comes with 2 buildings for the player's Civ. (AI cannot build)
+
+First Building: "Viper Citadel: Colonist"
+- Give the player 1 colonist units for faster expansion
+- Give the city +25% food, +15 % science, +25% culture
+
+Second Building: "Viper Citadel: Worker"
+- Give the player 2 worker unit for faster tile improvement
+- Give the city +15% production, +25% energy, +25% culture</Description>
+    <Authors>StaticxViper</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="409EFCC7CAB4F7B576430082CE1E78DC" import="0">ViperCitadel_Colonist.xml</File>
+    <File md5="D3D07ED5012DAEA21745D07429657E43" import="0">ViperCitadel_Worker.xml</File>
+    <File md5="8F8905CC816DF503FF39E1243384884E" import="0">GameText.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>GameText.xml</UpdateDatabase>
+      <UpdateDatabase>ViperCitadel_Colonist.xml</UpdateDatabase>
+      <UpdateDatabase>ViperCitadel_Worker.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

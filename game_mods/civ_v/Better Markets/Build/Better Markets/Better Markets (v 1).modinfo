@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mod id="b821332f-70d6-40c2-8a59-f5c56091dc76" version="1">
+  <Properties>
+    <Name>Better Markets</Name>
+    <Stability>Alpha</Stability>
+    <Teaser>A mod that improves the yeild of markets and other gold related buildings...</Teaser>
+    <Description>A mod that improves the yeild of markets and other gold related buildings...</Description>
+    <Authors>cj3_3</Authors>
+    <HideSetupGame>0</HideSetupGame>
+    <AffectsSavedGames>1</AffectsSavedGames>
+    <MinCompatibleSaveVersion>0</MinCompatibleSaveVersion>
+    <SupportsSinglePlayer>1</SupportsSinglePlayer>
+    <SupportsMultiplayer>1</SupportsMultiplayer>
+    <SupportsHotSeat>1</SupportsHotSeat>
+    <SupportsMac>1</SupportsMac>
+    <ReloadAudioSystem>0</ReloadAudioSystem>
+    <ReloadLandmarkSystem>0</ReloadLandmarkSystem>
+    <ReloadStrategicViewSystem>0</ReloadStrategicViewSystem>
+    <ReloadUnitSystem>0</ReloadUnitSystem>
+  </Properties>
+  <Dependencies />
+  <References />
+  <Blocks />
+  <Files>
+    <File md5="FAEA905BA86F678F9FE151F0F32FB776" import="0">XML/Market.xml</File>
+  </Files>
+  <Actions>
+    <OnModActivated>
+      <UpdateDatabase>XML/Market.xml</UpdateDatabase>
+    </OnModActivated>
+  </Actions>
+</Mod>

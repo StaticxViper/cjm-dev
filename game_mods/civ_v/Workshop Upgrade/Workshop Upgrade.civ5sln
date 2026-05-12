@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# ModBuddy Solution File, Format Version 11.00
+Project("{F5FC21B5-7CC2-458A-ABBA-992F515BBA20}") = "Workshop Upgrade", "Workshop Upgrade\Workshop Upgrade.civ5proj", "{258CE78C-3EC5-491B-9008-F59563FB7051}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Default|x86 = Default|x86
+		Deploy Only|x86 = Deploy Only|x86
+		Package Only|x86 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{258CE78C-3EC5-491B-9008-F59563FB7051}.Default|x86.ActiveCfg = Default|x86
+		{258CE78C-3EC5-491B-9008-F59563FB7051}.Default|x86.Build.0 = Default|x86
+		{258CE78C-3EC5-491B-9008-F59563FB7051}.Deploy Only|x86.ActiveCfg = Deploy Only|x86
+		{258CE78C-3EC5-491B-9008-F59563FB7051}.Deploy Only|x86.Build.0 = Deploy Only|x86
+		{258CE78C-3EC5-491B-9008-F59563FB7051}.Package Only|x86.ActiveCfg = Package Only|x86
+		{258CE78C-3EC5-491B-9008-F59563FB7051}.Package Only|x86.Build.0 = Package Only|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

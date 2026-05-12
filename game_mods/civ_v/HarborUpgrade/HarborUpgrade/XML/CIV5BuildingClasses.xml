@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 10/24/2022 7:24:00 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_HARBOR_UPGRADE</Type>
+			<DefaultBuilding>BUILDING_HARBOR_UPGRADE</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_HARBOR_UPGRADE</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>
