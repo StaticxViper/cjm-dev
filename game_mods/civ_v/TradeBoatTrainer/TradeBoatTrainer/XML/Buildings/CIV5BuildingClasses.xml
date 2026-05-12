@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:47 PM -->
+<GameData>
+	<BuildingClasses>
+		<Row>
+			<Type>BUILDINGCLASS_TRADE_BOAT_TRAINER</Type>
+			<DefaultBuilding>BUILDING_TRADE_BOAT_TRAINER</DefaultBuilding>
+			<Description>TXT_KEY_BUILDING_TRADE_BOAT_TRAINER</Description>
+		</Row>
+	</BuildingClasses>
+</GameData>
