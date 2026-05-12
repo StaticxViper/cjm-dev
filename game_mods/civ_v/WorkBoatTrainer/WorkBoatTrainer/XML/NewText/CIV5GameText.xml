@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Created by ModBuddy on 1/8/2020 3:31:30 PM -->
+<GameData>
+	<Language_en_US>
+		<Row Tag="TXT_KEY_BUILDING_WORK_BOAT_TRAINER">
+			<Text>Work Boat Trainer</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_WORK_BOAT_TRAINER_STRATEGY">
+			<Text>Build this in a city that already has a Market to receive two Work Boats when the building completes. Use them to improve sea resources or clear sea debris.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_WORKBOATTRAINER_TEXT">
+			<Text>The Work Boat Trainer is a harbor school and outfitting yard. When the building is completed, the city gains two Work Boats. A Market must already exist in the city.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_BUILDING_WORK_BOAT_TRAINER_HELP">
+			<Text>Requires a Market in this city. Grants 2 Work Boats when built.</Text>
+		</Row>
+		<Row Tag="TXT_KEY_CIV5_BUILDINGS_WORKBOATTRAINER_HEADING">
+			<Text>Work Boat Trainer</Text>
+		</Row>
+	</Language_en_US>
+</GameData>
