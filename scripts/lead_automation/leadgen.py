@@ -23,6 +23,7 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 import os
+import argparse
 from dotenv import load_dotenv
 from leadfilter import load_existing_place_ids, is_new_place
 
@@ -240,7 +241,7 @@ def score_lead(has_website, https, has_viewport, html_length, emails, has_cta, r
     return score
 
 
-def process_businesses(businesses, api_key, existing_ids, contacted_emails):
+def process_businesses(businesses, api_key, existing_ids, contacted_emails, pipeline_group):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
     enriched = []
     logger.critical("Fetching place details for %d businesses", len(businesses))
@@ -344,7 +345,8 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             "has_viewport": a.get("has_viewport", False),
             "html_length": a.get("html_length", 0),
             "lead_score": lead_score,
-            "niche_key": b.get("niche_key")
+            "niche_key": b.get("niche_key"),
+            "pipeline_group": pipeline_group,
         }
         rows.append(row)
     return rows
@@ -375,10 +377,19 @@ def save_results(rows, csv_path):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Local business lead generation")
+    parser.add_argument(
+        "--group",
+        required=True,
+        help="Pipeline group label stored on each lead as pipeline_group",
+    )
+    args = parser.parse_args()
+    pipeline_group = args.group
+
     if GOOGLE_API_KEY == "YOUR_GOOGLE_API_KEY":
         logger.error("Please set GOOGLE_API_KEY in the script before running.")
         return
-    
+
     logger.critical("Loading contacted emails to avoid re-contacting...")
     # Load contacted emails to avoid re-contacting
     if os.path.exists(CONTACTED_FILE):
@@ -395,7 +406,9 @@ def main():
                 if not places:
                     logger.critical("No places found; Moving to next location.")
                     continue
-                rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
+                rows = process_businesses(
+                    places, GOOGLE_API_KEY, existing_place_ids, contacted_emails, pipeline_group
+                )
                 save_results(rows, f"{CSV_OUTPUT}")
             except Exception as e:
                 logger.error(f"Error processing businesses for {city}, {state}: {e}")

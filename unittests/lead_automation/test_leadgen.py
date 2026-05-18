@@ -120,7 +120,7 @@ class TestGetPlaces(unittest.TestCase):
         )
         self.assertEqual(len(places), 1)
         self.assertEqual(places[0]["place_id"], "ChIJ1")
-        self.assertEqual(places[0]["category"], "landscaping")
+        self.assertEqual(places[0]["niche_key"], "landscaping")
         self.assertIn("place_id", places[0])
 
 
