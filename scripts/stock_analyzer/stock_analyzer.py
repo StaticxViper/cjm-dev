@@ -1,13 +1,6 @@
-import sys
-from pathlib import Path
-
-# Add repo root to sys.path
-repo_root = Path(__file__).resolve().parents[2]  # stock_analyzer.py -> stock_analyzer/ -> scripts/ -> repo_root
-sys.path.insert(0, str(repo_root))
-
 from datetime import date
-from helper_scripts.api_manager import APIManager as api
-from helper_scripts.utilities.logger import setup_logger
+from helper_scripts.api_manager.api_manager import APIManager as api
+from helper_scripts.utils.logger.logger import setup_logger
 
 logger = setup_logger(
     name="stock-analyzer",
@@ -28,7 +21,7 @@ def main():
     logger.critical(f"Current Stock Watchlist extracted: {result['tickers']}")
 
     # Call API Manager (Apify Functions)
-    with open("previous_run_date.txt", 'r') as file:
+    with open("scripts/stock_analyzer/previous_run_date.txt", 'r') as file:
         previous_date = file.read()
         file.close()
     todays_date = date.today().strftime("%Y-%m-%d")

@@ -5,6 +5,6 @@ cjm-dev/
     ../logs = Place for untracked logs files
     ../scripts = Main scripts, can be run anywhere from any device
     ../helper_scripts = Scripts that support main scripts
-        ../../utilities = Utility helper scripts to handle device updates, logger, etc.
+        ../../utils = Utility helper scripts to handle device updates, logger, etc.
     ../requirements = Dir for requirements.txt
     ../unittests = Dir unittests
