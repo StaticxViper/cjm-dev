@@ -16,7 +16,7 @@ sys.path.insert(0, str(repo_root))
 
 import json
 import os
-from helper_scripts.utilities.logger import setup_logger
+from helper_scripts.utils.logger import setup_logger
 
 logger = setup_logger(
     name="json-formatter",

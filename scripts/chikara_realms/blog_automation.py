@@ -9,7 +9,7 @@ sys.path.insert(0, str(repo_root))
 from openai import OpenAI
 from perplexity import Perplexity
 from helper_scripts.api_manager import APIManager as api
-from helper_scripts.utilities.logger import setup_logger
+from helper_scripts.utils.logger import setup_logger
 
 logger = setup_logger(
     name="blog-automation",
