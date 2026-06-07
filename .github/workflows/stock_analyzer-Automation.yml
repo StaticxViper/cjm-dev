@@ -16,5 +16,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - run: PYTHONPATH=$GITHUB_WORKSPACE python scripts/stock_analyzer/stock_analyzer.py
       - run: pip install -r requirements/requirements.txt
       - run: python scripts/stock_analyzer/stock_analyzer.py
