@@ -1,23 +1,20 @@
 name: Daily Stock Analysis
-
 on:
   schedule:
-    # 9:00 AM EST = 14:00 UTC
-    - cron: '0 14 * * *'
-
+    # 9:00 AM EST = 14:00 UTC, Monday-Friday only
+    - cron: '0 14 * * 1-5'
   workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - run: pip install -r requirements/requirements.txt
-
       - run: python scripts/stock_analyzer/stock_analyzer.py
