@@ -2,7 +2,7 @@
 Unit tests for scripts/lead_automation/leadgen.py
 
 Run from repo root:
-    python -m unittest unitetests.lead_automation.test_leadgen
+    python -m unittest unittests.lead_automation.test_leadgen
 """
 import importlib
 import os
