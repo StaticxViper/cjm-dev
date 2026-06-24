@@ -8,6 +8,19 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+  PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+  CHATGPT_API_KEY: ${{ secrets.CHATGPT_API_KEY }}
+  GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+  APIFY_USER_ID: ${{ secrets.APIFY_USER_ID }}
+  APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
+
+  DISCORD_NOTIFICATION_KEY: ${{ secrets.DISCORD_NOTIFICATION_KEY }}
+  DISCORD_NOTIFICATION_Webhook_URL: ${{ secrets.DISCORD_NOTIFICATION_Webhook_URL }}
+  STOCK_INGEST_TOKEN: ${{ secrets.STOCK_INGEST_TOKEN }}
+  LEAD_INGEST_KEY: ${{ secrets.LEAD_INGEST_KEY }}
+
+  CHIKARA_REALMS_SECRET: ${{ secrets.CHIKARA_REALMS_SECRET }}
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
