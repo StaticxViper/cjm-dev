@@ -1,8 +1,7 @@
-from urllib import response
-
 from apify_client import ApifyClient
 import httpx
 import json
+import time
 from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
@@ -61,6 +60,12 @@ class APIManager:
             else:
                 headers["X-API-Key"] = api_key
 
+        # #region agent log
+        _req_start = time.monotonic()
+        with open("debug-16fad7.log", "a", encoding="utf-8") as _df:
+            _df.write(json.dumps({"sessionId": "16fad7", "hypothesisId": "B", "location": "api_manager.py:build_request:pre", "message": "request starting", "data": {"api": api, "endpoint": endpoint, "timeout": timeout}, "timestamp": int(time.time() * 1000)}) + "\n")
+        # #endregion
+
         with httpx.Client(base_url=base_url, timeout=timeout) as client:
             response = client.request(
                 method=method.upper(),
@@ -69,9 +74,13 @@ class APIManager:
                 params=params,
                 json=json_body,
             )
-            logger.info("STATUS:", response.status_code)
-            logger.info("RESPONSE:", response.text)
+            logger.info("STATUS: %s", response.status_code)
+            logger.info("RESPONSE: %s", response.text)
 
+            # #region agent log
+            with open("debug-16fad7.log", "a", encoding="utf-8") as _df:
+                _df.write(json.dumps({"sessionId": "16fad7", "hypothesisId": "B", "location": "api_manager.py:build_request:post", "message": "request completed", "data": {"api": api, "status": response.status_code, "elapsed_s": round(time.monotonic() - _req_start, 2)}, "timestamp": int(time.time() * 1000)}) + "\n")
+            # #endregion
             # Raise for bad HTTP status
             response.raise_for_status()
 
@@ -82,9 +91,6 @@ class APIManager:
             except json.JSONDecodeError:
                 # If parsing fails, return raw string as fallback
                 return {"raw": response.text}
-
-        logger.info("STATUS:", response.status_code)
-        logger.info("RESPONSE:", response.text)
 
         return {}
 
