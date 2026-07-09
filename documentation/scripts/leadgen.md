@@ -38,8 +38,25 @@ No CLI arguments.
 2. For each keyword, call Google Places Nearby Search (with pagination).
 3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch place details and website URL.
 4. Scrape the website: emails, HTTPS, viewport meta, HTML length, CTA keywords.
-5. Compute `lead_score` (lower is better; 0 = ideal lead).
+5. Compute `lead_score` (higher is better for outreach; 0 = strong digital presence; weight pool sums to 100).
 6. Append qualifying rows to `leads_output.csv`.
+
+## Scoring
+
+`lead_score` measures how weak a business's digital presence is. Higher scores mean better outreach targets. Leads are sorted by `lead_score` descending in the output CSV.
+
+| Criterion | Condition | Points |
+|-----------|-----------|--------|
+| `no_website` | no website URL | 40 |
+| `no_https` | has website, not HTTPS | 18 |
+| `no_viewport` | has website, missing viewport meta | 14 |
+| `short_html` | has website, `html_length < 5000` | 14 |
+| `no_emails` | has website, no scraped emails | 6 |
+| `no_cta` | has website, no CTA keywords | 6 |
+| `low_rating` | `rating` is None or `< 4.5` | 1 |
+| `low_reviews` | `user_ratings_total` is None or `< 15` | 1 |
+
+Website-specific checks apply only when a website exists. Google rating and review checks apply to every lead. Max achievable score depends on lead type (e.g. no website + bad Google signals = 42; has website + all issues + bad Google = 60).
 
 ```mermaid
 flowchart LR

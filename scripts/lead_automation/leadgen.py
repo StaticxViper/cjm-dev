@@ -41,6 +41,18 @@ CSV_OUTPUT = "leads_output.csv"
 existing_place_ids = load_existing_place_ids(CSV_OUTPUT)
 CONTACTED_FILE = "contacted.txt"
 
+SCORE_WEIGHTS = {
+    "no_website": 40,
+    "no_https": 18,
+    "no_viewport": 14,
+    "short_html": 14,
+    "no_emails": 6,
+    "no_cta": 6,
+    "low_rating": 1,
+    "low_reviews": 1,
+}
+assert sum(SCORE_WEIGHTS.values()) == 100
+
 # Logging
 logger = setup_logger(
     name="leadgen",
@@ -208,35 +220,35 @@ def analyze_website(url):
 
 
 def score_lead(has_website, https, has_viewport, html_length, emails, has_cta, rating, user_ratings_total):
-    """Return integer lead_score (higher = worse digital presence)."""
+    """Return integer lead_score 0-100 (higher = worse digital presence)."""
+    w = SCORE_WEIGHTS
     score = 0
     if not has_website:
-        score += 10
-        # If no website, many other checks are irrelevant
-        return score
-    if not https:
-        score += 5
-    if not has_viewport:
-        score += 3
-    try:
-        if html_length < 5000:
-            score += 3
-    except Exception:
-        score += 3
-    if not emails:
-        score += 2
-    if not has_cta:
-        score += 2
+        score += w["no_website"]
+    else:
+        if not https:
+            score += w["no_https"]
+        if not has_viewport:
+            score += w["no_viewport"]
+        try:
+            if html_length < 5000:
+                score += w["short_html"]
+        except Exception:
+            score += w["short_html"]
+        if not emails:
+            score += w["no_emails"]
+        if not has_cta:
+            score += w["no_cta"]
     try:
         if rating is None or float(rating) < 4.5:
-            score += 1
+            score += w["low_rating"]
     except Exception:
-        score += 1
+        score += w["low_rating"]
     try:
         if user_ratings_total is None or int(user_ratings_total) < 15:
-            score += 1
+            score += w["low_reviews"]
     except Exception:
-        score += 1
+        score += w["low_reviews"]
     return score
 
 

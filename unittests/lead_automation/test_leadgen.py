@@ -46,7 +46,10 @@ SKIP = unittest.skipIf(
 
 @SKIP
 class TestScoreLead(unittest.TestCase):
-    def test_no_website_returns_ten(self):
+    def test_score_weights_sum_to_100(self):
+        self.assertEqual(sum(LEADGEN.SCORE_WEIGHTS.values()), 100)
+
+    def test_no_website_scores_without_website_checks(self):
         self.assertEqual(
             LEADGEN.score_lead(
                 has_website=False,
@@ -58,7 +61,22 @@ class TestScoreLead(unittest.TestCase):
                 rating=5.0,
                 user_ratings_total=100,
             ),
-            10,
+            40,
+        )
+
+    def test_no_website_with_bad_google_signals(self):
+        self.assertEqual(
+            LEADGEN.score_lead(
+                has_website=False,
+                https=False,
+                has_viewport=False,
+                html_length=0,
+                emails=[],
+                has_cta=False,
+                rating=4.0,
+                user_ratings_total=10,
+            ),
+            42,
         )
 
     def test_ideal_lead_zero_score(self):
@@ -87,7 +105,7 @@ class TestScoreLead(unittest.TestCase):
             rating=5.0,
             user_ratings_total=20,
         )
-        self.assertEqual(score, 5 + 3 + 3)
+        self.assertEqual(score, 18 + 14 + 14)
 
 
 @SKIP
