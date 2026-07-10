@@ -4,13 +4,14 @@
 
 ## Purpose
 
-Discovers local business leads via Google Places Nearby Search, fetches place details, scrapes business websites for emails and quality signals, scores each lead, and appends results to a CSV. Skips duplicates (by `place_id`) and previously contacted emails.
+Discovers local business leads via Google Places Nearby Search, fetches place details, scrapes business websites for emails and quality signals, scores each lead, filters by minimum score, and outputs to CSV and/or the dashboard API. Skips duplicates (by `place_id`) and previously contacted emails.
 
 ## Prerequisites
 
 - Python 3.12+
 - `requests`, `pandas`, `beautifulsoup4`, `python-dotenv`
 - `GOOGLE_API_KEY` in repo-root `.env`
+- `LEAD_INGEST_KEY` in repo-root `.env` (required for dashboard output mode)
 
 ## Configuration
 
@@ -21,31 +22,97 @@ Discovers local business leads via Google Places Nearby Search, fetches place de
 | `leads_output.csv` | Output CSV (created/appended) |
 | `contacted.txt` | Emails already contacted (skipped on export) |
 
-Constants in the script: `SEARCH_RADIUS` (50 km), `MAX_WORKERS` (12), `PLACES_SLEEP` (2 s between API calls).
+Defaults: `min_score` 80, `search_radius` 50 km, `max_workers` 12, `PLACES_SLEEP` 2 s between API calls.
 
 ## How to run
 
 ```bash
 cd scripts/lead_automation
+
+# Interactive menu (defaults or customize)
 python leadgen.py
+
+# Non-interactive with defaults
+python leadgen.py --defaults
+
+# Custom non-interactive
+python leadgen.py --min-score 80 --output both --city "Cherry Hill"
 ```
 
-No CLI arguments.
+### Interactive menu
+
+```
+=== Lead Generation ===
+1) Run with defaults (min score 80, save to CSV, all locations & keywords)
+2) Customize settings
+3) Select locations & keywords
+4) Exit
+```
+
+- **Option 1** — all locations from `coords.json`, all keywords from `keywords.json`, default min score and CSV output.
+- **Option 2** — full wizard: min score, output mode, then keyword and location pickers.
+- **Option 3** — keyword and location pickers only (defaults for everything else).
+
+Both option 2 and 3 use grouped location and labeled keyword pickers:
+
+**Locations** — cities listed under each state from `coords.json`:
+
+```
+--- Locations (coords.json) ---
+
+NJ:
+  1) Cherry Hill
+  2) Cinnaminson
+DE:
+  3) Dover
+```
+
+**Keywords** — key and category label from `keywords.json`:
+
+```
+--- Keywords (keywords.json) ---
+
+  1) landscaping  ->  landscaping-leads
+  2) plumbing     ->  plumbing-leads
+```
+
+Enter comma-separated numbers to select specific items, or press Enter for all.
+
+### CLI flags
+
+| Flag | Description |
+|------|-------------|
+| `--defaults` | Skip menu, use defaults |
+| `--min-score INT` | Minimum `lead_score` to keep (default 80) |
+| `--output {csv,dashboard,both}` | Output destination |
+| `--csv-path PATH` | CSV output path |
+| `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
+| `--city "City Name"` | Filter to specific cities (repeatable) |
 
 ## How it works
 
-1. Load keywords and coordinates from JSON.
-2. For each keyword, call Google Places Nearby Search (with pagination).
+1. Resolve configuration (interactive menu or CLI flags).
+2. For each selected location and keyword, call Google Places Nearby Search (with pagination).
 3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch place details and website URL.
 4. Scrape the website: emails, HTTPS, viewport meta, HTML length, CTA keywords.
-5. Compute `lead_score` (higher is better for outreach; 0 = strong digital presence; weight pool sums to 100).
-6. Append qualifying rows to `leads_output.csv`.
+5. Compute normalized `lead_score` (0–100; higher = better outreach target).
+6. Drop leads below `min_score`.
+7. Save to CSV and/or bulk-ingest to dashboard API.
+
+```mermaid
+flowchart LR
+  leadgen[leadgen.py] --> csv[leads_output.csv]
+  leadgen --> supabase[Supabase leads-ingest-bulk]
+  csv --> ingest[lead_automation.py]
+  ingest --> supabase
+  leadfilter[leadfilter.py] -.-> leadgen
+```
 
 ## Scoring
 
-`lead_score` measures how weak a business's digital presence is. Higher scores mean better outreach targets. Leads are sorted by `lead_score` descending in the output CSV.
+`lead_score` is normalized to 0–100 based on applicable criteria. A lead failing every applicable check scores **100**; a perfect digital presence scores **0**.
 
-| Criterion | Condition | Points |
+| Criterion | Condition | Weight |
 |-----------|-----------|--------|
 | `no_website` | no website URL | 40 |
 | `no_https` | has website, not HTTPS | 18 |
@@ -56,18 +123,18 @@ No CLI arguments.
 | `low_rating` | `rating` is None or `< 4.5` | 1 |
 | `low_reviews` | `user_ratings_total` is None or `< 15` | 1 |
 
-Website-specific checks apply only when a website exists. Google rating and review checks apply to every lead. Max achievable score depends on lead type (e.g. no website + bad Google signals = 42; has website + all issues + bad Google = 60).
+Weights sum to 100. Website-specific checks apply only when a website exists. Google rating and review checks apply to every lead. The final score is `round(raw / max_applicable * 100)`.
 
-```mermaid
-flowchart LR
-  leadgen[leadgen.py] --> csv[leads_output.csv]
-  csv --> ingest[lead_automation.py]
-  ingest --> supabase[Supabase leads-ingest]
-  leadfilter[leadfilter.py] -.-> leadgen
-```
+## Output modes
+
+| Mode | Behavior |
+|------|----------|
+| `csv` | Append qualifying leads to `leads_output.csv` |
+| `dashboard` | Bulk POST to `/leads-ingest-bulk` via `APIManager` |
+| `both` | CSV save and dashboard ingest |
 
 ## Related scripts
 
 - [leadfilter.md](leadfilter.md) — duplicate filtering
-- [lead_automation.md](lead_automation.md) — ingest CSV to Supabase
+- [lead_automation.md](lead_automation.md) — re-ingest existing CSV to Supabase
 - [testing/unittests.md](../testing/unittests.md) — unit tests for scoring and parsing

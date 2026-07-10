@@ -5,20 +5,21 @@ leadgen.py
 Local Business Lead Generation System
 
 Run: python leadgen.py
-
-Fill in GOOGLE_API_KEY before running.
 """
 from pathlib import Path
 import sys
-# Add repo root to sys.path
+
 repo_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(repo_root))
+
+import argparse
 import requests
 import pandas as pd
 import re
 import time
 import json
-from helper_scripts.utils.logger import setup_logger
+from dataclasses import dataclass, field
+from helper_scripts.utils.logger.logger import setup_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
@@ -32,14 +33,13 @@ load_dotenv()
 # Configurable constants
 # -----------------------------
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-SEARCH_RADIUS = 50000  # meters
-KEYWORDS = json.load(open("keywords.json")).keys()
-LOCATION = json.load(open("coords.json"))
-MAX_WORKERS = 12
 PLACES_SLEEP = 2  # seconds between place detail / next_page_token attempts
-CSV_OUTPUT = "leads_output.csv"
-existing_place_ids = load_existing_place_ids(CSV_OUTPUT)
 CONTACTED_FILE = "contacted.txt"
+DASHBOARD_BASE_URL = "https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1"
+DASHBOARD_BULK_ENDPOINT = "/leads-ingest-bulk"
+
+KEYWORD_CATEGORIES = json.load(open("scripts/lead_automation/keywords.json"))
+COORDS_DATA = json.load(open("scripts/lead_automation/coords.json"))
 
 SCORE_WEIGHTS = {
     "no_website": 40,
@@ -53,17 +53,38 @@ SCORE_WEIGHTS = {
 }
 assert sum(SCORE_WEIGHTS.values()) == 100
 
-# Logging
 logger = setup_logger(
     name="leadgen",
-    console_levels=["INFO", "ERROR", "CRITICAL"]  # Only these show in console, any of them can be removed.
+    console_levels=["INFO", "ERROR", "CRITICAL"],
 )
 
-def get_places(location, radius, keywords, api_key):
-    """Use Nearby Search to gather place_ids for given keywords and location.
 
-    Returns list of dicts with 'business_name', 'place_id', 'rating', 'user_ratings_total', 'address'
-    """
+def _default_keywords():
+    return list(KEYWORD_CATEGORIES.keys())
+
+
+def _default_locations():
+    locations = []
+    for state, cities in COORDS_DATA.items():
+        for city, coords in cities.items():
+            locations.append((state, city, coords))
+    return locations
+
+
+@dataclass
+class LeadgenConfig:
+    min_score: int = 80
+    output_mode: str = "csv"
+    csv_output: str = "leads_output.csv"
+    search_radius: int = 50000
+    max_workers: int = 12
+    keywords: list = field(default_factory=_default_keywords)
+    locations: list = field(default_factory=_default_locations)
+    dashboard_bulk: bool = True
+
+
+def get_places(location, radius, keywords, api_key):
+    """Use Nearby Search to gather place_ids for given keywords and location."""
     base = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     places = {}
     for kw in keywords:
@@ -80,7 +101,6 @@ def get_places(location, radius, keywords, api_key):
                 r = requests.get(url, params=params, timeout=10)
                 data = r.json()
 
-                # DEBUG LOGS
                 logger.info("HTTP Status Code: %s", r.status_code)
                 logger.info("Places Status: %s", data.get("status"))
                 logger.info("Error Message: %s", data.get("error_message"))
@@ -105,13 +125,10 @@ def get_places(location, radius, keywords, api_key):
                     "address": p.get("vicinity") or p.get("formatted_address"),
                     "niche_key": kw,
                 }
-            # handle pagination
             next_token = data.get("next_page_token")
             if next_token:
-                # next_page_token is not immediately valid; wait before using it
                 time.sleep(PLACES_SLEEP)
                 params = {"pagetoken": next_token, "key": api_key}
-                # continue loop
                 continue
             break
     logger.info("Collected %d unique places", len(places))
@@ -119,10 +136,7 @@ def get_places(location, radius, keywords, api_key):
 
 
 def get_place_details(place_id, api_key):
-    """Fetch Place Details for a single place_id.
-
-    Returns dict with website and phone (if available).
-    """
+    """Fetch Place Details for a single place_id."""
     base = "https://maps.googleapis.com/maps/api/place/details/json"
     params = {
         "place_id": place_id,
@@ -158,8 +172,6 @@ def analyze_website(url):
     if not url:
         return result
 
-    original_url = url
-    # Normalize scheme
     if url.startswith("//"):
         url = "https:" + url
     if not urlparse(url).scheme:
@@ -176,18 +188,14 @@ def analyze_website(url):
 
     result["html_length"] = len(html)
     soup = BeautifulSoup(html, "html.parser")
-    # title
     if soup.title and soup.title.string:
         result["has_title"] = True
 
-    # viewport
     mv = soup.find("meta", attrs={"name": lambda x: x and x.lower() == "viewport"})
     if mv:
         result["has_viewport"] = True
 
-    # emails
     emails = set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", html))
-    # filter out obvious junk
     filtered = []
     for e in emails:
         low = e.lower()
@@ -198,9 +206,6 @@ def analyze_website(url):
         filtered.append(low)
     result["emails"] = sorted(set(filtered))
 
-    # phones (US-style)
-    phone_matches = re.findall(r"(\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", html)
-    # re.findall with groups returns tuples; re-run without capturing groups
     phone_matches = re.findall(r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", html)
     cleaned_phones = set()
     for p in phone_matches:
@@ -211,7 +216,6 @@ def analyze_website(url):
             cleaned_phones.add("(+1) {}-{}-{}".format(digits[0:3], digits[3:6], digits[6:10]))
     result["phones_website"] = sorted(cleaned_phones)
 
-    # CTA keywords
     text = soup.get_text(separator=" ").lower()
     cta_keywords = ["call", "contact", "quote", "estimate"]
     result["has_cta"] = any(kw in text for kw in cta_keywords)
@@ -222,44 +226,60 @@ def analyze_website(url):
 def score_lead(has_website, https, has_viewport, html_length, emails, has_cta, rating, user_ratings_total):
     """Return integer lead_score 0-100 (higher = worse digital presence)."""
     w = SCORE_WEIGHTS
-    score = 0
+    raw = 0
+    max_possible = w["low_rating"] + w["low_reviews"]
+
     if not has_website:
-        score += w["no_website"]
+        max_possible += w["no_website"]
+        raw += w["no_website"]
     else:
+        max_possible += (
+            w["no_https"] + w["no_viewport"] + w["short_html"] + w["no_emails"] + w["no_cta"]
+        )
         if not https:
-            score += w["no_https"]
+            raw += w["no_https"]
         if not has_viewport:
-            score += w["no_viewport"]
+            raw += w["no_viewport"]
         try:
             if html_length < 5000:
-                score += w["short_html"]
+                raw += w["short_html"]
         except Exception:
-            score += w["short_html"]
+            raw += w["short_html"]
         if not emails:
-            score += w["no_emails"]
+            raw += w["no_emails"]
         if not has_cta:
-            score += w["no_cta"]
+            raw += w["no_cta"]
+
     try:
         if rating is None or float(rating) < 4.5:
-            score += w["low_rating"]
+            raw += w["low_rating"]
     except Exception:
-        score += w["low_rating"]
+        raw += w["low_rating"]
     try:
         if user_ratings_total is None or int(user_ratings_total) < 15:
-            score += w["low_reviews"]
+            raw += w["low_reviews"]
     except Exception:
-        score += w["low_reviews"]
-    return score
+        raw += w["low_reviews"]
+
+    if not max_possible:
+        return 0
+    return round(raw / max_possible * 100)
 
 
-def process_businesses(businesses, api_key, existing_ids, contacted_emails):
+def process_businesses(
+    businesses,
+    api_key,
+    existing_ids,
+    contacted_emails,
+    min_score=80,
+    max_workers=12,
+):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
     enriched = []
     logger.critical("Fetching place details for %d businesses", len(businesses))
     for b in businesses:
         place_id = b.get("place_id")
         details = get_place_details(place_id, api_key)
-        # Respect rate limits
         time.sleep(PLACES_SLEEP)
         entry = {
             "business_name": b.get("business_name"),
@@ -269,11 +289,10 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             "website": details.get("website"),
             "rating": b.get("rating"),
             "user_ratings_total": b.get("user_ratings_total"),
-            "niche_key": b.get("niche_key")
+            "niche_key": b.get("niche_key"),
         }
         enriched.append(entry)
 
-    # Deduplicate by website or business_name (bonus)
     unique = {}
     for e in enriched:
         key = e.get("website") or e.get("business_name")
@@ -283,17 +302,26 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
     businesses_unique = list(unique.values())
     logger.critical("After deduplication: %d businesses", len(businesses_unique))
 
-    # Analyze websites concurrently
     analyses = {}
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
         future_map = {}
         for b in businesses_unique:
             url = b.get("website")
             if url:
                 future = ex.submit(analyze_website, url)
             else:
-                # Submit a trivial result for consistency
-                future = ex.submit(lambda: {"emails": [], "phones_website": [], "https": False, "has_viewport": False, "html_length": 0, "has_title": False, "has_cta": False, "error": None})
+                future = ex.submit(
+                    lambda: {
+                        "emails": [],
+                        "phones_website": [],
+                        "https": False,
+                        "has_viewport": False,
+                        "html_length": 0,
+                        "has_title": False,
+                        "has_cta": False,
+                        "error": None,
+                    }
+                )
             future_map[future] = b
         for fut in as_completed(future_map):
             b = future_map[fut]
@@ -301,36 +329,35 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
                 analyses[b.get("place_id")] = fut.result()
             except Exception as e:
                 logger.error("Website analysis failed for %s: %s", b.get("website"), e)
-                analyses[b.get("place_id")] = {"emails": [], "phones_website": [], "https": False, "has_viewport": False, "html_length": 0, "has_title": False, "has_cta": False, "error": str(e)}
+                analyses[b.get("place_id")] = {
+                    "emails": [],
+                    "phones_website": [],
+                    "https": False,
+                    "has_viewport": False,
+                    "html_length": 0,
+                    "has_title": False,
+                    "has_cta": False,
+                    "error": str(e),
+                }
 
-    # Build final rows
     rows = []
+    filtered_below_min = 0
     for b in businesses_unique:
         place_id = b.get("place_id")
         if not place_id:
             continue
 
-        # 1. Skip duplicates across runs
         if not is_new_place(place_id, existing_ids):
             continue
 
         a = analyses.get(place_id, {})
-
-        # 2. Safe email extraction (prevents None bugs)
         emails = a.get("emails") or []
         emails_clean = [e.strip().lower() for e in emails if e and e.strip()]
 
-        # 3. Skip leads with no emails (optional but recommended)
-        #if not emails_clean:
-            #continue
-
-        # 4. Skip already-contacted leads
         if any(email in contacted_emails for email in emails_clean):
             continue
 
-        # 5. Lead scoring
         has_website = bool(b.get("website"))
-
         lead_score = score_lead(
             has_website,
             a.get("https", False),
@@ -342,7 +369,10 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             b.get("user_ratings_total"),
         )
 
-        # 6. Build output row
+        if lead_score < min_score:
+            filtered_below_min += 1
+            continue
+
         row = {
             "business_name": b.get("business_name"),
             "address": b.get("address"),
@@ -356,9 +386,16 @@ def process_businesses(businesses, api_key, existing_ids, contacted_emails):
             "has_viewport": a.get("has_viewport", False),
             "html_length": a.get("html_length", 0),
             "lead_score": lead_score,
-            "niche_key": b.get("niche_key")
+            "niche_key": b.get("niche_key"),
         }
         rows.append(row)
+
+    if filtered_below_min:
+        logger.info(
+            "Filtered %d leads below minimum score %d",
+            filtered_below_min,
+            min_score,
+        )
     return rows
 
 
@@ -371,7 +408,6 @@ def save_results(rows, csv_path):
             df_old = pd.DataFrame()
         if not df_old.empty:
             combined = pd.concat([df_old, df_new], ignore_index=True)
-            # dedupe by website if available else by business_name
             if "website" in combined.columns:
                 combined = combined.drop_duplicates(subset=["website", "business_name"], keep="first")
             else:
@@ -380,38 +416,334 @@ def save_results(rows, csv_path):
             combined.to_csv(csv_path, index=False)
             logger.info("Appended and saved %d total leads to %s", len(combined), csv_path)
             return
-    # otherwise save new
     df_new = df_new.sort_values(by="lead_score", ascending=False)
     df_new.to_csv(csv_path, index=False)
     logger.critical("Saved %d leads to %s", len(df_new), csv_path)
 
 
-def main():
-    if GOOGLE_API_KEY == "YOUR_GOOGLE_API_KEY":
-        logger.error("Please set GOOGLE_API_KEY in the script before running.")
+def extract_real_email(raw_email_field):
+    emails = (raw_email_field or "").split(";")
+    for e in emails:
+        e = e.strip().lower()
+        if e and "sentry" not in e and "wixpress" not in e:
+            return e
+    return ""
+
+
+def send_to_dashboard(rows):
+    """Bulk-ingest qualifying leads to the dashboard API."""
+    from helper_scripts.api_manager import APIManager as api
+
+    payload = []
+    for row in rows:
+        niche_key = row.get("niche_key")
+        category = KEYWORD_CATEGORIES.get(niche_key, niche_key)
+        payload.append({
+            "business_name": row["business_name"],
+            "phone": row.get("phone_google") or "",
+            "email": extract_real_email(row.get("email") or ""),
+            "category": category,
+            "tags": ["lead_automation", "google-places-api"],
+            "score": int(row["lead_score"]),
+        })
+
+    if not payload:
+        logger.info("No leads to send to dashboard")
         return
-    
+
+    logger.critical("Sending %d leads to dashboard (bulk ingest)", len(payload))
+    api().build_request(
+        base_url=DASHBOARD_BASE_URL,
+        endpoint=DASHBOARD_BULK_ENDPOINT,
+        json_body=payload,
+        api="Lead Ingest",
+        method="POST",
+        timeout=60.0,
+    )
+
+
+def _prompt_int(prompt, default):
+    raw = input(f"{prompt} [{default}]: ").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"Invalid number, using default {default}.")
+        return default
+
+
+def _prompt_output_mode(default="csv"):
+    labels = {"1": "csv", "2": "dashboard", "3": "both"}
+    default_num = {"csv": "1", "dashboard": "2", "both": "3"}[default]
+    raw = input(f"Output: 1=CSV  2=Dashboard  3=Both [{default_num}]: ").strip()
+    if not raw:
+        return default
+    return labels.get(raw, default)
+
+
+def _locations_by_state(coords_data=None):
+    """Return {state: [(city, coords), ...]} from coords.json data."""
+    data = coords_data if coords_data is not None else COORDS_DATA
+    grouped = {}
+    for state, cities in data.items():
+        grouped[state] = [(city, coords) for city, coords in cities.items()]
+    return grouped
+
+
+def _parse_index_selection(raw, max_index):
+    """Parse '1,3,5' into 0-based indices; empty string means all."""
+    if not raw.strip():
+        return None
+    indices = []
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            idx = int(part) - 1
+            if 0 <= idx < max_index:
+                indices.append(idx)
+        except ValueError:
+            continue
+    return indices
+
+
+def _prompt_keywords(keyword_map):
+    """Prompt user to select keywords from keywords.json."""
+    keys = list(keyword_map.keys())
+    print("\n--- Keywords (keywords.json) ---")
+    for i, kw in enumerate(keys, 1):
+        label = keyword_map[kw]
+        print(f"  {i}) {kw}  ->  {label}")
+    raw = input("Enter numbers (comma-separated) or press Enter for all: ").strip()
+    indices = _parse_index_selection(raw, len(keys))
+    if indices is None:
+        return list(keys)
+    selected = [keys[i] for i in indices]
+    return selected or list(keys)
+
+
+def _prompt_locations(all_locations):
+    """Prompt user to select locations from coords.json, grouped by state."""
+    by_state = _locations_by_state()
+    print("\n--- Locations (coords.json) ---")
+    idx = 1
+    index_map = []
+    for state, cities in by_state.items():
+        print(f"\n{state}:")
+        for city, coords in cities:
+            print(f"  {idx}) {city}")
+            index_map.append((state, city, coords))
+            idx += 1
+    raw = input("\nEnter numbers (comma-separated) or press Enter for all: ").strip()
+    indices = _parse_index_selection(raw, len(index_map))
+    if indices is None:
+        return list(all_locations)
+    selected = [index_map[i] for i in indices]
+    return selected or list(all_locations)
+
+
+def interactive_select_locations_and_keywords():
+    """Return (keywords, locations) from interactive pickers."""
+    keywords = _prompt_keywords(KEYWORD_CATEGORIES)
+    locations = _prompt_locations(_default_locations())
+    return keywords, locations
+
+
+def interactive_select_config():
+    """Build LeadgenConfig with default settings but user-selected locations/keywords."""
+    cfg = LeadgenConfig()
+    cfg.keywords, cfg.locations = interactive_select_locations_and_keywords()
+    return cfg
+
+
+def interactive_customize_config(base_config=None):
+    """Walk through customization prompts and return a LeadgenConfig."""
+    cfg = base_config or LeadgenConfig()
+    print("\n--- Customize Lead Generation ---")
+    cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
+    cfg.output_mode = _prompt_output_mode(cfg.output_mode)
+    cfg.keywords = _prompt_keywords(KEYWORD_CATEGORIES)
+    cfg.locations = _prompt_locations(_default_locations())
+    return cfg
+
+
+def _print_config_summary(config):
+    print("\n--- Configuration ---")
+    print(f"  Min score:    {config.min_score}")
+    print(f"  Output:       {config.output_mode}")
+    print(f"  CSV path:     {config.csv_output}")
+    print(f"  Keywords:     {', '.join(config.keywords)}")
+    locs = ", ".join(f"{city}, {state}" for state, city, _ in config.locations)
+    print(f"  Locations:    {locs}")
+    print()
+
+
+def interactive_main_menu():
+    """Show startup menu and return a LeadgenConfig, or None to exit."""
+    print("\n=== Lead Generation ===")
+    print("1) Run with defaults (min score 80, save to CSV, all locations & keywords)")
+    print("2) Customize settings")
+    print("3) Select locations & keywords")
+    print("4) Exit")
+    choice = input("Select [1]: ").strip() or "1"
+    if choice == "4":
+        return None
+    if choice == "2":
+        cfg = interactive_customize_config()
+        _print_config_summary(cfg)
+        confirm = input("Run with these settings? [Y/n]: ").strip().lower()
+        if confirm in ("n", "no"):
+            return None
+        return cfg
+    if choice == "3":
+        cfg = interactive_select_config()
+        _print_config_summary(cfg)
+        confirm = input("Run with these settings? [Y/n]: ").strip().lower()
+        if confirm in ("n", "no"):
+            return None
+        return cfg
+    return LeadgenConfig()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Local business lead generation")
+    parser.add_argument(
+        "--defaults",
+        action="store_true",
+        help="Skip interactive menu and use defaults",
+    )
+    parser.add_argument("--min-score", type=int, help="Minimum lead_score to keep (default 80)")
+    parser.add_argument(
+        "--output",
+        choices=["csv", "dashboard", "both"],
+        help="Output destination",
+    )
+    parser.add_argument("--csv-path", help="CSV output path (default leads_output.csv)")
+    parser.add_argument("--keywords", nargs="+", help="Keyword subset from keywords.json")
+    parser.add_argument(
+        "--city",
+        action="append",
+        help="City name filter (repeatable); matches coords.json city names",
+    )
+    return parser.parse_args()
+
+
+def _has_cli_overrides(args):
+    return any([
+        args.defaults,
+        args.min_score is not None,
+        args.output is not None,
+        args.csv_path is not None,
+        args.keywords is not None,
+        args.city is not None,
+    ])
+
+
+def config_from_args(args):
+    """Build LeadgenConfig from argparse namespace."""
+    config = LeadgenConfig()
+    if args.min_score is not None:
+        config.min_score = args.min_score
+    if args.output is not None:
+        config.output_mode = args.output
+    if args.csv_path is not None:
+        config.csv_output = args.csv_path
+    if args.keywords is not None:
+        config.keywords = args.keywords
+    if args.city is not None:
+        city_names = set()
+        for entry in args.city:
+            for part in entry.split(","):
+                part = part.strip()
+                if part:
+                    city_names.add(part.lower())
+        filtered = [
+            loc for loc in _default_locations()
+            if loc[1].lower() in city_names
+        ]
+        if filtered:
+            config.locations = filtered
+        else:
+            logger.warning("No cities matched --city filter; using all locations")
+    return config
+
+
+def resolve_config(args):
+    """Resolve final config from CLI flags and/or interactive menu."""
+    if args.defaults:
+        return config_from_args(args)
+    if _has_cli_overrides(args):
+        return config_from_args(args)
+    return interactive_main_menu()
+
+
+def run_leadgen(config):
+    """Run lead generation with the given configuration."""
+    if not GOOGLE_API_KEY or GOOGLE_API_KEY == "YOUR_GOOGLE_API_KEY":
+        logger.error("Please set GOOGLE_API_KEY in .env before running.")
+        return
+
+    if config.output_mode in ("dashboard", "both") and not os.getenv("LEAD_INGEST_KEY"):
+        logger.error("LEAD_INGEST_KEY is required for dashboard output mode.")
+        return
+
     logger.critical("Loading contacted emails to avoid re-contacting...")
-    # Load contacted emails to avoid re-contacting
     if os.path.exists(CONTACTED_FILE):
         with open(CONTACTED_FILE, "r", encoding="utf-8") as f:
             contacted_emails = set(line.strip().lower() for line in f if line.strip())
     else:
         contacted_emails = set()
 
-    for state, locations in LOCATION.items():
-        for city, coords in locations.items():
-            try:
-                logger.critical(f"Starting lead generation for {city}, {state}. Using Coords: {coords}")
-                places = get_places(coords, SEARCH_RADIUS, KEYWORDS, GOOGLE_API_KEY)
-                if not places:
-                    logger.critical("No places found; Moving to next location.")
-                    continue
-                rows = process_businesses(places, GOOGLE_API_KEY, existing_place_ids, contacted_emails)
-                save_results(rows, f"{CSV_OUTPUT}")
-            except Exception as e:
-                logger.error(f"Error processing businesses for {city}, {state}: {e}")
+    existing_place_ids = load_existing_place_ids(config.csv_output)
+    total_rows = []
+
+    for state, city, coords in config.locations:
+        try:
+            logger.critical(
+                "Starting lead generation for %s, %s. Using Coords: %s",
+                city,
+                state,
+                coords,
+            )
+            places = get_places(coords, config.search_radius, config.keywords, GOOGLE_API_KEY)
+            if not places:
+                logger.critical("No places found; moving to next location.")
                 continue
+            rows = process_businesses(
+                places,
+                GOOGLE_API_KEY,
+                existing_place_ids,
+                contacted_emails,
+                min_score=config.min_score,
+                max_workers=config.max_workers,
+            )
+            total_rows.extend(rows)
+        except Exception as e:
+            logger.error("Error processing businesses for %s, %s: %s", city, state, e)
+            continue
+
+    if not total_rows:
+        logger.critical("No qualifying leads found.")
+        return
+
+    logger.critical("Found %d qualifying leads (min score %d)", len(total_rows), config.min_score)
+
+    if config.output_mode in ("csv", "both"):
+        save_results(total_rows, config.csv_output)
+
+    if config.output_mode in ("dashboard", "both"):
+        send_to_dashboard(total_rows)
+
+
+def main():
+    args = parse_args()
+    config = resolve_config(args)
+    if config is None:
+        print("Exiting.")
+        return
+    run_leadgen(config)
 
 
 if __name__ == "__main__":
