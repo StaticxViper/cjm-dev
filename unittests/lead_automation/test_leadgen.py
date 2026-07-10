@@ -25,6 +25,8 @@ def _import_leadgen():
             sys.path.insert(0, str(_LEADGEN_DIR))
         if str(_REPO_ROOT) not in sys.path:
             sys.path.insert(0, str(_REPO_ROOT))
+        if "leadgen" in sys.modules:
+            return importlib.reload(sys.modules["leadgen"])
         return importlib.import_module("leadgen")
     finally:
         os.chdir(_prev)
@@ -45,8 +47,35 @@ SKIP = unittest.skipIf(
 
 
 @SKIP
+class TestSelectionHelpers(unittest.TestCase):
+    def test_locations_by_state_groups_coords(self):
+        sample = {
+            "NJ": {"Cherry Hill": "39.9,-75.1", "Cinnaminson": "40.0,-75.0"},
+            "DE": {"Dover": "39.1,-75.5"},
+        }
+        grouped = LEADGEN._locations_by_state(sample)
+        self.assertEqual(list(grouped.keys()), ["NJ", "DE"])
+        self.assertEqual(len(grouped["NJ"]), 2)
+        self.assertEqual(grouped["NJ"][0][0], "Cherry Hill")
+        self.assertEqual(grouped["DE"][0][1], "39.1,-75.5")
+
+    def test_parse_index_selection_all_on_empty(self):
+        self.assertIsNone(LEADGEN._parse_index_selection("", 5))
+        self.assertIsNone(LEADGEN._parse_index_selection("   ", 5))
+
+    def test_parse_index_selection_parses_commas(self):
+        self.assertEqual(LEADGEN._parse_index_selection("1,3", 5), [0, 2])
+
+    def test_parse_index_selection_ignores_invalid(self):
+        self.assertEqual(LEADGEN._parse_index_selection("0,99,abc,2", 5), [1])
+
+
+@SKIP
 class TestScoreLead(unittest.TestCase):
-    def test_no_website_returns_ten(self):
+    def test_score_weights_sum_to_100(self):
+        self.assertEqual(sum(LEADGEN.SCORE_WEIGHTS.values()), 100)
+
+    def test_no_website_good_google_normalized(self):
         self.assertEqual(
             LEADGEN.score_lead(
                 has_website=False,
@@ -58,7 +87,22 @@ class TestScoreLead(unittest.TestCase):
                 rating=5.0,
                 user_ratings_total=100,
             ),
-            10,
+            round(40 / 42 * 100),
+        )
+
+    def test_no_website_all_fail_scores_100(self):
+        self.assertEqual(
+            LEADGEN.score_lead(
+                has_website=False,
+                https=False,
+                has_viewport=False,
+                html_length=0,
+                emails=[],
+                has_cta=False,
+                rating=4.0,
+                user_ratings_total=10,
+            ),
+            100,
         )
 
     def test_ideal_lead_zero_score(self):
@@ -76,7 +120,22 @@ class TestScoreLead(unittest.TestCase):
             0,
         )
 
-    def test_adds_for_http_no_viewport_short_html(self):
+    def test_all_fail_website_scores_100(self):
+        self.assertEqual(
+            LEADGEN.score_lead(
+                has_website=True,
+                https=False,
+                has_viewport=False,
+                html_length=1000,
+                emails=[],
+                has_cta=False,
+                rating=4.0,
+                user_ratings_total=10,
+            ),
+            100,
+        )
+
+    def test_partial_website_issues_normalized(self):
         score = LEADGEN.score_lead(
             has_website=True,
             https=False,
@@ -87,7 +146,70 @@ class TestScoreLead(unittest.TestCase):
             rating=5.0,
             user_ratings_total=20,
         )
-        self.assertEqual(score, 5 + 3 + 3)
+        self.assertEqual(score, round((18 + 14 + 14) / 60 * 100))
+
+
+@SKIP
+class TestProcessBusinessesFilter(unittest.TestCase):
+    @patch("leadgen.get_place_details")
+    @patch("leadgen.analyze_website")
+    @patch("leadgen.time.sleep", return_value=None)
+    def test_filters_below_min_score(self, _sleep, mock_analyze, mock_details):
+        mock_details.return_value = {
+            "website": "http://example.com",
+            "phone_google": "555",
+            "address": "1 Main",
+        }
+        mock_analyze.return_value = {
+            "emails": ["a@b.com"],
+            "phones_website": [],
+            "https": True,
+            "has_viewport": True,
+            "html_length": 5000,
+            "has_title": True,
+            "has_cta": True,
+            "error": None,
+        }
+        businesses = [{
+            "place_id": "pid1",
+            "business_name": "Good Site Co",
+            "rating": 5.0,
+            "user_ratings_total": 20,
+            "niche_key": "landscaping",
+            "address": "1 Main",
+        }]
+        rows = LEADGEN.process_businesses(
+            businesses,
+            "fake-key",
+            set(),
+            set(),
+            min_score=80,
+        )
+        self.assertEqual(rows, [])
+
+
+@SKIP
+class TestSendToDashboard(unittest.TestCase):
+    @patch("helper_scripts.api_manager.APIManager")
+    def test_send_to_dashboard_builds_bulk_payload(self, mock_api_cls):
+        mock_api = MagicMock()
+        mock_api_cls.return_value = mock_api
+        rows = [{
+            "business_name": "Test Biz",
+            "phone_google": "555-1234",
+            "email": "contact@test.com",
+            "niche_key": "landscaping",
+            "lead_score": 85,
+        }]
+        LEADGEN.send_to_dashboard(rows)
+        mock_api.build_request.assert_called_once()
+        call_kwargs = mock_api.build_request.call_args.kwargs
+        self.assertEqual(call_kwargs["endpoint"], LEADGEN.DASHBOARD_BULK_ENDPOINT)
+        payload = call_kwargs["json_body"]
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["business_name"], "Test Biz")
+        self.assertEqual(payload[0]["score"], 85)
+        self.assertEqual(payload[0]["category"], "landscaping-leads")
 
 
 @SKIP
@@ -120,7 +242,7 @@ class TestGetPlaces(unittest.TestCase):
         )
         self.assertEqual(len(places), 1)
         self.assertEqual(places[0]["place_id"], "ChIJ1")
-        self.assertEqual(places[0]["category"], "landscaping")
+        self.assertEqual(places[0]["niche_key"], "landscaping")
         self.assertIn("place_id", places[0])
 
 
