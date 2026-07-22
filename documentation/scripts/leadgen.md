@@ -93,11 +93,12 @@ Enter comma-separated numbers to select specific items, or press Enter for all.
 
 1. Resolve configuration (interactive menu or CLI flags).
 2. For each selected location and keyword, call Google Places Nearby Search (with pagination).
-3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch place details and website URL.
-4. Scrape the website: emails, HTTPS, viewport meta, HTML length, CTA keywords.
-5. Compute normalized `lead_score` (0–100; higher = better outreach target).
-6. Drop leads below `min_score`.
-7. Save to CSV and/or bulk-ingest to dashboard API.
+3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch expanded Place Details (`business_status`, `reviews`, phone, website).
+4. Apply quality filters (operational status, review count, phone, review recency).
+5. Scrape surviving websites: emails, HTTPS, viewport meta, HTML length, CTA keywords.
+6. Compute normalized `lead_score` (0–100; higher = better outreach target).
+7. Drop leads below `min_score`.
+8. Save to CSV and/or bulk-ingest to dashboard API.
 
 ```mermaid
 flowchart LR
@@ -108,9 +109,22 @@ flowchart LR
   leadfilter[leadfilter.py] -.-> leadgen
 ```
 
+## Quality filters
+
+Applied after Place Details, before website scraping:
+
+| Filter | Rule |
+|--------|------|
+| Business status | Exclude `CLOSED_TEMPORARILY` and `CLOSED_PERMANENTLY`; keep missing or `OPERATIONAL` |
+| Review count | Require `user_ratings_total >= 3` |
+| Phone | Require valid US-format `phone_google` from Google |
+| Review recency | If review data exists, exclude when newest review is older than 18 months |
+
+Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `rating`, and `user_ratings_total` in addition to website and phone.
+
 ## Scoring
 
-`lead_score` is normalized to 0–100 based on applicable criteria. A lead failing every applicable check scores **100**; a perfect digital presence scores **0**.
+`lead_score` is normalized to 0–100 based on applicable criteria. Higher scores mean better outreach targets.
 
 | Criterion | Condition | Weight |
 |-----------|-----------|--------|
@@ -118,12 +132,15 @@ flowchart LR
 | `no_https` | has website, not HTTPS | 18 |
 | `no_viewport` | has website, missing viewport meta | 14 |
 | `short_html` | has website, `html_length < 5000` | 14 |
-| `no_emails` | has website, no scraped emails | 6 |
-| `no_cta` | has website, no CTA keywords | 6 |
+| `no_cta` | has website, no CTA keywords | 4 |
+| `has_email` | scraped email present (bonus) | 6 |
 | `low_rating` | `rating` is None or `< 4.5` | 1 |
 | `low_reviews` | `user_ratings_total` is None or `< 15` | 1 |
+| `unknown_status` | `business_status` missing (slight deprioritization) | 2 |
 
-Weights sum to 100. Website-specific checks apply only when a website exists. Google rating and review checks apply to every lead. The final score is `round(raw / max_applicable * 100)`.
+Leads without email are kept (cold-call queue). Leads with email score higher (warm email/SMS sequence). Output includes `has_email` and `business_status` columns.
+
+Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 
 ## Output modes
 

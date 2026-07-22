@@ -19,6 +19,7 @@ import re
 import time
 import json
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from helper_scripts.utils.logger.logger import setup_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -38,20 +39,27 @@ CONTACTED_FILE = "contacted.txt"
 DASHBOARD_BASE_URL = "https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1"
 DASHBOARD_BULK_ENDPOINT = "/leads-ingest-bulk"
 
-KEYWORD_CATEGORIES = json.load(open("scripts/lead_automation/keywords.json"))
-COORDS_DATA = json.load(open("scripts/lead_automation/coords.json"))
+_LEADGEN_DIR = Path(__file__).resolve().parent
+KEYWORD_CATEGORIES = json.load(open(_LEADGEN_DIR / "keywords.json"))
+COORDS_DATA = json.load(open(_LEADGEN_DIR / "coords.json"))
 
 SCORE_WEIGHTS = {
     "no_website": 40,
     "no_https": 18,
     "no_viewport": 14,
     "short_html": 14,
-    "no_emails": 6,
-    "no_cta": 6,
+    "no_cta": 4,
+    "has_email": 6,
     "low_rating": 1,
     "low_reviews": 1,
+    "unknown_status": 2,
 }
 assert sum(SCORE_WEIGHTS.values()) == 100
+
+MIN_USER_RATINGS_TOTAL = 3
+REVIEW_MAX_AGE_MONTHS = 18
+US_PHONE_RE = re.compile(r"^(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$")
+CLOSED_STATUSES = frozenset({"CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"})
 
 logger = setup_logger(
     name="leadgen",
@@ -140,8 +148,21 @@ def get_place_details(place_id, api_key):
     base = "https://maps.googleapis.com/maps/api/place/details/json"
     params = {
         "place_id": place_id,
-        "fields": "website,formatted_phone_number,formatted_address,name,place_id",
+        "fields": (
+            "website,formatted_phone_number,formatted_address,name,place_id,"
+            "business_status,reviews,rating,user_ratings_total"
+        ),
+        "reviews_sort": "newest",
         "key": api_key,
+    }
+    empty = {
+        "website": None,
+        "phone_google": None,
+        "address": None,
+        "business_status": None,
+        "reviews": [],
+        "rating": None,
+        "user_ratings_total": None,
     }
     try:
         r = requests.get(base, params=params, timeout=10)
@@ -151,10 +172,69 @@ def get_place_details(place_id, api_key):
             "website": result.get("website"),
             "phone_google": result.get("formatted_phone_number"),
             "address": result.get("formatted_address"),
+            "business_status": result.get("business_status"),
+            "reviews": result.get("reviews") or [],
+            "rating": result.get("rating"),
+            "user_ratings_total": result.get("user_ratings_total"),
         }
     except Exception as e:
         logger.error("Place details failed for %s: %s", place_id, e)
-        return {"website": None, "phone_google": None, "address": None}
+        return dict(empty)
+
+
+def is_valid_us_phone(phone):
+    """Return True if phone is present and matches a valid US format."""
+    if not phone or not str(phone).strip():
+        return False
+    phone = str(phone).strip()
+    if US_PHONE_RE.match(phone):
+        return True
+    digits = re.sub(r"[^0-9]", "", phone)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    return len(digits) == 10
+
+
+def latest_review_timestamp(reviews):
+    """Return the newest review unix timestamp, or None if no reviews."""
+    if not reviews:
+        return None
+    times = [r.get("time") for r in reviews if r.get("time") is not None]
+    return max(times) if times else None
+
+
+def is_review_stale(latest_ts, months=REVIEW_MAX_AGE_MONTHS):
+    """Return True if latest review is older than the given number of months."""
+    if latest_ts is None:
+        return False
+    latest_dt = datetime.fromtimestamp(latest_ts, tz=timezone.utc)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=months * 30)
+    return latest_dt < cutoff
+
+
+def passes_quality_filters(entry):
+    """Return (passed, reason) for hard quality filters before website scraping."""
+    status = entry.get("business_status")
+    if status in CLOSED_STATUSES:
+        return False, "closed_business"
+
+    try:
+        count = int(entry.get("user_ratings_total") or 0)
+    except (TypeError, ValueError):
+        count = 0
+    if count < MIN_USER_RATINGS_TOTAL:
+        return False, "low_review_count"
+
+    if not is_valid_us_phone(entry.get("phone_google")):
+        return False, "invalid_phone"
+
+    reviews = entry.get("reviews") or []
+    if reviews:
+        latest = latest_review_timestamp(reviews)
+        if latest is not None and is_review_stale(latest):
+            return False, "stale_reviews"
+
+    return True, ""
 
 
 def analyze_website(url):
@@ -223,19 +303,27 @@ def analyze_website(url):
     return result
 
 
-def score_lead(has_website, https, has_viewport, html_length, emails, has_cta, rating, user_ratings_total):
-    """Return integer lead_score 0-100 (higher = worse digital presence)."""
+def score_lead(
+    has_website,
+    https,
+    has_viewport,
+    html_length,
+    has_email,
+    has_cta,
+    rating,
+    user_ratings_total,
+    business_status=None,
+):
+    """Return integer lead_score 0-100 (higher = worse digital presence / better outreach target)."""
     w = SCORE_WEIGHTS
     raw = 0
-    max_possible = w["low_rating"] + w["low_reviews"]
+    max_possible = w["low_rating"] + w["low_reviews"] + w["has_email"] + w["unknown_status"]
 
     if not has_website:
         max_possible += w["no_website"]
         raw += w["no_website"]
     else:
-        max_possible += (
-            w["no_https"] + w["no_viewport"] + w["short_html"] + w["no_emails"] + w["no_cta"]
-        )
+        max_possible += w["no_https"] + w["no_viewport"] + w["short_html"] + w["no_cta"]
         if not https:
             raw += w["no_https"]
         if not has_viewport:
@@ -245,10 +333,13 @@ def score_lead(has_website, https, has_viewport, html_length, emails, has_cta, r
                 raw += w["short_html"]
         except Exception:
             raw += w["short_html"]
-        if not emails:
-            raw += w["no_emails"]
         if not has_cta:
             raw += w["no_cta"]
+
+    if has_email:
+        raw += w["has_email"]
+    if not business_status:
+        raw += w["unknown_status"]
 
     try:
         if rating is None or float(rating) < 4.5:
@@ -276,6 +367,7 @@ def process_businesses(
 ):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
     enriched = []
+    quality_rejects = {}
     logger.critical("Fetching place details for %d businesses", len(businesses))
     for b in businesses:
         place_id = b.get("place_id")
@@ -287,11 +379,25 @@ def process_businesses(
             "address": details.get("address") or b.get("address"),
             "phone_google": details.get("phone_google"),
             "website": details.get("website"),
-            "rating": b.get("rating"),
-            "user_ratings_total": b.get("user_ratings_total"),
+            "rating": details.get("rating") if details.get("rating") is not None else b.get("rating"),
+            "user_ratings_total": (
+                details.get("user_ratings_total")
+                if details.get("user_ratings_total") is not None
+                else b.get("user_ratings_total")
+            ),
+            "business_status": details.get("business_status"),
+            "reviews": details.get("reviews") or [],
             "niche_key": b.get("niche_key"),
         }
+        ok, reason = passes_quality_filters(entry)
+        if not ok:
+            quality_rejects[reason] = quality_rejects.get(reason, 0) + 1
+            continue
         enriched.append(entry)
+
+    if quality_rejects:
+        for reason, count in sorted(quality_rejects.items()):
+            logger.info("Quality filter rejected %d leads: %s", count, reason)
 
     unique = {}
     for e in enriched:
@@ -358,15 +464,17 @@ def process_businesses(
             continue
 
         has_website = bool(b.get("website"))
+        has_email = bool(emails_clean)
         lead_score = score_lead(
             has_website,
             a.get("https", False),
             a.get("has_viewport", False),
             a.get("html_length", 0),
-            a.get("emails", []),
+            has_email,
             a.get("has_cta", False),
             b.get("rating"),
             b.get("user_ratings_total"),
+            b.get("business_status"),
         )
 
         if lead_score < min_score:
@@ -379,9 +487,11 @@ def process_businesses(
             "phone_google": b.get("phone_google"),
             "phone_website": ";".join(a.get("phones_website", [])) if a.get("phones_website") else None,
             "email": ";".join(emails_clean),
+            "has_email": has_email,
             "website": b.get("website"),
             "rating": b.get("rating"),
             "user_ratings_total": b.get("user_ratings_total"),
+            "business_status": b.get("business_status"),
             "https": a.get("https", False),
             "has_viewport": a.get("has_viewport", False),
             "html_length": a.get("html_length", 0),
