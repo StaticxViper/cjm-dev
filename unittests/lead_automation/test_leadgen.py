@@ -49,6 +49,8 @@ SKIP = unittest.skipIf(
 
 def _quality_entry(**overrides):
     base = {
+        "business_name": "Local Plumbing LLC",
+        "website": "https://localplumbing.example.com",
         "phone_google": "(215) 555-1234",
         "user_ratings_total": 10,
         "business_status": "OPERATIONAL",
@@ -56,6 +58,56 @@ def _quality_entry(**overrides):
     }
     base.update(overrides)
     return base
+
+
+@SKIP
+class TestFranchiseAndOwner(unittest.TestCase):
+    def test_is_franchise_matches_name(self):
+        self.assertTrue(
+            LEADGEN.is_franchise("Roto-Rooter of Cherry Hill", "https://example.com")
+        )
+
+    def test_is_franchise_matches_domain(self):
+        self.assertTrue(
+            LEADGEN.is_franchise("Local Cleaners", "https://www.servpro.com/locations/nj")
+        )
+
+    def test_independent_business_not_franchise(self):
+        self.assertFalse(
+            LEADGEN.is_franchise(
+                "Alspach Landscaping",
+                "https://www.alspachlandscaping.com/",
+            )
+        )
+
+    def test_franchise_rejected_when_enabled(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(business_name="Molly Maid of Philly"),
+            filter_franchises=True,
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "franchise")
+
+    def test_franchise_kept_when_disabled(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(business_name="Molly Maid of Philly"),
+            filter_franchises=False,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_extract_owner_names_from_reviews(self):
+        reviews = [
+            {"text": "Ask for Mike next time, he was great."},
+            {"text": "Sarah the owner was wonderful to work with."},
+        ]
+        names = LEADGEN.extract_owner_names(reviews)
+        self.assertIn("Mike", names)
+        self.assertIn("Sarah", names)
+
+    def test_extract_owner_names_empty(self):
+        self.assertEqual(LEADGEN.extract_owner_names([]), [])
+        self.assertEqual(LEADGEN.extract_owner_names([{"text": "Good job."}]), [])
 
 
 @SKIP
@@ -105,14 +157,16 @@ class TestQualityFilters(unittest.TestCase):
 
     def test_low_review_count_rejected(self):
         ok, reason = LEADGEN.passes_quality_filters(
-            _quality_entry(user_ratings_total=2)
+            _quality_entry(user_ratings_total=4),
+            min_reviews=5,
         )
         self.assertFalse(ok)
         self.assertEqual(reason, "low_review_count")
 
     def test_min_review_count_accepted(self):
         ok, _ = LEADGEN.passes_quality_filters(
-            _quality_entry(user_ratings_total=3)
+            _quality_entry(user_ratings_total=5),
+            min_reviews=5,
         )
         self.assertTrue(ok)
 
@@ -311,6 +365,7 @@ class TestSendToDashboard(unittest.TestCase):
         mock_api_cls.return_value = mock_api
         rows = [{
             "business_name": "Test Biz",
+            "address": "123 Main St, Houston, TX 77001, USA",
             "phone_google": "555-1234",
             "email": "contact@test.com",
             "niche_key": "landscaping",
@@ -323,6 +378,7 @@ class TestSendToDashboard(unittest.TestCase):
         payload = call_kwargs["json_body"]
         self.assertEqual(len(payload), 1)
         self.assertEqual(payload[0]["business_name"], "Test Biz")
+        self.assertEqual(payload[0]["address"], "123 Main St, Houston, TX 77001, USA")
         self.assertEqual(payload[0]["score"], 85)
         self.assertEqual(payload[0]["category"], "landscaping-leads")
 

@@ -42,6 +42,7 @@ DASHBOARD_BULK_ENDPOINT = "/leads-ingest-bulk"
 _LEADGEN_DIR = Path(__file__).resolve().parent
 KEYWORD_CATEGORIES = json.load(open(_LEADGEN_DIR / "keywords.json"))
 COORDS_DATA = json.load(open(_LEADGEN_DIR / "coords.json"))
+FRANCHISE_DATA = json.load(open(_LEADGEN_DIR / "franchises.json"))
 
 SCORE_WEIGHTS = {
     "no_website": 40,
@@ -56,10 +57,28 @@ SCORE_WEIGHTS = {
 }
 assert sum(SCORE_WEIGHTS.values()) == 100
 
-MIN_USER_RATINGS_TOTAL = 3
 REVIEW_MAX_AGE_MONTHS = 18
 US_PHONE_RE = re.compile(r"^(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$")
 CLOSED_STATUSES = frozenset({"CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"})
+OWNER_NAME_FALSE_POSITIVES = frozenset({
+    "he", "she", "they", "him", "her", "them", "his", "very", "really", "also",
+    "just", "still", "always", "never", "everyone", "someone", "anyone",
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    "service", "company", "business", "team", "staff", "crew", "guy", "guys",
+    "lady", "man", "woman", "people", "customer", "customers",
+    "next", "time", "owner", "manager", "was", "is", "great", "amazing",
+    "excellent", "wonderful", "helpful", "fantastic", "the", "our", "my",
+})
+OWNER_NAME_PATTERNS = [
+    re.compile(
+        r"(?i)(?:ask for|talk to|speak (?:with|to)|call|meet)\s+([A-Z][a-z]+)"
+    ),
+    re.compile(
+        r"([A-Z][a-z]+)\s+(?i:was|is)\s+(?i:great|amazing|excellent|wonderful|helpful|fantastic)"
+    ),
+    re.compile(r"(?i)(?:owner|manager)\s+([A-Z][a-z]+)"),
+    re.compile(r"([A-Z][a-z]+)\s+(?i:the\s+)?(?i:owner|manager)"),
+]
 
 logger = setup_logger(
     name="leadgen",
@@ -89,6 +108,8 @@ class LeadgenConfig:
     keywords: list = field(default_factory=_default_keywords)
     locations: list = field(default_factory=_default_locations)
     dashboard_bulk: bool = True
+    filter_franchises: bool = True
+    min_reviews: int = 5
 
 
 def get_places(location, radius, keywords, api_key):
@@ -168,6 +189,15 @@ def get_place_details(place_id, api_key):
         r = requests.get(base, params=params, timeout=10)
         data = r.json()
         result = data.get("result", {})
+        # #region agent log
+        try:
+            import json as _json
+            _addr = result.get("formatted_address")
+            with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
+                _f.write(_json.dumps({"sessionId": "2def0a", "hypothesisId": "B", "location": "leadgen.py:get_place_details", "message": "place details address", "data": {"place_id": place_id, "api_status": data.get("status"), "has_formatted_address": bool(_addr), "address_len": len(_addr) if _addr else 0}, "timestamp": int(time.time() * 1000)}) + "\n")
+        except Exception:
+            pass
+        # #endregion
         return {
             "website": result.get("website"),
             "phone_google": result.get("formatted_phone_number"),
@@ -212,17 +242,69 @@ def is_review_stale(latest_ts, months=REVIEW_MAX_AGE_MONTHS):
     return latest_dt < cutoff
 
 
-def passes_quality_filters(entry):
+def is_franchise(business_name, website, franchise_data=None):
+    """Return True if business name or website matches known franchise lists."""
+    data = franchise_data if franchise_data is not None else FRANCHISE_DATA
+    name = (business_name or "").lower()
+    for franchise_name in data.get("names") or []:
+        if franchise_name and franchise_name.lower() in name:
+            return True
+
+    if website:
+        try:
+            host = urlparse(website if "://" in website else f"http://{website}").hostname or ""
+            host = host.lower().removeprefix("www.")
+            for domain in data.get("domains") or []:
+                domain = (domain or "").lower().removeprefix("www.")
+                if domain and (host == domain or host.endswith("." + domain)):
+                    return True
+        except Exception:
+            pass
+    return False
+
+
+def extract_owner_names(reviews, max_names=5):
+    """Extract likely owner/decision-maker names from review text."""
+    if not reviews:
+        return []
+    found = []
+    seen = set()
+    for review in reviews:
+        text = review.get("text") or ""
+        if not text:
+            continue
+        for pattern in OWNER_NAME_PATTERNS:
+            for match in pattern.finditer(text):
+                name = " ".join(part.capitalize() for part in match.group(1).split())
+                key = name.lower()
+                first = key.split()[0]
+                if first in OWNER_NAME_FALSE_POSITIVES or key in seen:
+                    continue
+                seen.add(key)
+                found.append(name)
+                if len(found) >= max_names:
+                    return found
+    return found
+
+
+def passes_quality_filters(entry, filter_franchises=True, min_reviews=5, franchise_data=None):
     """Return (passed, reason) for hard quality filters before website scraping."""
     status = entry.get("business_status")
     if status in CLOSED_STATUSES:
         return False, "closed_business"
 
+    if filter_franchises and is_franchise(
+        entry.get("business_name"),
+        entry.get("website"),
+        franchise_data=franchise_data,
+    ):
+        return False, "franchise"
+
     try:
         count = int(entry.get("user_ratings_total") or 0)
     except (TypeError, ValueError):
         count = 0
-    if count < MIN_USER_RATINGS_TOTAL:
+    if count < min_reviews:
         return False, "low_review_count"
 
     if not is_valid_us_phone(entry.get("phone_google")):
@@ -364,6 +446,8 @@ def process_businesses(
     contacted_emails,
     min_score=80,
     max_workers=12,
+    filter_franchises=True,
+    min_reviews=5,
 ):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
     enriched = []
@@ -389,7 +473,19 @@ def process_businesses(
             "reviews": details.get("reviews") or [],
             "niche_key": b.get("niche_key"),
         }
-        ok, reason = passes_quality_filters(entry)
+        # #region agent log
+        try:
+            import json as _json
+            with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
+                _f.write(_json.dumps({"sessionId": "2def0a", "hypothesisId": "C", "location": "leadgen.py:process_businesses:entry", "message": "merged address sources", "data": {"place_id": place_id, "details_addr": bool(details.get("address")), "nearby_addr": bool(b.get("address")), "merged_addr": bool(entry.get("address")), "business_name": (entry.get("business_name") or "")[:40]}, "timestamp": int(time.time() * 1000)}) + "\n")
+        except Exception:
+            pass
+        # #endregion
+        ok, reason = passes_quality_filters(
+            entry,
+            filter_franchises=filter_franchises,
+            min_reviews=min_reviews,
+        )
         if not ok:
             quality_rejects[reason] = quality_rejects.get(reason, 0) + 1
             continue
@@ -481,6 +577,7 @@ def process_businesses(
             filtered_below_min += 1
             continue
 
+        owner_names = extract_owner_names(b.get("reviews") or [])
         row = {
             "business_name": b.get("business_name"),
             "address": b.get("address"),
@@ -488,6 +585,7 @@ def process_businesses(
             "phone_website": ";".join(a.get("phones_website", [])) if a.get("phones_website") else None,
             "email": ";".join(emails_clean),
             "has_email": has_email,
+            "owner_names": ";".join(owner_names) if owner_names else None,
             "website": b.get("website"),
             "rating": b.get("rating"),
             "user_ratings_total": b.get("user_ratings_total"),
@@ -498,6 +596,14 @@ def process_businesses(
             "lead_score": lead_score,
             "niche_key": b.get("niche_key"),
         }
+        # #region agent log
+        try:
+            import json as _json
+            with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
+                _f.write(_json.dumps({"sessionId": "2def0a", "hypothesisId": "E", "location": "leadgen.py:process_businesses:row", "message": "qualifying row address", "data": {"place_id": place_id, "has_address": bool(row.get("address")), "address_preview": (row.get("address") or "")[:60], "lead_score": lead_score}, "timestamp": int(time.time() * 1000)}) + "\n")
+        except Exception:
+            pass
+        # #endregion
         rows.append(row)
 
     if filtered_below_min:
@@ -550,12 +656,22 @@ def send_to_dashboard(rows):
         category = KEYWORD_CATEGORIES.get(niche_key, niche_key)
         payload.append({
             "business_name": row["business_name"],
+            "address": row.get("address") or "",
             "phone": row.get("phone_google") or "",
             "email": extract_real_email(row.get("email") or ""),
             "category": category,
             "tags": ["lead_automation", "google-places-api"],
             "score": int(row["lead_score"]),
         })
+
+    # #region agent log
+    try:
+        import json as _json
+        with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
+            _f.write(_json.dumps({"sessionId": "2def0a", "runId": "post-fix", "hypothesisId": "A", "location": "leadgen.py:send_to_dashboard", "message": "dashboard payload address check", "data": {"row_count": len(rows), "payload_count": len(payload), "rows_with_address": sum(1 for r in rows if r.get("address")), "payload_keys": list(payload[0].keys()) if payload else [], "payload_has_address_key": "address" in (payload[0] if payload else {}), "payload_addresses_nonempty": sum(1 for p in payload if p.get("address")), "sample_row_address": (rows[0].get("address") if rows else None) and str(rows[0].get("address"))[:60], "sample_payload_address": (payload[0].get("address") if payload else None) and str(payload[0].get("address"))[:60]}, "timestamp": int(time.time() * 1000)}) + "\n")
+    except Exception:
+        pass
+    # #endregion
 
     if not payload:
         logger.info("No leads to send to dashboard")
@@ -581,6 +697,19 @@ def _prompt_int(prompt, default):
     except ValueError:
         print(f"Invalid number, using default {default}.")
         return default
+
+
+def _prompt_bool(prompt, default=True):
+    default_label = "Y/n" if default else "y/N"
+    raw = input(f"{prompt} [{default_label}]: ").strip().lower()
+    if not raw:
+        return default
+    if raw in ("y", "yes", "true", "1"):
+        return True
+    if raw in ("n", "no", "false", "0"):
+        return False
+    print(f"Invalid choice, using default {default}.")
+    return default
 
 
 def _prompt_output_mode(default="csv"):
@@ -673,6 +802,8 @@ def interactive_customize_config(base_config=None):
     cfg = base_config or LeadgenConfig()
     print("\n--- Customize Lead Generation ---")
     cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
+    cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
+    cfg.filter_franchises = _prompt_bool("Filter out franchises/chains", cfg.filter_franchises)
     cfg.output_mode = _prompt_output_mode(cfg.output_mode)
     cfg.keywords = _prompt_keywords(KEYWORD_CATEGORIES)
     cfg.locations = _prompt_locations(_default_locations())
@@ -681,12 +812,14 @@ def interactive_customize_config(base_config=None):
 
 def _print_config_summary(config):
     print("\n--- Configuration ---")
-    print(f"  Min score:    {config.min_score}")
-    print(f"  Output:       {config.output_mode}")
-    print(f"  CSV path:     {config.csv_output}")
-    print(f"  Keywords:     {', '.join(config.keywords)}")
+    print(f"  Min score:         {config.min_score}")
+    print(f"  Min reviews:       {config.min_reviews}")
+    print(f"  Filter franchises: {config.filter_franchises}")
+    print(f"  Output:            {config.output_mode}")
+    print(f"  CSV path:          {config.csv_output}")
+    print(f"  Keywords:          {', '.join(config.keywords)}")
     locs = ", ".join(f"{city}, {state}" for state, city, _ in config.locations)
-    print(f"  Locations:    {locs}")
+    print(f"  Locations:         {locs}")
     print()
 
 
@@ -726,6 +859,24 @@ def parse_args():
     )
     parser.add_argument("--min-score", type=int, help="Minimum lead_score to keep (default 80)")
     parser.add_argument(
+        "--min-reviews",
+        type=int,
+        help="Minimum user_ratings_total to keep (default 5)",
+    )
+    parser.add_argument(
+        "--filter-franchises",
+        dest="filter_franchises",
+        action="store_true",
+        default=None,
+        help="Exclude franchise/chain leads (default)",
+    )
+    parser.add_argument(
+        "--no-filter-franchises",
+        dest="filter_franchises",
+        action="store_false",
+        help="Allow franchise/chain leads",
+    )
+    parser.add_argument(
         "--output",
         choices=["csv", "dashboard", "both"],
         help="Output destination",
@@ -744,6 +895,8 @@ def _has_cli_overrides(args):
     return any([
         args.defaults,
         args.min_score is not None,
+        args.min_reviews is not None,
+        args.filter_franchises is not None,
         args.output is not None,
         args.csv_path is not None,
         args.keywords is not None,
@@ -756,6 +909,10 @@ def config_from_args(args):
     config = LeadgenConfig()
     if args.min_score is not None:
         config.min_score = args.min_score
+    if args.min_reviews is not None:
+        config.min_reviews = args.min_reviews
+    if args.filter_franchises is not None:
+        config.filter_franchises = args.filter_franchises
     if args.output is not None:
         config.output_mode = args.output
     if args.csv_path is not None:
@@ -828,6 +985,8 @@ def run_leadgen(config):
                 contacted_emails,
                 min_score=config.min_score,
                 max_workers=config.max_workers,
+                filter_franchises=config.filter_franchises,
+                min_reviews=config.min_reviews,
             )
             total_rows.extend(rows)
         except Exception as e:

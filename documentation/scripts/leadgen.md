@@ -19,10 +19,11 @@ Discovers local business leads via Google Places Nearby Search, fetches place de
 |------|-------------|
 | `keywords.json` | Search keywords (keys used as categories) |
 | `coords.json` | Lat/lng for search center |
+| `franchises.json` | Franchise/chain name and domain blocklists |
 | `leads_output.csv` | Output CSV (created/appended) |
 | `contacted.txt` | Emails already contacted (skipped on export) |
 
-Defaults: `min_score` 80, `search_radius` 50 km, `max_workers` 12, `PLACES_SLEEP` 2 s between API calls.
+Defaults: `min_score` 80, `min_reviews` 5, `filter_franchises` True, `search_radius` 50 km, `max_workers` 12, `PLACES_SLEEP` 2 s between API calls.
 
 ## How to run
 
@@ -84,6 +85,8 @@ Enter comma-separated numbers to select specific items, or press Enter for all.
 |------|-------------|
 | `--defaults` | Skip menu, use defaults |
 | `--min-score INT` | Minimum `lead_score` to keep (default 80) |
+| `--min-reviews INT` | Minimum `user_ratings_total` (default 5) |
+| `--filter-franchises` / `--no-filter-franchises` | Exclude (default) or allow franchise/chain leads |
 | `--output {csv,dashboard,both}` | Output destination |
 | `--csv-path PATH` | CSV output path |
 | `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
@@ -116,11 +119,14 @@ Applied after Place Details, before website scraping:
 | Filter | Rule |
 |--------|------|
 | Business status | Exclude `CLOSED_TEMPORARILY` and `CLOSED_PERMANENTLY`; keep missing or `OPERATIONAL` |
-| Review count | Require `user_ratings_total >= 3` |
+| Franchise / chain | When `filter_franchises` is True (default), exclude if `business_name` matches a name in `franchises.json` **or** website host matches a listed domain |
+| Review count | Require `user_ratings_total >= min_reviews` (default 5) |
 | Phone | Require valid US-format `phone_google` from Google |
 | Review recency | If review data exists, exclude when newest review is older than 18 months |
 
 Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `rating`, and `user_ratings_total` in addition to website and phone.
+
+Owner/decision-maker names are extracted from review text (patterns like "ask for X", "X was great", "X the owner") into an `owner_names` CSV column. This is enrichment only — not a filter.
 
 ## Scoring
 
@@ -138,7 +144,7 @@ Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `ra
 | `low_reviews` | `user_ratings_total` is None or `< 15` | 1 |
 | `unknown_status` | `business_status` missing (slight deprioritization) | 2 |
 
-Leads without email are kept (cold-call queue). Leads with email score higher (warm email/SMS sequence). Output includes `has_email` and `business_status` columns.
+Leads without email are kept (cold-call queue). Leads with email score higher (warm email/SMS sequence). Output includes `has_email`, `business_status`, and `owner_names` columns.
 
 Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 
