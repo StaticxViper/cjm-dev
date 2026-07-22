@@ -8,6 +8,7 @@ import importlib
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -46,6 +47,17 @@ SKIP = unittest.skipIf(
 )
 
 
+def _quality_entry(**overrides):
+    base = {
+        "phone_google": "(215) 555-1234",
+        "user_ratings_total": 10,
+        "business_status": "OPERATIONAL",
+        "reviews": [],
+    }
+    base.update(overrides)
+    return base
+
+
 @SKIP
 class TestSelectionHelpers(unittest.TestCase):
     def test_locations_by_state_groups_coords(self):
@@ -71,6 +83,57 @@ class TestSelectionHelpers(unittest.TestCase):
 
 
 @SKIP
+class TestQualityFilters(unittest.TestCase):
+    def test_valid_us_phone(self):
+        self.assertTrue(LEADGEN.is_valid_us_phone("(215) 555-1234"))
+        self.assertFalse(LEADGEN.is_valid_us_phone("555"))
+        self.assertFalse(LEADGEN.is_valid_us_phone(None))
+
+    def test_closed_business_rejected(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(business_status="CLOSED_PERMANENTLY")
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "closed_business")
+
+    def test_missing_status_kept(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(business_status=None)
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_low_review_count_rejected(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(user_ratings_total=2)
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "low_review_count")
+
+    def test_min_review_count_accepted(self):
+        ok, _ = LEADGEN.passes_quality_filters(
+            _quality_entry(user_ratings_total=3)
+        )
+        self.assertTrue(ok)
+
+    def test_stale_review_rejected(self):
+        old_ts = int(time.time()) - (19 * 30 * 24 * 60 * 60)
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(reviews=[{"time": old_ts}])
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "stale_reviews")
+
+    def test_no_reviews_passes_recency_check(self):
+        ok, _ = LEADGEN.passes_quality_filters(_quality_entry(reviews=[]))
+        self.assertTrue(ok)
+
+    def test_latest_review_timestamp(self):
+        reviews = [{"time": 100}, {"time": 300}]
+        self.assertEqual(LEADGEN.latest_review_timestamp(reviews), 300)
+
+
+@SKIP
 class TestScoreLead(unittest.TestCase):
     def test_score_weights_sum_to_100(self):
         self.assertEqual(sum(LEADGEN.SCORE_WEIGHTS.values()), 100)
@@ -82,12 +145,13 @@ class TestScoreLead(unittest.TestCase):
                 https=False,
                 has_viewport=False,
                 html_length=0,
-                emails=[],
+                has_email=False,
                 has_cta=False,
                 rating=5.0,
                 user_ratings_total=100,
+                business_status="OPERATIONAL",
             ),
-            round(40 / 42 * 100),
+            round(40 / 50 * 100),
         )
 
     def test_no_website_all_fail_scores_100(self):
@@ -97,10 +161,11 @@ class TestScoreLead(unittest.TestCase):
                 https=False,
                 has_viewport=False,
                 html_length=0,
-                emails=[],
+                has_email=True,
                 has_cta=False,
                 rating=4.0,
                 user_ratings_total=10,
+                business_status=None,
             ),
             100,
         )
@@ -112,13 +177,29 @@ class TestScoreLead(unittest.TestCase):
                 https=True,
                 has_viewport=True,
                 html_length=5000,
-                emails=["a@b.com"],
+                has_email=False,
                 has_cta=True,
                 rating=5.0,
                 user_ratings_total=20,
+                business_status="OPERATIONAL",
             ),
             0,
         )
+
+    def test_has_email_increases_score(self):
+        base_kwargs = dict(
+            has_website=True,
+            https=True,
+            has_viewport=True,
+            html_length=5000,
+            has_cta=True,
+            rating=5.0,
+            user_ratings_total=20,
+            business_status="OPERATIONAL",
+        )
+        without = LEADGEN.score_lead(has_email=False, **base_kwargs)
+        with_email = LEADGEN.score_lead(has_email=True, **base_kwargs)
+        self.assertGreater(with_email, without)
 
     def test_all_fail_website_scores_100(self):
         self.assertEqual(
@@ -127,10 +208,11 @@ class TestScoreLead(unittest.TestCase):
                 https=False,
                 has_viewport=False,
                 html_length=1000,
-                emails=[],
+                has_email=True,
                 has_cta=False,
                 rating=4.0,
                 user_ratings_total=10,
+                business_status=None,
             ),
             100,
         )
@@ -141,25 +223,35 @@ class TestScoreLead(unittest.TestCase):
             https=False,
             has_viewport=False,
             html_length=1000,
-            emails=["x@y.com"],
+            has_email=True,
             has_cta=True,
             rating=5.0,
             user_ratings_total=20,
+            business_status="OPERATIONAL",
         )
-        self.assertEqual(score, round((18 + 14 + 14) / 60 * 100))
+        self.assertEqual(score, round((18 + 14 + 14 + 6) / 60 * 100))
 
 
 @SKIP
 class TestProcessBusinessesFilter(unittest.TestCase):
+    def _details(self, **overrides):
+        base = {
+            "website": "http://example.com",
+            "phone_google": "(215) 555-1234",
+            "address": "1 Main",
+            "business_status": "OPERATIONAL",
+            "reviews": [],
+            "rating": 5.0,
+            "user_ratings_total": 20,
+        }
+        base.update(overrides)
+        return base
+
     @patch("leadgen.get_place_details")
     @patch("leadgen.analyze_website")
     @patch("leadgen.time.sleep", return_value=None)
     def test_filters_below_min_score(self, _sleep, mock_analyze, mock_details):
-        mock_details.return_value = {
-            "website": "http://example.com",
-            "phone_google": "555",
-            "address": "1 Main",
-        }
+        mock_details.return_value = self._details()
         mock_analyze.return_value = {
             "emails": ["a@b.com"],
             "phones_website": [],
@@ -186,6 +278,29 @@ class TestProcessBusinessesFilter(unittest.TestCase):
             min_score=80,
         )
         self.assertEqual(rows, [])
+
+    @patch("leadgen.get_place_details")
+    @patch("leadgen.analyze_website")
+    @patch("leadgen.time.sleep", return_value=None)
+    def test_quality_filter_rejects_closed_before_scrape(self, _sleep, mock_analyze, mock_details):
+        mock_details.return_value = self._details(business_status="CLOSED_PERMANENTLY")
+        businesses = [{
+            "place_id": "pid1",
+            "business_name": "Closed Co",
+            "rating": 5.0,
+            "user_ratings_total": 20,
+            "niche_key": "landscaping",
+            "address": "1 Main",
+        }]
+        rows = LEADGEN.process_businesses(
+            businesses,
+            "fake-key",
+            set(),
+            set(),
+            min_score=0,
+        )
+        self.assertEqual(rows, [])
+        mock_analyze.assert_not_called()
 
 
 @SKIP
@@ -256,9 +371,11 @@ class TestSaveResults(unittest.TestCase):
                 "phone_google": "555",
                 "phone_website": None,
                 "email": "a@a.com",
+                "has_email": True,
                 "website": "https://a.com",
                 "rating": 4.0,
                 "user_ratings_total": 10,
+                "business_status": "OPERATIONAL",
                 "https": True,
                 "has_viewport": True,
                 "html_length": 5000,
@@ -272,6 +389,7 @@ class TestSaveResults(unittest.TestCase):
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
             self.assertIn("business_name", content)
+            self.assertIn("has_email", content)
             self.assertIn("A", content)
 
 
