@@ -12,6 +12,7 @@ __pycache__/
 *emails_to_send.csv
 *contacted.txt
 *leads_output.csv
+*leadgen_settings.json
 
 *log.txt
 *.log

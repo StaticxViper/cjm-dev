@@ -16,6 +16,7 @@ import argparse
 import requests
 import pandas as pd
 import re
+import shutil
 import time
 import json
 from dataclasses import dataclass, field
@@ -23,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from helper_scripts.utils.logger.logger import setup_logger
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 import os
 from dotenv import load_dotenv
 from leadfilter import load_existing_place_ids, is_new_place
@@ -40,9 +41,18 @@ DASHBOARD_BASE_URL = "https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1"
 DASHBOARD_BULK_ENDPOINT = "/leads-ingest-bulk"
 
 _LEADGEN_DIR = Path(__file__).resolve().parent
+SETTINGS_PATH = _LEADGEN_DIR / "leadgen_settings.json"
 KEYWORD_CATEGORIES = json.load(open(_LEADGEN_DIR / "keywords.json"))
 COORDS_DATA = json.load(open(_LEADGEN_DIR / "coords.json"))
 FRANCHISE_DATA = json.load(open(_LEADGEN_DIR / "franchises.json"))
+CONTACT_PAGE_PATHS = ("/contact", "/contact-us", "/about", "/about-us")
+PERSISTED_SETTINGS_KEYS = (
+    "min_score",
+    "min_reviews",
+    "filter_franchises",
+    "output_mode",
+    "csv_output",
+)
 
 SCORE_WEIGHTS = {
     "no_website": 40,
@@ -110,6 +120,63 @@ class LeadgenConfig:
     dashboard_bulk: bool = True
     filter_franchises: bool = True
     min_reviews: int = 5
+
+
+def load_saved_settings(path=None):
+    """Load persisted run defaults from leadgen_settings.json (excludes keywords/locations)."""
+    settings_path = Path(path) if path is not None else SETTINGS_PATH
+    if not settings_path.exists():
+        return {}
+    try:
+        with open(settings_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.error("Failed to load settings from %s: %s", settings_path, e)
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: data[k] for k in PERSISTED_SETTINGS_KEYS if k in data}
+
+
+def save_settings(config, path=None):
+    """Persist run defaults from a LeadgenConfig (excludes keywords/locations)."""
+    settings_path = Path(path) if path is not None else SETTINGS_PATH
+    payload = {
+        "min_score": config.min_score,
+        "min_reviews": config.min_reviews,
+        "filter_franchises": config.filter_franchises,
+        "output_mode": config.output_mode,
+        "csv_output": config.csv_output,
+    }
+    with open(settings_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+        f.write("\n")
+    return payload
+
+
+def config_from_saved_settings(path=None):
+    """Build LeadgenConfig from hardcoded defaults plus any saved settings file."""
+    config = LeadgenConfig()
+    saved = load_saved_settings(path=path)
+    if not saved:
+        return config
+    if "min_score" in saved:
+        try:
+            config.min_score = int(saved["min_score"])
+        except (TypeError, ValueError):
+            pass
+    if "min_reviews" in saved:
+        try:
+            config.min_reviews = int(saved["min_reviews"])
+        except (TypeError, ValueError):
+            pass
+    if "filter_franchises" in saved:
+        config.filter_franchises = bool(saved["filter_franchises"])
+    if "output_mode" in saved and saved["output_mode"] in ("csv", "dashboard", "both"):
+        config.output_mode = saved["output_mode"]
+    if "csv_output" in saved and saved["csv_output"]:
+        config.csv_output = str(saved["csv_output"])
+    return config
 
 
 def get_places(location, radius, keywords, api_key):
@@ -189,15 +256,6 @@ def get_place_details(place_id, api_key):
         r = requests.get(base, params=params, timeout=10)
         data = r.json()
         result = data.get("result", {})
-        # #region agent log
-        try:
-            import json as _json
-            _addr = result.get("formatted_address")
-            with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
-                _f.write(_json.dumps({"sessionId": "2def0a", "hypothesisId": "B", "location": "leadgen.py:get_place_details", "message": "place details address", "data": {"place_id": place_id, "api_status": data.get("status"), "has_formatted_address": bool(_addr), "address_len": len(_addr) if _addr else 0}, "timestamp": int(time.time() * 1000)}) + "\n")
-        except Exception:
-            pass
-        # #endregion
         return {
             "website": result.get("website"),
             "phone_google": result.get("formatted_phone_number"),
@@ -319,8 +377,49 @@ def passes_quality_filters(entry, filter_franchises=True, min_reviews=5, franchi
     return True, ""
 
 
+def _extract_emails_from_html(html):
+    """Return sorted unique emails found in HTML, filtering image-like false positives."""
+    emails = set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", html or ""))
+    filtered = []
+    for e in emails:
+        low = e.lower()
+        if any(low.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".svg")):
+            continue
+        if "mailto:" in low:
+            low = low.replace("mailto:", "")
+        filtered.append(low)
+    return sorted(set(filtered))
+
+
+def _extract_phones_from_html(html):
+    """Return sorted unique US-format phones found in HTML."""
+    phone_matches = re.findall(
+        r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",
+        html or "",
+    )
+    cleaned_phones = set()
+    for p in phone_matches:
+        digits = re.sub(r"[^0-9]", "", p)
+        if len(digits) == 11 and digits.startswith("1"):
+            digits = digits[1:]
+        if len(digits) == 10:
+            cleaned_phones.add(
+                "(+1) {}-{}-{}".format(digits[0:3], digits[3:6], digits[6:10])
+            )
+    return sorted(cleaned_phones)
+
+
+def _fetch_html(url):
+    """GET url and return response text, or raise."""
+    r = requests.get(url, timeout=10)
+    return r.text or ""
+
+
 def analyze_website(url):
-    """Fetch a website and extract emails, phones, https status, viewport, and basic quality signals."""
+    """Fetch a website and extract emails, phones, https status, viewport, and basic quality signals.
+
+    If the homepage has no emails, also tries common contact/about paths on the same origin.
+    """
     result = {
         "emails": [],
         "phones_website": [],
@@ -342,8 +441,7 @@ def analyze_website(url):
     result["https"] = url.lower().startswith("https://")
 
     try:
-        r = requests.get(url, timeout=10)
-        html = r.text or ""
+        html = _fetch_html(url)
     except Exception as e:
         result["error"] = str(e)
         return result
@@ -357,31 +455,29 @@ def analyze_website(url):
     if mv:
         result["has_viewport"] = True
 
-    emails = set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", html))
-    filtered = []
-    for e in emails:
-        low = e.lower()
-        if any(low.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".svg")):
-            continue
-        if "mailto:" in low:
-            low = low.replace("mailto:", "")
-        filtered.append(low)
-    result["emails"] = sorted(set(filtered))
-
-    phone_matches = re.findall(r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", html)
-    cleaned_phones = set()
-    for p in phone_matches:
-        digits = re.sub(r"[^0-9]", "", p)
-        if len(digits) == 11 and digits.startswith("1"):
-            digits = digits[1:]
-        if len(digits) == 10:
-            cleaned_phones.add("(+1) {}-{}-{}".format(digits[0:3], digits[3:6], digits[6:10]))
-    result["phones_website"] = sorted(cleaned_phones)
+    emails = set(_extract_emails_from_html(html))
+    phones = set(_extract_phones_from_html(html))
 
     text = soup.get_text(separator=" ").lower()
     cta_keywords = ["call", "contact", "quote", "estimate"]
     result["has_cta"] = any(kw in text for kw in cta_keywords)
 
+    if not emails:
+        parsed = urlparse(url)
+        base = f"{parsed.scheme}://{parsed.netloc}"
+        for path in CONTACT_PAGE_PATHS:
+            page_url = urljoin(base + "/", path.lstrip("/"))
+            try:
+                page_html = _fetch_html(page_url)
+            except Exception:
+                continue
+            emails.update(_extract_emails_from_html(page_html))
+            phones.update(_extract_phones_from_html(page_html))
+            if emails:
+                break
+
+    result["emails"] = sorted(emails)
+    result["phones_website"] = sorted(phones)
     return result
 
 
@@ -473,14 +569,12 @@ def process_businesses(
             "reviews": details.get("reviews") or [],
             "niche_key": b.get("niche_key"),
         }
-        # #region agent log
-        try:
-            import json as _json
-            with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
-                _f.write(_json.dumps({"sessionId": "2def0a", "hypothesisId": "C", "location": "leadgen.py:process_businesses:entry", "message": "merged address sources", "data": {"place_id": place_id, "details_addr": bool(details.get("address")), "nearby_addr": bool(b.get("address")), "merged_addr": bool(entry.get("address")), "business_name": (entry.get("business_name") or "")[:40]}, "timestamp": int(time.time() * 1000)}) + "\n")
-        except Exception:
-            pass
-        # #endregion
+        if not entry.get("address"):
+            logger.info(
+                "No address from Places for %s (%s)",
+                entry.get("business_name"),
+                place_id,
+            )
         ok, reason = passes_quality_filters(
             entry,
             filter_franchises=filter_franchises,
@@ -580,7 +674,8 @@ def process_businesses(
         owner_names = extract_owner_names(b.get("reviews") or [])
         row = {
             "business_name": b.get("business_name"),
-            "address": b.get("address"),
+            "place_id": place_id,
+            "address": b.get("address") or "",
             "phone_google": b.get("phone_google"),
             "phone_website": ";".join(a.get("phones_website", [])) if a.get("phones_website") else None,
             "email": ";".join(emails_clean),
@@ -596,14 +691,6 @@ def process_businesses(
             "lead_score": lead_score,
             "niche_key": b.get("niche_key"),
         }
-        # #region agent log
-        try:
-            import json as _json
-            with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
-                _f.write(_json.dumps({"sessionId": "2def0a", "hypothesisId": "E", "location": "leadgen.py:process_businesses:row", "message": "qualifying row address", "data": {"place_id": place_id, "has_address": bool(row.get("address")), "address_preview": (row.get("address") or "")[:60], "lead_score": lead_score}, "timestamp": int(time.time() * 1000)}) + "\n")
-        except Exception:
-            pass
-        # #endregion
         rows.append(row)
 
     if filtered_below_min:
@@ -664,15 +751,6 @@ def send_to_dashboard(rows):
             "score": int(row["lead_score"]),
         })
 
-    # #region agent log
-    try:
-        import json as _json
-        with open(str(repo_root / "debug-2def0a.log"), "a", encoding="utf-8") as _f:
-            _f.write(_json.dumps({"sessionId": "2def0a", "runId": "post-fix", "hypothesisId": "A", "location": "leadgen.py:send_to_dashboard", "message": "dashboard payload address check", "data": {"row_count": len(rows), "payload_count": len(payload), "rows_with_address": sum(1 for r in rows if r.get("address")), "payload_keys": list(payload[0].keys()) if payload else [], "payload_has_address_key": "address" in (payload[0] if payload else {}), "payload_addresses_nonempty": sum(1 for p in payload if p.get("address")), "sample_row_address": (rows[0].get("address") if rows else None) and str(rows[0].get("address"))[:60], "sample_payload_address": (payload[0].get("address") if payload else None) and str(payload[0].get("address"))[:60]}, "timestamp": int(time.time() * 1000)}) + "\n")
-    except Exception:
-        pass
-    # #endregion
-
     if not payload:
         logger.info("No leads to send to dashboard")
         return
@@ -721,6 +799,11 @@ def _prompt_output_mode(default="csv"):
     return labels.get(raw, default)
 
 
+def _prompt_text(prompt, default):
+    raw = input(f"{prompt} [{default}]: ").strip()
+    return raw if raw else default
+
+
 def _locations_by_state(coords_data=None):
     """Return {state: [(city, coords), ...]} from coords.json data."""
     data = coords_data if coords_data is not None else COORDS_DATA
@@ -748,13 +831,41 @@ def _parse_index_selection(raw, max_index):
     return indices
 
 
+def _terminal_width(fallback=80):
+    try:
+        return max(40, shutil.get_terminal_size(fallback=(fallback, 24)).columns)
+    except Exception:
+        return fallback
+
+
+def _format_numbered_items_horizontal(items, width=None):
+    """Format '1) label  2) label ...' wrapping across terminal width."""
+    if width is None:
+        width = _terminal_width()
+    lines = []
+    current = ""
+    for i, label in enumerate(items, 1):
+        cell = f"{i}) {label}"
+        if not current:
+            current = cell
+            continue
+        candidate = f"{current}  {cell}"
+        if len(candidate) <= width:
+            current = candidate
+        else:
+            lines.append(current)
+            current = cell
+    if current:
+        lines.append(current)
+    return "\n".join(lines)
+
+
 def _prompt_keywords(keyword_map):
     """Prompt user to select keywords from keywords.json."""
     keys = list(keyword_map.keys())
     print("\n--- Keywords (keywords.json) ---")
-    for i, kw in enumerate(keys, 1):
-        label = keyword_map[kw]
-        print(f"  {i}) {kw}  ->  {label}")
+    labels = [f"{kw} -> {keyword_map[kw]}" for kw in keys]
+    print(_format_numbered_items_horizontal(labels))
     raw = input("Enter numbers (comma-separated) or press Enter for all: ").strip()
     indices = _parse_index_selection(raw, len(keys))
     if indices is None:
@@ -767,14 +878,32 @@ def _prompt_locations(all_locations):
     """Prompt user to select locations from coords.json, grouped by state."""
     by_state = _locations_by_state()
     print("\n--- Locations (coords.json) ---")
-    idx = 1
     index_map = []
     for state, cities in by_state.items():
         print(f"\n{state}:")
+        state_items = []
         for city, coords in cities:
-            print(f"  {idx}) {city}")
             index_map.append((state, city, coords))
-            idx += 1
+            state_items.append(city)
+        # Global numbering continues across states; format only this state's slice.
+        start = len(index_map) - len(state_items) + 1
+        width = _terminal_width()
+        current = ""
+        lines = []
+        for offset, city in enumerate(state_items):
+            cell = f"{start + offset}) {city}"
+            if not current:
+                current = cell
+                continue
+            candidate = f"{current}  {cell}"
+            if len(candidate) <= width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = cell
+        if current:
+            lines.append(current)
+        print("\n".join(lines))
     raw = input("\nEnter numbers (comma-separated) or press Enter for all: ").strip()
     indices = _parse_index_selection(raw, len(index_map))
     if indices is None:
@@ -790,64 +919,69 @@ def interactive_select_locations_and_keywords():
     return keywords, locations
 
 
-def interactive_select_config():
-    """Build LeadgenConfig with default settings but user-selected locations/keywords."""
-    cfg = LeadgenConfig()
-    cfg.keywords, cfg.locations = interactive_select_locations_and_keywords()
-    return cfg
-
-
 def interactive_customize_config(base_config=None):
-    """Walk through customization prompts and return a LeadgenConfig."""
-    cfg = base_config or LeadgenConfig()
-    print("\n--- Customize Lead Generation ---")
+    """Walk through customization prompts for persisted defaults (no keywords/locations)."""
+    cfg = base_config or config_from_saved_settings()
+    print("\n--- Customize Lead Generation Defaults ---")
     cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
     cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
     cfg.filter_franchises = _prompt_bool("Filter out franchises/chains", cfg.filter_franchises)
     cfg.output_mode = _prompt_output_mode(cfg.output_mode)
-    cfg.keywords = _prompt_keywords(KEYWORD_CATEGORIES)
-    cfg.locations = _prompt_locations(_default_locations())
+    cfg.csv_output = _prompt_text("CSV output path", cfg.csv_output)
     return cfg
 
 
-def _print_config_summary(config):
+def _print_config_summary(config, include_run_scope=True):
     print("\n--- Configuration ---")
     print(f"  Min score:         {config.min_score}")
     print(f"  Min reviews:       {config.min_reviews}")
     print(f"  Filter franchises: {config.filter_franchises}")
     print(f"  Output:            {config.output_mode}")
     print(f"  CSV path:          {config.csv_output}")
-    print(f"  Keywords:          {', '.join(config.keywords)}")
-    locs = ", ".join(f"{city}, {state}" for state, city, _ in config.locations)
-    print(f"  Locations:         {locs}")
+    if include_run_scope:
+        print(f"  Keywords:          {', '.join(config.keywords)}")
+        locs = ", ".join(f"{city}, {state}" for state, city, _ in config.locations)
+        print(f"  Locations:         {locs}")
     print()
+
+
+def interactive_run_config():
+    """Load saved defaults, prompt keywords/locations, return config or None if cancelled."""
+    cfg = config_from_saved_settings()
+    cfg.keywords, cfg.locations = interactive_select_locations_and_keywords()
+    _print_config_summary(cfg)
+    confirm = input("Run with these settings? [Y/n]: ").strip().lower()
+    if confirm in ("n", "no"):
+        return None
+    return cfg
 
 
 def interactive_main_menu():
     """Show startup menu and return a LeadgenConfig, or None to exit."""
-    print("\n=== Lead Generation ===")
-    print("1) Run with defaults (min score 80, save to CSV, all locations & keywords)")
-    print("2) Customize settings")
-    print("3) Select locations & keywords")
-    print("4) Exit")
-    choice = input("Select [1]: ").strip() or "1"
-    if choice == "4":
-        return None
-    if choice == "2":
-        cfg = interactive_customize_config()
-        _print_config_summary(cfg)
-        confirm = input("Run with these settings? [Y/n]: ").strip().lower()
-        if confirm in ("n", "no"):
+    while True:
+        saved = load_saved_settings()
+        defaults_note = (
+            f"min score {saved.get('min_score', 80)}, "
+            f"output {saved.get('output_mode', 'csv')}"
+            if saved
+            else "min score 80, save to CSV"
+        )
+        print("\n=== Lead Generation ===")
+        print(f"1) Run ({defaults_note}; choose keywords & locations)")
+        print("2) Customize settings (save defaults, do not run)")
+        print("3) Exit")
+        choice = input("Select [1]: ").strip() or "1"
+        if choice == "3":
             return None
-        return cfg
-    if choice == "3":
-        cfg = interactive_select_config()
-        _print_config_summary(cfg)
-        confirm = input("Run with these settings? [Y/n]: ").strip().lower()
-        if confirm in ("n", "no"):
-            return None
-        return cfg
-    return LeadgenConfig()
+        if choice == "2":
+            cfg = interactive_customize_config()
+            save_settings(cfg)
+            _print_config_summary(cfg, include_run_scope=False)
+            print(f"Defaults saved to {SETTINGS_PATH.name}. Returning to menu.")
+            continue
+        if choice == "1":
+            return interactive_run_config()
+        print("Invalid choice. Please select 1, 2, or 3.")
 
 
 def parse_args():
@@ -905,8 +1039,8 @@ def _has_cli_overrides(args):
 
 
 def config_from_args(args):
-    """Build LeadgenConfig from argparse namespace."""
-    config = LeadgenConfig()
+    """Build LeadgenConfig from saved defaults plus argparse overrides."""
+    config = config_from_saved_settings()
     if args.min_score is not None:
         config.min_score = args.min_score
     if args.min_reviews is not None:
