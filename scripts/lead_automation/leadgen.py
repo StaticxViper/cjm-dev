@@ -109,7 +109,7 @@ def _default_locations():
 
 @dataclass
 class LeadgenConfig:
-    min_score: int = 80
+    min_score: int = 55
     output_mode: str = "json"
     json_output: str = "leads_output.json"
     search_radius: int = 50000
@@ -118,7 +118,7 @@ class LeadgenConfig:
     locations: list = field(default_factory=_default_locations)
     dashboard_bulk: bool = True
     filter_franchises: bool = True
-    min_reviews: int = 5
+    min_reviews: int = 0
 
 
 def load_saved_settings(path=None):
