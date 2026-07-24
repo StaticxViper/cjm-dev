@@ -5,6 +5,7 @@ Run from repo root:
     python -m unittest unittests.lead_automation.test_leadgen
 """
 import importlib
+import json
 import os
 import sys
 import tempfile
@@ -160,7 +161,7 @@ class TestSettingsPersistence(unittest.TestCase):
             min_reviews=8,
             filter_franchises=False,
             output_mode="both",
-            csv_output="custom_leads.csv",
+            json_output="custom_leads.json",
             keywords=["landscaping"],
         )
         with tempfile.TemporaryDirectory() as tmp:
@@ -173,11 +174,28 @@ class TestSettingsPersistence(unittest.TestCase):
             self.assertEqual(loaded["min_reviews"], 8)
             self.assertFalse(loaded["filter_franchises"])
             self.assertEqual(loaded["output_mode"], "both")
-            self.assertEqual(loaded["csv_output"], "custom_leads.csv")
+            self.assertEqual(loaded["json_output"], "custom_leads.json")
             rebuilt = LEADGEN.config_from_saved_settings(path=path)
             self.assertEqual(rebuilt.min_score, 70)
             self.assertEqual(rebuilt.output_mode, "both")
             self.assertEqual(list(LEADGEN.KEYWORD_CATEGORIES.keys()), rebuilt.keywords)
+
+    def test_load_saved_settings_migrates_legacy_csv(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "min_score": 75,
+                        "output_mode": "csv",
+                        "csv_output": "old_leads.csv",
+                    },
+                    f,
+                )
+            loaded = LEADGEN.load_saved_settings(path=path)
+            self.assertEqual(loaded["output_mode"], "json")
+            self.assertEqual(loaded["json_output"], "old_leads.json")
+            self.assertNotIn("csv_output", loaded)
 
     def test_load_saved_settings_missing_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -545,16 +563,55 @@ class TestSaveResults(unittest.TestCase):
             }
         ]
         with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "leads_out.csv")
+            path = os.path.join(tmp, "leads_out.json")
             LEADGEN.save_results(rows, path)
             self.assertTrue(os.path.isfile(path))
             with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-            self.assertIn("business_name", content)
-            self.assertIn("place_id", content)
-            self.assertIn("has_email", content)
-            self.assertIn("ChIJabc", content)
-            self.assertIn("A", content)
+                data = json.load(f)
+            self.assertIsInstance(data, list)
+            self.assertEqual(len(data), 1)
+            self.assertEqual(data[0]["place_id"], "ChIJabc")
+            self.assertEqual(data[0]["business_name"], "A")
+            self.assertTrue(data[0]["has_email"])
+
+    def test_save_results_appends_and_dedupes_by_place_id(self):
+        existing = [
+            {
+                "business_name": "Old",
+                "place_id": "pid1",
+                "lead_score": 50,
+                "website": "https://old.com",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "leads_out.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(existing, f)
+            LEADGEN.save_results(
+                [
+                    {
+                        "business_name": "Old Again",
+                        "place_id": "pid1",
+                        "lead_score": 90,
+                        "website": "https://old.com",
+                    },
+                    {
+                        "business_name": "New",
+                        "place_id": "pid2",
+                        "lead_score": 80,
+                        "website": "https://new.com",
+                    },
+                ],
+                path,
+            )
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertEqual(len(data), 2)
+            ids = {row["place_id"] for row in data}
+            self.assertEqual(ids, {"pid1", "pid2"})
+            # First occurrence of pid1 kept (score 50); pid2 score 80 sorts first
+            self.assertEqual(data[0]["place_id"], "pid2")
+            self.assertEqual(data[1]["business_name"], "Old")
 
 
 @SKIP

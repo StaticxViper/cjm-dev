@@ -14,7 +14,6 @@ sys.path.insert(0, str(repo_root))
 
 import argparse
 import requests
-import pandas as pd
 import re
 import shutil
 import time
@@ -51,7 +50,7 @@ PERSISTED_SETTINGS_KEYS = (
     "min_reviews",
     "filter_franchises",
     "output_mode",
-    "csv_output",
+    "json_output",
 )
 
 SCORE_WEIGHTS = {
@@ -111,8 +110,8 @@ def _default_locations():
 @dataclass
 class LeadgenConfig:
     min_score: int = 80
-    output_mode: str = "csv"
-    csv_output: str = "leads_output.csv"
+    output_mode: str = "json"
+    json_output: str = "leads_output.json"
     search_radius: int = 50000
     max_workers: int = 12
     keywords: list = field(default_factory=_default_keywords)
@@ -135,6 +134,16 @@ def load_saved_settings(path=None):
         return {}
     if not isinstance(data, dict):
         return {}
+
+    # Migrate legacy CSV settings keys to JSON.
+    if "output_mode" in data and data["output_mode"] == "csv":
+        data["output_mode"] = "json"
+    if "json_output" not in data and data.get("csv_output"):
+        path_val = str(data["csv_output"])
+        if path_val.lower().endswith(".csv"):
+            path_val = path_val[:-4] + ".json"
+        data["json_output"] = path_val
+
     return {k: data[k] for k in PERSISTED_SETTINGS_KEYS if k in data}
 
 
@@ -146,7 +155,7 @@ def save_settings(config, path=None):
         "min_reviews": config.min_reviews,
         "filter_franchises": config.filter_franchises,
         "output_mode": config.output_mode,
-        "csv_output": config.csv_output,
+        "json_output": config.json_output,
     }
     with open(settings_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
@@ -172,10 +181,10 @@ def config_from_saved_settings(path=None):
             pass
     if "filter_franchises" in saved:
         config.filter_franchises = bool(saved["filter_franchises"])
-    if "output_mode" in saved and saved["output_mode"] in ("csv", "dashboard", "both"):
+    if "output_mode" in saved and saved["output_mode"] in ("json", "dashboard", "both"):
         config.output_mode = saved["output_mode"]
-    if "csv_output" in saved and saved["csv_output"]:
-        config.csv_output = str(saved["csv_output"])
+    if "json_output" in saved and saved["json_output"]:
+        config.json_output = str(saved["json_output"])
     return config
 
 
@@ -702,26 +711,50 @@ def process_businesses(
     return rows
 
 
-def save_results(rows, csv_path):
-    df_new = pd.DataFrame(rows)
-    if os.path.exists(csv_path):
+def save_results(rows, json_path):
+    """Append lead rows to a JSON array file, deduping by place_id (or website+name)."""
+    existing = []
+    if os.path.exists(json_path):
         try:
-            df_old = pd.read_csv(csv_path)
-        except Exception:
-            df_old = pd.DataFrame()
-        if not df_old.empty:
-            combined = pd.concat([df_old, df_new], ignore_index=True)
-            if "website" in combined.columns:
-                combined = combined.drop_duplicates(subset=["website", "business_name"], keep="first")
-            else:
-                combined = combined.drop_duplicates(subset=["business_name"], keep="first")
-            combined = combined.sort_values(by="lead_score", ascending=False)
-            combined.to_csv(csv_path, index=False)
-            logger.info("Appended and saved %d total leads to %s", len(combined), csv_path)
-            return
-    df_new = df_new.sort_values(by="lead_score", ascending=False)
-    df_new.to_csv(csv_path, index=False)
-    logger.critical("Saved %d leads to %s", len(df_new), csv_path)
+            with open(json_path, encoding="utf-8") as f:
+                loaded = json.load(f)
+            if isinstance(loaded, list):
+                existing = loaded
+        except (OSError, json.JSONDecodeError) as e:
+            logger.error("Failed to read existing leads from %s: %s", json_path, e)
+            existing = []
+
+    combined = list(existing) + list(rows)
+    seen_place_ids = set()
+    seen_fallback = set()
+    deduped = []
+    for row in combined:
+        place_id = row.get("place_id")
+        if place_id:
+            if place_id in seen_place_ids:
+                continue
+            seen_place_ids.add(place_id)
+        else:
+            key = (row.get("website") or "", row.get("business_name") or "")
+            if key in seen_fallback:
+                continue
+            seen_fallback.add(key)
+        deduped.append(row)
+
+    def _score_key(row):
+        try:
+            return -int(row.get("lead_score") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    deduped.sort(key=_score_key)
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(deduped, f, indent=2)
+        f.write("\n")
+    if existing:
+        logger.info("Appended and saved %d total leads to %s", len(deduped), json_path)
+    else:
+        logger.critical("Saved %d leads to %s", len(deduped), json_path)
 
 
 def extract_real_email(raw_email_field):
@@ -790,10 +823,10 @@ def _prompt_bool(prompt, default=True):
     return default
 
 
-def _prompt_output_mode(default="csv"):
-    labels = {"1": "csv", "2": "dashboard", "3": "both"}
-    default_num = {"csv": "1", "dashboard": "2", "both": "3"}[default]
-    raw = input(f"Output: 1=CSV  2=Dashboard  3=Both [{default_num}]: ").strip()
+def _prompt_output_mode(default="json"):
+    labels = {"1": "json", "2": "dashboard", "3": "both"}
+    default_num = {"json": "1", "dashboard": "2", "both": "3"}.get(default, "1")
+    raw = input(f"Output: 1=JSON  2=Dashboard  3=Both [{default_num}]: ").strip()
     if not raw:
         return default
     return labels.get(raw, default)
@@ -927,7 +960,7 @@ def interactive_customize_config(base_config=None):
     cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
     cfg.filter_franchises = _prompt_bool("Filter out franchises/chains", cfg.filter_franchises)
     cfg.output_mode = _prompt_output_mode(cfg.output_mode)
-    cfg.csv_output = _prompt_text("CSV output path", cfg.csv_output)
+    cfg.json_output = _prompt_text("JSON output path", cfg.json_output)
     return cfg
 
 
@@ -937,7 +970,7 @@ def _print_config_summary(config, include_run_scope=True):
     print(f"  Min reviews:       {config.min_reviews}")
     print(f"  Filter franchises: {config.filter_franchises}")
     print(f"  Output:            {config.output_mode}")
-    print(f"  CSV path:          {config.csv_output}")
+    print(f"  JSON path:         {config.json_output}")
     if include_run_scope:
         print(f"  Keywords:          {', '.join(config.keywords)}")
         locs = ", ".join(f"{city}, {state}" for state, city, _ in config.locations)
@@ -962,9 +995,9 @@ def interactive_main_menu():
         saved = load_saved_settings()
         defaults_note = (
             f"min score {saved.get('min_score', 80)}, "
-            f"output {saved.get('output_mode', 'csv')}"
+            f"output {saved.get('output_mode', 'json')}"
             if saved
-            else "min score 80, save to CSV"
+            else "min score 80, save to JSON"
         )
         print("\n=== Lead Generation ===")
         print(f"1) Run ({defaults_note}; choose keywords & locations)")
@@ -1012,10 +1045,10 @@ def parse_args():
     )
     parser.add_argument(
         "--output",
-        choices=["csv", "dashboard", "both"],
+        choices=["json", "dashboard", "both"],
         help="Output destination",
     )
-    parser.add_argument("--csv-path", help="CSV output path (default leads_output.csv)")
+    parser.add_argument("--json-path", help="JSON output path (default leads_output.json)")
     parser.add_argument("--keywords", nargs="+", help="Keyword subset from keywords.json")
     parser.add_argument(
         "--city",
@@ -1032,7 +1065,7 @@ def _has_cli_overrides(args):
         args.min_reviews is not None,
         args.filter_franchises is not None,
         args.output is not None,
-        args.csv_path is not None,
+        args.json_path is not None,
         args.keywords is not None,
         args.city is not None,
     ])
@@ -1049,8 +1082,8 @@ def config_from_args(args):
         config.filter_franchises = args.filter_franchises
     if args.output is not None:
         config.output_mode = args.output
-    if args.csv_path is not None:
-        config.csv_output = args.csv_path
+    if args.json_path is not None:
+        config.json_output = args.json_path
     if args.keywords is not None:
         config.keywords = args.keywords
     if args.city is not None:
@@ -1097,7 +1130,7 @@ def run_leadgen(config):
     else:
         contacted_emails = set()
 
-    existing_place_ids = load_existing_place_ids(config.csv_output)
+    existing_place_ids = load_existing_place_ids(config.json_output)
     total_rows = []
 
     for state, city, coords in config.locations:
@@ -1133,8 +1166,8 @@ def run_leadgen(config):
 
     logger.critical("Found %d qualifying leads (min score %d)", len(total_rows), config.min_score)
 
-    if config.output_mode in ("csv", "both"):
-        save_results(total_rows, config.csv_output)
+    if config.output_mode in ("json", "both"):
+        save_results(total_rows, config.json_output)
 
     if config.output_mode in ("dashboard", "both"):
         send_to_dashboard(total_rows)
