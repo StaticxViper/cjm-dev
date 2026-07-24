@@ -5,6 +5,7 @@ Run from repo root:
     python -m unittest unittests.lead_automation.test_leadgen
 """
 import importlib
+import json
 import os
 import sys
 import tempfile
@@ -49,6 +50,8 @@ SKIP = unittest.skipIf(
 
 def _quality_entry(**overrides):
     base = {
+        "business_name": "Local Plumbing LLC",
+        "website": "https://localplumbing.example.com",
         "phone_google": "(215) 555-1234",
         "user_ratings_total": 10,
         "business_status": "OPERATIONAL",
@@ -56,6 +59,56 @@ def _quality_entry(**overrides):
     }
     base.update(overrides)
     return base
+
+
+@SKIP
+class TestFranchiseAndOwner(unittest.TestCase):
+    def test_is_franchise_matches_name(self):
+        self.assertTrue(
+            LEADGEN.is_franchise("Roto-Rooter of Cherry Hill", "https://example.com")
+        )
+
+    def test_is_franchise_matches_domain(self):
+        self.assertTrue(
+            LEADGEN.is_franchise("Local Cleaners", "https://www.servpro.com/locations/nj")
+        )
+
+    def test_independent_business_not_franchise(self):
+        self.assertFalse(
+            LEADGEN.is_franchise(
+                "Alspach Landscaping",
+                "https://www.alspachlandscaping.com/",
+            )
+        )
+
+    def test_franchise_rejected_when_enabled(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(business_name="Molly Maid of Philly"),
+            filter_franchises=True,
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "franchise")
+
+    def test_franchise_kept_when_disabled(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(business_name="Molly Maid of Philly"),
+            filter_franchises=False,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_extract_owner_names_from_reviews(self):
+        reviews = [
+            {"text": "Ask for Mike next time, he was great."},
+            {"text": "Sarah the owner was wonderful to work with."},
+        ]
+        names = LEADGEN.extract_owner_names(reviews)
+        self.assertIn("Mike", names)
+        self.assertIn("Sarah", names)
+
+    def test_extract_owner_names_empty(self):
+        self.assertEqual(LEADGEN.extract_owner_names([]), [])
+        self.assertEqual(LEADGEN.extract_owner_names([{"text": "Good job."}]), [])
 
 
 @SKIP
@@ -81,6 +134,89 @@ class TestSelectionHelpers(unittest.TestCase):
     def test_parse_index_selection_ignores_invalid(self):
         self.assertEqual(LEADGEN._parse_index_selection("0,99,abc,2", 5), [1])
 
+    def test_format_numbered_items_horizontal_wraps(self):
+        text = LEADGEN._format_numbered_items_horizontal(
+            ["alpha", "beta", "gamma"],
+            width=20,
+        )
+        lines = text.splitlines()
+        self.assertGreaterEqual(len(lines), 2)
+        self.assertTrue(lines[0].startswith("1) alpha"))
+        self.assertIn("2) beta", text)
+        self.assertIn("3) gamma", text)
+
+    def test_format_numbered_items_horizontal_packs_wide(self):
+        text = LEADGEN._format_numbered_items_horizontal(
+            ["a", "b", "c"],
+            width=80,
+        )
+        self.assertEqual(text, "1) a  2) b  3) c")
+
+
+@SKIP
+class TestSettingsPersistence(unittest.TestCase):
+    def test_save_and_load_settings_round_trip(self):
+        cfg = LEADGEN.LeadgenConfig(
+            min_score=70,
+            min_reviews=8,
+            filter_franchises=False,
+            output_mode="both",
+            json_output="custom_leads.json",
+            keywords=["landscaping"],
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            payload = LEADGEN.save_settings(cfg, path=path)
+            self.assertEqual(payload["min_score"], 70)
+            self.assertNotIn("keywords", payload)
+            loaded = LEADGEN.load_saved_settings(path=path)
+            self.assertEqual(loaded["min_score"], 70)
+            self.assertEqual(loaded["min_reviews"], 8)
+            self.assertFalse(loaded["filter_franchises"])
+            self.assertEqual(loaded["output_mode"], "both")
+            self.assertEqual(loaded["json_output"], "custom_leads.json")
+            rebuilt = LEADGEN.config_from_saved_settings(path=path)
+            self.assertEqual(rebuilt.min_score, 70)
+            self.assertEqual(rebuilt.output_mode, "both")
+            self.assertEqual(list(LEADGEN.KEYWORD_CATEGORIES.keys()), rebuilt.keywords)
+
+    def test_load_saved_settings_migrates_legacy_csv(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "min_score": 75,
+                        "output_mode": "csv",
+                        "csv_output": "old_leads.csv",
+                    },
+                    f,
+                )
+            loaded = LEADGEN.load_saved_settings(path=path)
+            self.assertEqual(loaded["output_mode"], "json")
+            self.assertEqual(loaded["json_output"], "old_leads.json")
+            self.assertNotIn("csv_output", loaded)
+
+    def test_load_saved_settings_missing_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "missing.json"
+            self.assertEqual(LEADGEN.load_saved_settings(path=path), {})
+
+    def test_interactive_customize_saves_without_running(self):
+        fake_cfg = LEADGEN.LeadgenConfig(min_score=65, output_mode="dashboard")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            with patch.object(LEADGEN, "SETTINGS_PATH", path), \
+                    patch.object(LEADGEN, "interactive_customize_config", return_value=fake_cfg), \
+                    patch.object(LEADGEN, "interactive_run_config") as mock_run, \
+                    patch("builtins.input", side_effect=["2", "3"]):
+                result = LEADGEN.interactive_main_menu()
+            self.assertIsNone(result)
+            mock_run.assert_not_called()
+            saved = LEADGEN.load_saved_settings(path=path)
+            self.assertEqual(saved["min_score"], 65)
+            self.assertEqual(saved["output_mode"], "dashboard")
+
 
 @SKIP
 class TestQualityFilters(unittest.TestCase):
@@ -105,14 +241,16 @@ class TestQualityFilters(unittest.TestCase):
 
     def test_low_review_count_rejected(self):
         ok, reason = LEADGEN.passes_quality_filters(
-            _quality_entry(user_ratings_total=2)
+            _quality_entry(user_ratings_total=4),
+            min_reviews=5,
         )
         self.assertFalse(ok)
         self.assertEqual(reason, "low_review_count")
 
     def test_min_review_count_accepted(self):
         ok, _ = LEADGEN.passes_quality_filters(
-            _quality_entry(user_ratings_total=3)
+            _quality_entry(user_ratings_total=5),
+            min_reviews=5,
         )
         self.assertTrue(ok)
 
@@ -302,6 +440,45 @@ class TestProcessBusinessesFilter(unittest.TestCase):
         self.assertEqual(rows, [])
         mock_analyze.assert_not_called()
 
+    @patch("leadgen.get_place_details")
+    @patch("leadgen.analyze_website")
+    @patch("leadgen.time.sleep", return_value=None)
+    def test_qualifying_row_includes_place_id_and_address(self, _sleep, mock_analyze, mock_details):
+        mock_details.return_value = self._details(
+            website=None,
+            address="99 Oak Ave, Cherry Hill, NJ",
+        )
+        mock_analyze.return_value = {
+            "emails": [],
+            "phones_website": [],
+            "https": False,
+            "has_viewport": False,
+            "html_length": 0,
+            "has_title": False,
+            "has_cta": False,
+            "error": None,
+        }
+        businesses = [{
+            "place_id": "pid-abc",
+            "business_name": "No Site Co",
+            "rating": 5.0,
+            "user_ratings_total": 20,
+            "niche_key": "landscaping",
+            "address": "vicinity fallback",
+        }]
+        rows = LEADGEN.process_businesses(
+            businesses,
+            "fake-key",
+            set(),
+            set(),
+            min_score=0,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["place_id"], "pid-abc")
+        self.assertEqual(rows[0]["address"], "99 Oak Ave, Cherry Hill, NJ")
+        self.assertEqual(rows[0]["email"], "")
+        self.assertFalse(rows[0]["has_email"])
+
 
 @SKIP
 class TestSendToDashboard(unittest.TestCase):
@@ -311,6 +488,7 @@ class TestSendToDashboard(unittest.TestCase):
         mock_api_cls.return_value = mock_api
         rows = [{
             "business_name": "Test Biz",
+            "address": "123 Main St, Houston, TX 77001, USA",
             "phone_google": "555-1234",
             "email": "contact@test.com",
             "niche_key": "landscaping",
@@ -323,6 +501,7 @@ class TestSendToDashboard(unittest.TestCase):
         payload = call_kwargs["json_body"]
         self.assertEqual(len(payload), 1)
         self.assertEqual(payload[0]["business_name"], "Test Biz")
+        self.assertEqual(payload[0]["address"], "123 Main St, Houston, TX 77001, USA")
         self.assertEqual(payload[0]["score"], 85)
         self.assertEqual(payload[0]["category"], "landscaping-leads")
 
@@ -367,6 +546,7 @@ class TestSaveResults(unittest.TestCase):
         rows = [
             {
                 "business_name": "A",
+                "place_id": "ChIJabc",
                 "address": "1 St",
                 "phone_google": "555",
                 "phone_website": None,
@@ -383,14 +563,55 @@ class TestSaveResults(unittest.TestCase):
             }
         ]
         with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "leads_out.csv")
+            path = os.path.join(tmp, "leads_out.json")
             LEADGEN.save_results(rows, path)
             self.assertTrue(os.path.isfile(path))
             with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-            self.assertIn("business_name", content)
-            self.assertIn("has_email", content)
-            self.assertIn("A", content)
+                data = json.load(f)
+            self.assertIsInstance(data, list)
+            self.assertEqual(len(data), 1)
+            self.assertEqual(data[0]["place_id"], "ChIJabc")
+            self.assertEqual(data[0]["business_name"], "A")
+            self.assertTrue(data[0]["has_email"])
+
+    def test_save_results_appends_and_dedupes_by_place_id(self):
+        existing = [
+            {
+                "business_name": "Old",
+                "place_id": "pid1",
+                "lead_score": 50,
+                "website": "https://old.com",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "leads_out.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(existing, f)
+            LEADGEN.save_results(
+                [
+                    {
+                        "business_name": "Old Again",
+                        "place_id": "pid1",
+                        "lead_score": 90,
+                        "website": "https://old.com",
+                    },
+                    {
+                        "business_name": "New",
+                        "place_id": "pid2",
+                        "lead_score": 80,
+                        "website": "https://new.com",
+                    },
+                ],
+                path,
+            )
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            self.assertEqual(len(data), 2)
+            ids = {row["place_id"] for row in data}
+            self.assertEqual(ids, {"pid1", "pid2"})
+            # First occurrence of pid1 kept (score 50); pid2 score 80 sorts first
+            self.assertEqual(data[0]["place_id"], "pid2")
+            self.assertEqual(data[1]["business_name"], "Old")
 
 
 @SKIP
@@ -414,6 +635,23 @@ class TestAnalyzeWebsite(unittest.TestCase):
         out = LEADGEN.analyze_website("https://example.com")
         self.assertIn("support@example.com", out["emails"])
         self.assertTrue(out["has_cta"])
+
+    @patch("leadgen.requests.get")
+    def test_contact_page_fallback_when_homepage_has_no_email(self, mock_get):
+        home = MagicMock()
+        home.text = "<html><body>Call us for a quote</body></html>"
+        contact = MagicMock()
+        contact.text = "<html><body>Email hello@biz.example</body></html>"
+
+        def _side_effect(url, timeout=10):
+            if url.rstrip("/").endswith("/contact"):
+                return contact
+            return home
+
+        mock_get.side_effect = _side_effect
+        out = LEADGEN.analyze_website("https://biz.example")
+        self.assertIn("hello@biz.example", out["emails"])
+        self.assertGreaterEqual(mock_get.call_count, 2)
 
 
 if __name__ == "__main__":
