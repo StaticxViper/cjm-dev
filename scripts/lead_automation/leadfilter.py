@@ -4,27 +4,37 @@ lead_filter.py
 Persistent duplicate filtering module for lead generation.
 Prevents exporting leads that already exist in previous runs.
 """
-import csv
+import json
 import os
 from threading import Lock
 
 _lock = Lock()
 
 
-def load_existing_place_ids(csv_path: str) -> set:
+def load_existing_place_ids(json_path: str) -> set:
     """
-    Load existing place_ids from CSV if it exists.
+    Load existing place_ids from a JSON leads array if it exists.
     Returns a set of place_ids.
     """
-    if not os.path.exists(csv_path):
+    if not os.path.exists(json_path):
         return set()
 
     existing = set()
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if "place_id" in row:
-                existing.add(row["place_id"])
+    try:
+        with open(json_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return set()
+
+    if not isinstance(data, list):
+        return set()
+
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        place_id = row.get("place_id")
+        if place_id:
+            existing.add(place_id)
 
     return existing
 

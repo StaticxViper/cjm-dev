@@ -1,0 +1,29 @@
+[
+  {
+    "business_name": "Alspach Landscaping",
+    "address": "123 Maple Ave, Cherry Hill, NJ 08002, USA",
+    "phone": "(856) 555-0142",
+    "email": "info@alspachlandscaping.example",
+    "category": "landscaping-leads",
+    "tags": ["lead_automation", "google-places-api"],
+    "score": 86
+  },
+  {
+    "business_name": "Harbor Plumbing LLC",
+    "address": "450 Cinnaminson Ave, Cinnaminson, NJ 08077, USA",
+    "phone": "(856) 555-0198",
+    "email": "service@harborplumbing.example",
+    "category": "plumbing-leads",
+    "tags": ["lead_automation", "google-places-api"],
+    "score": 92
+  },
+  {
+    "business_name": "Bright Clean Co",
+    "address": "88 State St, Dover, DE 19901, USA",
+    "phone": "(302) 555-0177",
+    "email": "",
+    "category": "cleaning-leads",
+    "tags": ["lead_automation", "google-places-api"],
+    "score": 80
+  }
+]

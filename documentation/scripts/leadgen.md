@@ -4,12 +4,12 @@
 
 ## Purpose
 
-Discovers local business leads via Google Places Nearby Search, fetches place details, scrapes business websites for emails and quality signals, scores each lead, filters by minimum score, and outputs to CSV and/or the dashboard API. Skips duplicates (by `place_id`) and previously contacted emails.
+Discovers local business leads via Google Places Nearby Search, fetches place details, scrapes business websites for emails and quality signals, scores each lead, filters by minimum score, and outputs to JSON and/or the dashboard API. Skips duplicates (by `place_id`) and previously contacted emails.
 
 ## Prerequisites
 
 - Python 3.12+
-- `requests`, `pandas`, `beautifulsoup4`, `python-dotenv`
+- `requests`, `beautifulsoup4`, `python-dotenv`
 - `GOOGLE_API_KEY` in repo-root `.env`
 - `LEAD_INGEST_KEY` in repo-root `.env` (required for dashboard output mode)
 
@@ -19,20 +19,22 @@ Discovers local business leads via Google Places Nearby Search, fetches place de
 |------|-------------|
 | `keywords.json` | Search keywords (keys used as categories) |
 | `coords.json` | Lat/lng for search center |
-| `leads_output.csv` | Output CSV (created/appended) |
+| `franchises.json` | Franchise/chain name and domain blocklists |
+| `leadgen_settings.json` | Persisted run defaults (min score, reviews, franchise filter, output, JSON path) |
+| `leads_output.json` | Output JSON array (created/appended); includes `place_id` for cross-run dedupe |
 | `contacted.txt` | Emails already contacted (skipped on export) |
 
-Defaults: `min_score` 80, `search_radius` 50 km, `max_workers` 12, `PLACES_SLEEP` 2 s between API calls.
+Hardcoded fallbacks when no settings file exists: `min_score` 80, `min_reviews` 5, `filter_franchises` True, `search_radius` 50 km, `max_workers` 12, `PLACES_SLEEP` 2 s between API calls.
 
 ## How to run
 
 ```bash
 cd scripts/lead_automation
 
-# Interactive menu (defaults or customize)
+# Interactive menu (run or customize defaults)
 python leadgen.py
 
-# Non-interactive with defaults
+# Non-interactive with saved/hardcoded defaults
 python leadgen.py --defaults
 
 # Custom non-interactive
@@ -43,37 +45,32 @@ python leadgen.py --min-score 80 --output both --city "Cherry Hill"
 
 ```
 === Lead Generation ===
-1) Run with defaults (min score 80, save to CSV, all locations & keywords)
-2) Customize settings
-3) Select locations & keywords
-4) Exit
+1) Run (min score …, output …; choose keywords & locations)
+2) Customize settings (save defaults, do not run)
+3) Exit
 ```
 
-- **Option 1** — all locations from `coords.json`, all keywords from `keywords.json`, default min score and CSV output.
-- **Option 2** — full wizard: min score, output mode, then keyword and location pickers.
-- **Option 3** — keyword and location pickers only (defaults for everything else).
+- **Option 1** — load `leadgen_settings.json` (or hardcoded defaults), always prompt for keywords and locations, confirm, then run.
+- **Option 2** — prompt for min score, min reviews, franchise filter, output mode, and JSON path; write `leadgen_settings.json`; return to the menu without running. Keywords and locations are never persisted.
 
-Both option 2 and 3 use grouped location and labeled keyword pickers:
+Keyword and location pickers wrap across the terminal width (horizontal listing under each state for cities).
 
-**Locations** — cities listed under each state from `coords.json`:
+**Locations** example:
 
 ```
 --- Locations (coords.json) ---
 
 NJ:
-  1) Cherry Hill
-  2) Cinnaminson
+1) Cherry Hill  2) Cinnaminson
 DE:
-  3) Dover
+3) Dover
 ```
 
-**Keywords** — key and category label from `keywords.json`:
+**Keywords** example:
 
 ```
 --- Keywords (keywords.json) ---
-
-  1) landscaping  ->  landscaping-leads
-  2) plumbing     ->  plumbing-leads
+1) landscaping -> landscaping-leads  2) plumbing -> plumbing-leads
 ```
 
 Enter comma-separated numbers to select specific items, or press Enter for all.
@@ -82,30 +79,32 @@ Enter comma-separated numbers to select specific items, or press Enter for all.
 
 | Flag | Description |
 |------|-------------|
-| `--defaults` | Skip menu, use defaults |
+| `--defaults` | Skip menu; use saved settings (if present) plus hardcoded fallbacks |
 | `--min-score INT` | Minimum `lead_score` to keep (default 80) |
-| `--output {csv,dashboard,both}` | Output destination |
-| `--csv-path PATH` | CSV output path |
+| `--min-reviews INT` | Minimum `user_ratings_total` (default 5) |
+| `--filter-franchises` / `--no-filter-franchises` | Exclude (default) or allow franchise/chain leads |
+| `--output {json,dashboard,both}` | Output destination |
+| `--json-path PATH` | JSON output path |
 | `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
 | `--city "City Name"` | Filter to specific cities (repeatable) |
+
+CLI flags override values from `leadgen_settings.json`.
 
 ## How it works
 
 1. Resolve configuration (interactive menu or CLI flags).
 2. For each selected location and keyword, call Google Places Nearby Search (with pagination).
-3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch expanded Place Details (`business_status`, `reviews`, phone, website).
+3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch expanded Place Details (`business_status`, `reviews`, phone, website, `formatted_address`).
 4. Apply quality filters (operational status, review count, phone, review recency).
-5. Scrape surviving websites: emails, HTTPS, viewport meta, HTML length, CTA keywords.
+5. Scrape surviving websites: emails, HTTPS, viewport meta, HTML length, CTA keywords. If the homepage has no email, also try `/contact`, `/contact-us`, `/about`, and `/about-us`.
 6. Compute normalized `lead_score` (0–100; higher = better outreach target).
 7. Drop leads below `min_score`.
-8. Save to CSV and/or bulk-ingest to dashboard API.
+8. Save to JSON and/or bulk-ingest to dashboard API.
 
 ```mermaid
 flowchart LR
-  leadgen[leadgen.py] --> csv[leads_output.csv]
+  leadgen[leadgen.py] --> jsonOut[leads_output.json]
   leadgen --> supabase[Supabase leads-ingest-bulk]
-  csv --> ingest[lead_automation.py]
-  ingest --> supabase
   leadfilter[leadfilter.py] -.-> leadgen
 ```
 
@@ -116,11 +115,14 @@ Applied after Place Details, before website scraping:
 | Filter | Rule |
 |--------|------|
 | Business status | Exclude `CLOSED_TEMPORARILY` and `CLOSED_PERMANENTLY`; keep missing or `OPERATIONAL` |
-| Review count | Require `user_ratings_total >= 3` |
+| Franchise / chain | When `filter_franchises` is True (default), exclude if `business_name` matches a name in `franchises.json` **or** website host matches a listed domain |
+| Review count | Require `user_ratings_total >= min_reviews` (default 5) |
 | Phone | Require valid US-format `phone_google` from Google |
 | Review recency | If review data exists, exclude when newest review is older than 18 months |
 
-Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `rating`, and `user_ratings_total` in addition to website and phone.
+Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `rating`, `user_ratings_total`, website, phone, and `formatted_address`. Address falls back to Nearby Search `vicinity` when details address is empty.
+
+Owner/decision-maker names are extracted from review text (patterns like "ask for X", "X was great", "X the owner") into an `owner_names` field. This is enrichment only — not a filter.
 
 ## Scoring
 
@@ -138,7 +140,7 @@ Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `ra
 | `low_reviews` | `user_ratings_total` is None or `< 15` | 1 |
 | `unknown_status` | `business_status` missing (slight deprioritization) | 2 |
 
-Leads without email are kept (cold-call queue). Leads with email score higher (warm email/SMS sequence). Output includes `has_email` and `business_status` columns.
+Leads without email are kept (cold-call queue). Leads with email score higher (warm email/SMS sequence). Output includes `place_id`, `address`, `email`, `has_email`, `business_status`, and `owner_names` fields.
 
 Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 
@@ -146,9 +148,11 @@ Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 
 | Mode | Behavior |
 |------|----------|
-| `csv` | Append qualifying leads to `leads_output.csv` |
+| `json` | Append qualifying leads to `leads_output.json` |
 | `dashboard` | Bulk POST to `/leads-ingest-bulk` via `APIManager` |
-| `both` | CSV save and dashboard ingest |
+| `both` | JSON save and dashboard ingest |
+
+Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sample.json).
 
 ## Related scripts
 
