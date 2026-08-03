@@ -171,7 +171,11 @@ class APIManager:
 
         try:
             if actor_call is not None:
-                result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
+                try:
+                    result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
+                except Exception as e:
+                    logger.info(f'Dataset subscription error: {e} ... (Github Actions Run???)')
+                    result = self.apify_client.dataset(actor_call.defaultDatasetId).list_items().items
             else:
                 result = self.apify_client.dataset(str(dataset_id)).list_items().items
         except ValueError as e:
