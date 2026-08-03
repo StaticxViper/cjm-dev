@@ -56,7 +56,7 @@ def main():
     # #endregion
 
     apify_input = {"end_date": todays_date,"start_date": previous_date,'tickers': result['tickers']}
-    stock_data = api().run_apify(actor='Yahoo Finance', input=apify_input, runtime=20)
+    stock_data = api().run_apify(actor='Yahoo Finance', input=apify_input)
     PREVIOUS_RUN_DATE_FILE.write_text(todays_date, encoding="utf-8")
     logger.critical(f'Prev Date: {previous_date}, Todays Date: {todays_date}')
 
