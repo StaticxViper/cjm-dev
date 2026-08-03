@@ -30,5 +30,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements/requirements.txt
-      #- run: PYTHONPATH=$GITHUB_WORKSPACE python scripts/stock_analyzer/stock_analyzer.py
-      - run: python scripts/stock_analyzer/stock_analyzer.py
+      - run: PYTHONPATH=$GITHUB_WORKSPACE python scripts/stock_analyzer/stock_analyzer.py
