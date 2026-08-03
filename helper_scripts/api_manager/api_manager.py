@@ -148,8 +148,9 @@ class APIManager:
 
             # Run Actor
             actor_call = self.apify_client.actor(actor).call(run_input=input)
+            dataset_id = actor_call.defaultDatasetId
             # Get data via Dataset ID
-            result = self.get_apify_data(actor_call=actor_call)
+            result = self.get_apify_data(dataset_id=dataset_id)
             logger.info('Results Found via Dataset ID!')
         except RuntimeError as e:
             logger.error(f'Actor run error: {e}')
@@ -170,14 +171,14 @@ class APIManager:
         """
 
         try:
-            if actor_call is not None:
-                try:
-                    result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
-                except Exception as e:
-                    logger.info(f'Dataset subscription error: {e} ... (Github Actions Run???)')
-                    result = self.apify_client.dataset(actor_call.defaultDatasetId).list_items().items
-            else:
-                result = self.apify_client.dataset(str(dataset_id)).list_items().items
+            #if actor_call is not None:
+                #try:
+                    #result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
+                #except Exception as e:
+                    #logger.info(f'Dataset subscription error: {e} ... (Github Actions Run???)')
+                    #result = self.apify_client.dataset(actor_call.defaultDatasetId).list_items().items
+            #else:
+            result = self.apify_client.dataset(str(dataset_id)).list_items().items
         except ValueError as e:
             logger.error(f'Dataset error: {e}')
         except Exception as e:
