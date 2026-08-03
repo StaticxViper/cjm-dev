@@ -148,7 +148,7 @@ class APIManager:
 
             # Run Actor
             actor_call = self.apify_client.actor(actor).call(run_input=input)
-            dataset_id = actor_call['defaultDatasetId']
+            dataset_id = dict(actor_call)["defaultDatasetId"]
             # Get data via Dataset ID
             result = self.get_apify_data(dataset_id=dataset_id)
             logger.info('Results Found via Dataset ID!')
