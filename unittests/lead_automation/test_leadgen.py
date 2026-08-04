@@ -160,6 +160,9 @@ class TestSettingsPersistence(unittest.TestCase):
             min_score=70,
             min_reviews=8,
             filter_franchises=False,
+            require_phone=True,
+            require_website=True,
+            require_email=True,
             output_mode="both",
             json_output="custom_leads.json",
             keywords=["landscaping"],
@@ -168,16 +171,24 @@ class TestSettingsPersistence(unittest.TestCase):
             path = Path(tmp) / "leadgen_settings.json"
             payload = LEADGEN.save_settings(cfg, path=path)
             self.assertEqual(payload["min_score"], 70)
+            self.assertTrue(payload["require_website"])
+            self.assertTrue(payload["require_email"])
+            self.assertTrue(payload["require_phone"])
             self.assertNotIn("keywords", payload)
             loaded = LEADGEN.load_saved_settings(path=path)
             self.assertEqual(loaded["min_score"], 70)
             self.assertEqual(loaded["min_reviews"], 8)
             self.assertFalse(loaded["filter_franchises"])
+            self.assertTrue(loaded["require_website"])
+            self.assertTrue(loaded["require_email"])
             self.assertEqual(loaded["output_mode"], "both")
             self.assertEqual(loaded["json_output"], "custom_leads.json")
             rebuilt = LEADGEN.config_from_saved_settings(path=path)
             self.assertEqual(rebuilt.min_score, 70)
             self.assertEqual(rebuilt.output_mode, "both")
+            self.assertTrue(rebuilt.require_website)
+            self.assertTrue(rebuilt.require_email)
+            self.assertTrue(rebuilt.require_phone)
             self.assertEqual(list(LEADGEN.KEYWORD_CATEGORIES.keys()), rebuilt.keywords)
 
     def test_load_saved_settings_migrates_legacy_csv(self):
@@ -265,6 +276,38 @@ class TestQualityFilters(unittest.TestCase):
     def test_no_reviews_passes_recency_check(self):
         ok, _ = LEADGEN.passes_quality_filters(_quality_entry(reviews=[]))
         self.assertTrue(ok)
+
+    def test_invalid_phone_rejected_when_required(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(phone_google=None),
+            require_phone=True,
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "invalid_phone")
+
+    def test_invalid_phone_kept_when_not_required(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(phone_google=None),
+            require_phone=False,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_no_website_rejected_when_required(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(website=None),
+            require_website=True,
+        )
+        self.assertFalse(ok)
+        self.assertEqual(reason, "no_website")
+
+    def test_no_website_kept_when_not_required(self):
+        ok, reason = LEADGEN.passes_quality_filters(
+            _quality_entry(website=None),
+            require_website=False,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
 
     def test_latest_review_timestamp(self):
         reviews = [{"time": 100}, {"time": 300}]
@@ -479,6 +522,99 @@ class TestProcessBusinessesFilter(unittest.TestCase):
         self.assertEqual(rows[0]["email"], "")
         self.assertFalse(rows[0]["has_email"])
 
+    @patch("leadgen.get_place_details")
+    @patch("leadgen.analyze_website")
+    @patch("leadgen.time.sleep", return_value=None)
+    def test_require_website_rejects_before_scrape(self, _sleep, mock_analyze, mock_details):
+        mock_details.return_value = self._details(website=None)
+        businesses = [{
+            "place_id": "pid1",
+            "business_name": "No Site Co",
+            "rating": 5.0,
+            "user_ratings_total": 20,
+            "niche_key": "landscaping",
+            "address": "1 Main",
+        }]
+        rows = LEADGEN.process_businesses(
+            businesses,
+            "fake-key",
+            set(),
+            set(),
+            min_score=0,
+            require_website=True,
+        )
+        self.assertEqual(rows, [])
+        mock_analyze.assert_not_called()
+
+    @patch("leadgen.get_place_details")
+    @patch("leadgen.analyze_website")
+    @patch("leadgen.time.sleep", return_value=None)
+    def test_require_email_filters_after_scrape(self, _sleep, mock_analyze, mock_details):
+        mock_details.return_value = self._details()
+        mock_analyze.return_value = {
+            "emails": [],
+            "phones_website": [],
+            "https": True,
+            "has_viewport": True,
+            "html_length": 5000,
+            "has_title": True,
+            "has_cta": True,
+            "error": None,
+        }
+        businesses = [{
+            "place_id": "pid1",
+            "business_name": "No Email Co",
+            "rating": 5.0,
+            "user_ratings_total": 20,
+            "niche_key": "landscaping",
+            "address": "1 Main",
+        }]
+        rows = LEADGEN.process_businesses(
+            businesses,
+            "fake-key",
+            set(),
+            set(),
+            min_score=0,
+            require_email=True,
+        )
+        self.assertEqual(rows, [])
+        mock_analyze.assert_called_once()
+
+    @patch("leadgen.get_place_details")
+    @patch("leadgen.analyze_website")
+    @patch("leadgen.time.sleep", return_value=None)
+    def test_require_email_keeps_lead_with_email(self, _sleep, mock_analyze, mock_details):
+        mock_details.return_value = self._details()
+        mock_analyze.return_value = {
+            "emails": ["hello@example.com"],
+            "phones_website": [],
+            "https": False,
+            "has_viewport": False,
+            "html_length": 100,
+            "has_title": False,
+            "has_cta": False,
+            "error": None,
+        }
+        businesses = [{
+            "place_id": "pid1",
+            "business_name": "Email Co",
+            "rating": 4.0,
+            "user_ratings_total": 5,
+            "niche_key": "landscaping",
+            "address": "1 Main",
+        }]
+        rows = LEADGEN.process_businesses(
+            businesses,
+            "fake-key",
+            set(),
+            set(),
+            min_score=0,
+            require_email=True,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["email"], "hello@example.com")
+        self.assertTrue(rows[0]["has_email"])
+
 
 @SKIP
 class TestSendToDashboard(unittest.TestCase):
@@ -635,6 +771,42 @@ class TestAnalyzeWebsite(unittest.TestCase):
         out = LEADGEN.analyze_website("https://example.com")
         self.assertIn("support@example.com", out["emails"])
         self.assertTrue(out["has_cta"])
+        mock_get.assert_called()
+        call_kwargs = mock_get.call_args.kwargs
+        self.assertIn("User-Agent", call_kwargs.get("headers", {}))
+
+    @patch("leadgen.requests.get")
+    def test_parses_mailto_href(self, mock_get):
+        html = (
+            '<html><body><a href="mailto:sales@biz.example?subject=Hi">Email</a>'
+            "</body></html>"
+        )
+        resp = MagicMock()
+        resp.text = html
+        mock_get.return_value = resp
+        out = LEADGEN.analyze_website("https://biz.example")
+        self.assertIn("sales@biz.example", out["emails"])
+
+    @patch("leadgen.requests.get")
+    def test_https_retry_when_http_body_tiny(self, mock_get):
+        tiny = MagicMock()
+        tiny.text = "ok"
+        rich = MagicMock()
+        rich.text = (
+            "<!doctype html><html><head><title>Biz</title></head>"
+            "<body>Contact info@biz.example for a quote. " + ("x" * 300) + "</body></html>"
+        )
+
+        def _side_effect(url, **_kwargs):
+            if url.startswith("https://"):
+                return rich
+            return tiny
+
+        mock_get.side_effect = _side_effect
+        out = LEADGEN.analyze_website("http://biz.example")
+        self.assertTrue(out["https"])
+        self.assertIn("info@biz.example", out["emails"])
+        self.assertGreaterEqual(mock_get.call_count, 2)
 
     @patch("leadgen.requests.get")
     def test_contact_page_fallback_when_homepage_has_no_email(self, mock_get):
@@ -643,7 +815,7 @@ class TestAnalyzeWebsite(unittest.TestCase):
         contact = MagicMock()
         contact.text = "<html><body>Email hello@biz.example</body></html>"
 
-        def _side_effect(url, timeout=10):
+        def _side_effect(url, **_kwargs):
             if url.rstrip("/").endswith("/contact"):
                 return contact
             return home
@@ -652,6 +824,12 @@ class TestAnalyzeWebsite(unittest.TestCase):
         out = LEADGEN.analyze_website("https://biz.example")
         self.assertIn("hello@biz.example", out["emails"])
         self.assertGreaterEqual(mock_get.call_count, 2)
+
+    def test_extract_emails_from_mailto_soup(self):
+        html = '<a href="mailto:Owner@Example.COM">mail</a>'
+        soup = LEADGEN.BeautifulSoup(html, "html.parser")
+        emails = LEADGEN._extract_emails_from_html(html, soup=soup)
+        self.assertEqual(emails, ["owner@example.com"])
 
 
 if __name__ == "__main__":

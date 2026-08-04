@@ -44,11 +44,31 @@ SETTINGS_PATH = _LEADGEN_DIR / "leadgen_settings.json"
 KEYWORD_CATEGORIES = json.load(open(_LEADGEN_DIR / "keywords.json"))
 COORDS_DATA = json.load(open(_LEADGEN_DIR / "coords.json"))
 FRANCHISE_DATA = json.load(open(_LEADGEN_DIR / "franchises.json"))
-CONTACT_PAGE_PATHS = ("/contact", "/contact-us", "/about", "/about-us")
+CONTACT_PAGE_PATHS = (
+    "/contact",
+    "/contact-us",
+    "/contact.html",
+    "/about",
+    "/about-us",
+    "/get-in-touch",
+)
+FETCH_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+MIN_USEFUL_HTML_LENGTH = 200
 PERSISTED_SETTINGS_KEYS = (
     "min_score",
     "min_reviews",
     "filter_franchises",
+    "require_phone",
+    "require_website",
+    "require_email",
     "output_mode",
     "json_output",
 )
@@ -119,6 +139,9 @@ class LeadgenConfig:
     dashboard_bulk: bool = True
     filter_franchises: bool = True
     min_reviews: int = 0
+    require_phone: bool = True
+    require_website: bool = False
+    require_email: bool = False
 
 
 def load_saved_settings(path=None):
@@ -154,6 +177,9 @@ def save_settings(config, path=None):
         "min_score": config.min_score,
         "min_reviews": config.min_reviews,
         "filter_franchises": config.filter_franchises,
+        "require_phone": config.require_phone,
+        "require_website": config.require_website,
+        "require_email": config.require_email,
         "output_mode": config.output_mode,
         "json_output": config.json_output,
     }
@@ -181,6 +207,12 @@ def config_from_saved_settings(path=None):
             pass
     if "filter_franchises" in saved:
         config.filter_franchises = bool(saved["filter_franchises"])
+    if "require_phone" in saved:
+        config.require_phone = bool(saved["require_phone"])
+    if "require_website" in saved:
+        config.require_website = bool(saved["require_website"])
+    if "require_email" in saved:
+        config.require_email = bool(saved["require_email"])
     if "output_mode" in saved and saved["output_mode"] in ("json", "dashboard", "both"):
         config.output_mode = saved["output_mode"]
     if "json_output" in saved and saved["json_output"]:
@@ -354,7 +386,14 @@ def extract_owner_names(reviews, max_names=5):
     return found
 
 
-def passes_quality_filters(entry, filter_franchises=True, min_reviews=5, franchise_data=None):
+def passes_quality_filters(
+    entry,
+    filter_franchises=True,
+    min_reviews=5,
+    franchise_data=None,
+    require_phone=True,
+    require_website=False,
+):
     """Return (passed, reason) for hard quality filters before website scraping."""
     status = entry.get("business_status")
     if status in CLOSED_STATUSES:
@@ -374,8 +413,11 @@ def passes_quality_filters(entry, filter_franchises=True, min_reviews=5, franchi
     if count < min_reviews:
         return False, "low_review_count"
 
-    if not is_valid_us_phone(entry.get("phone_google")):
+    if require_phone and not is_valid_us_phone(entry.get("phone_google")):
         return False, "invalid_phone"
+
+    if require_website and not (entry.get("website") or "").strip():
+        return False, "no_website"
 
     reviews = entry.get("reviews") or []
     if reviews:
@@ -386,16 +428,23 @@ def passes_quality_filters(entry, filter_franchises=True, min_reviews=5, franchi
     return True, ""
 
 
-def _extract_emails_from_html(html):
+def _extract_emails_from_html(html, soup=None):
     """Return sorted unique emails found in HTML, filtering image-like false positives."""
     emails = set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", html or ""))
+    if soup is not None:
+        for a in soup.find_all("a", href=True):
+            href = (a.get("href") or "").strip()
+            if href.lower().startswith("mailto:"):
+                addr = href.split(":", 1)[1].split("?", 1)[0].strip()
+                if addr:
+                    emails.add(addr)
     filtered = []
     for e in emails:
         low = e.lower()
         if any(low.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".svg")):
             continue
-        if "mailto:" in low:
-            low = low.replace("mailto:", "")
+        if low.startswith("mailto:"):
+            low = low.replace("mailto:", "", 1)
         filtered.append(low)
     return sorted(set(filtered))
 
@@ -420,8 +469,27 @@ def _extract_phones_from_html(html):
 
 def _fetch_html(url):
     """GET url and return response text, or raise."""
-    r = requests.get(url, timeout=10)
+    r = requests.get(url, timeout=10, headers=FETCH_HEADERS, allow_redirects=True)
     return r.text or ""
+
+
+def _normalize_website_url(url):
+    """Normalize scheme for scraping; prefer https for bare hosts."""
+    if not url:
+        return url
+    if url.startswith("//"):
+        url = "https:" + url
+    if not urlparse(url).scheme:
+        url = "https://" + url
+    return url
+
+
+def _https_upgrade_url(url):
+    """Return an https:// variant of an http:// URL, or None if not applicable."""
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "http":
+        return None
+    return parsed._replace(scheme="https").geturl()
 
 
 def analyze_website(url):
@@ -442,18 +510,35 @@ def analyze_website(url):
     if not url:
         return result
 
-    if url.startswith("//"):
-        url = "https:" + url
-    if not urlparse(url).scheme:
-        url = "http://" + url
-
+    url = _normalize_website_url(url)
     result["https"] = url.lower().startswith("https://")
 
     try:
         html = _fetch_html(url)
+        if len(html) < MIN_USEFUL_HTML_LENGTH:
+            https_url = _https_upgrade_url(url)
+            if https_url:
+                try:
+                    https_html = _fetch_html(https_url)
+                    if len(https_html) > len(html):
+                        html = https_html
+                        url = https_url
+                        result["https"] = True
+                except Exception:
+                    pass
     except Exception as e:
-        result["error"] = str(e)
-        return result
+        https_url = _https_upgrade_url(url)
+        if https_url:
+            try:
+                html = _fetch_html(https_url)
+                url = https_url
+                result["https"] = True
+            except Exception as e2:
+                result["error"] = str(e2)
+                return result
+        else:
+            result["error"] = str(e)
+            return result
 
     result["html_length"] = len(html)
     soup = BeautifulSoup(html, "html.parser")
@@ -464,7 +549,7 @@ def analyze_website(url):
     if mv:
         result["has_viewport"] = True
 
-    emails = set(_extract_emails_from_html(html))
+    emails = set(_extract_emails_from_html(html, soup=soup))
     phones = set(_extract_phones_from_html(html))
 
     text = soup.get_text(separator=" ").lower()
@@ -480,7 +565,8 @@ def analyze_website(url):
                 page_html = _fetch_html(page_url)
             except Exception:
                 continue
-            emails.update(_extract_emails_from_html(page_html))
+            page_soup = BeautifulSoup(page_html, "html.parser")
+            emails.update(_extract_emails_from_html(page_html, soup=page_soup))
             phones.update(_extract_phones_from_html(page_html))
             if emails:
                 break
@@ -553,6 +639,9 @@ def process_businesses(
     max_workers=12,
     filter_franchises=True,
     min_reviews=5,
+    require_phone=True,
+    require_website=False,
+    require_email=False,
 ):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
     enriched = []
@@ -588,6 +677,8 @@ def process_businesses(
             entry,
             filter_franchises=filter_franchises,
             min_reviews=min_reviews,
+            require_phone=require_phone,
+            require_website=require_website,
         )
         if not ok:
             quality_rejects[reason] = quality_rejects.get(reason, 0) + 1
@@ -647,6 +738,7 @@ def process_businesses(
 
     rows = []
     filtered_below_min = 0
+    filtered_no_email = 0
     for b in businesses_unique:
         place_id = b.get("place_id")
         if not place_id:
@@ -660,6 +752,10 @@ def process_businesses(
         emails_clean = [e.strip().lower() for e in emails if e and e.strip()]
 
         if any(email in contacted_emails for email in emails_clean):
+            continue
+
+        if require_email and not emails_clean:
+            filtered_no_email += 1
             continue
 
         has_website = bool(b.get("website"))
@@ -702,6 +798,8 @@ def process_businesses(
         }
         rows.append(row)
 
+    if filtered_no_email:
+        logger.info("Filtered %d leads with no email (require_email)", filtered_no_email)
     if filtered_below_min:
         logger.info(
             "Filtered %d leads below minimum score %d",
@@ -959,6 +1057,9 @@ def interactive_customize_config(base_config=None):
     cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
     cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
     cfg.filter_franchises = _prompt_bool("Filter out franchises/chains", cfg.filter_franchises)
+    cfg.require_phone = _prompt_bool("Require phone number", cfg.require_phone)
+    cfg.require_website = _prompt_bool("Require website", cfg.require_website)
+    cfg.require_email = _prompt_bool("Require email (from website scrape)", cfg.require_email)
     cfg.output_mode = _prompt_output_mode(cfg.output_mode)
     cfg.json_output = _prompt_text("JSON output path", cfg.json_output)
     return cfg
@@ -969,6 +1070,9 @@ def _print_config_summary(config, include_run_scope=True):
     print(f"  Min score:         {config.min_score}")
     print(f"  Min reviews:       {config.min_reviews}")
     print(f"  Filter franchises: {config.filter_franchises}")
+    print(f"  Require phone:     {config.require_phone}")
+    print(f"  Require website:   {config.require_website}")
+    print(f"  Require email:     {config.require_email}")
     print(f"  Output:            {config.output_mode}")
     print(f"  JSON path:         {config.json_output}")
     if include_run_scope:
@@ -1044,6 +1148,45 @@ def parse_args():
         help="Allow franchise/chain leads",
     )
     parser.add_argument(
+        "--require-phone",
+        dest="require_phone",
+        action="store_true",
+        default=None,
+        help="Require valid US phone from Google (default)",
+    )
+    parser.add_argument(
+        "--no-require-phone",
+        dest="require_phone",
+        action="store_false",
+        help="Allow leads without a valid Google phone",
+    )
+    parser.add_argument(
+        "--require-website",
+        dest="require_website",
+        action="store_true",
+        default=None,
+        help="Require a website URL from Place Details",
+    )
+    parser.add_argument(
+        "--no-require-website",
+        dest="require_website",
+        action="store_false",
+        help="Allow leads without a website (default)",
+    )
+    parser.add_argument(
+        "--require-email",
+        dest="require_email",
+        action="store_true",
+        default=None,
+        help="Require at least one email from website scrape",
+    )
+    parser.add_argument(
+        "--no-require-email",
+        dest="require_email",
+        action="store_false",
+        help="Allow leads without scraped email (default)",
+    )
+    parser.add_argument(
         "--output",
         choices=["json", "dashboard", "both"],
         help="Output destination",
@@ -1064,6 +1207,9 @@ def _has_cli_overrides(args):
         args.min_score is not None,
         args.min_reviews is not None,
         args.filter_franchises is not None,
+        args.require_phone is not None,
+        args.require_website is not None,
+        args.require_email is not None,
         args.output is not None,
         args.json_path is not None,
         args.keywords is not None,
@@ -1080,6 +1226,12 @@ def config_from_args(args):
         config.min_reviews = args.min_reviews
     if args.filter_franchises is not None:
         config.filter_franchises = args.filter_franchises
+    if args.require_phone is not None:
+        config.require_phone = args.require_phone
+    if args.require_website is not None:
+        config.require_website = args.require_website
+    if args.require_email is not None:
+        config.require_email = args.require_email
     if args.output is not None:
         config.output_mode = args.output
     if args.json_path is not None:
@@ -1154,6 +1306,9 @@ def run_leadgen(config):
                 max_workers=config.max_workers,
                 filter_franchises=config.filter_franchises,
                 min_reviews=config.min_reviews,
+                require_phone=config.require_phone,
+                require_website=config.require_website,
+                require_email=config.require_email,
             )
             total_rows.extend(rows)
         except Exception as e:

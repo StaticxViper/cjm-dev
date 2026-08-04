@@ -20,7 +20,7 @@ Discovers local business leads via Google Places Nearby Search, fetches place de
 | `keywords.json` | Search keywords (keys used as categories) |
 | `coords.json` | Lat/lng for search center |
 | `franchises.json` | Franchise/chain name and domain blocklists |
-| `leadgen_settings.json` | Persisted run defaults (min score, reviews, franchise filter, output, JSON path) |
+| `leadgen_settings.json` | Persisted run defaults (min score, reviews, franchise filter, require phone/website/email, output, JSON path) |
 | `leads_output.json` | Output JSON array (created/appended); includes `place_id` for cross-run dedupe |
 | `contacted.txt` | Emails already contacted (skipped on export) |
 
@@ -51,7 +51,7 @@ python leadgen.py --min-score 80 --output both --city "Cherry Hill"
 ```
 
 - **Option 1** — load `leadgen_settings.json` (or hardcoded defaults), always prompt for keywords and locations, confirm, then run.
-- **Option 2** — prompt for min score, min reviews, franchise filter, output mode, and JSON path; write `leadgen_settings.json`; return to the menu without running. Keywords and locations are never persisted.
+- **Option 2** — prompt for min score, min reviews, franchise filter, require phone/website/email, output mode, and JSON path; write `leadgen_settings.json`; return to the menu without running. Keywords and locations are never persisted.
 
 Keyword and location pickers wrap across the terminal width (horizontal listing under each state for cities).
 
@@ -83,6 +83,9 @@ Enter comma-separated numbers to select specific items, or press Enter for all.
 | `--min-score INT` | Minimum `lead_score` to keep (default 80) |
 | `--min-reviews INT` | Minimum `user_ratings_total` (default 5) |
 | `--filter-franchises` / `--no-filter-franchises` | Exclude (default) or allow franchise/chain leads |
+| `--require-phone` / `--no-require-phone` | Require valid US phone from Google (default on) |
+| `--require-website` / `--no-require-website` | Require Place Details website URL (default off) |
+| `--require-email` / `--no-require-email` | Require scraped email after website analysis (default off) |
 | `--output {json,dashboard,both}` | Output destination |
 | `--json-path PATH` | JSON output path |
 | `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
@@ -95,11 +98,12 @@ CLI flags override values from `leadgen_settings.json`.
 1. Resolve configuration (interactive menu or CLI flags).
 2. For each selected location and keyword, call Google Places Nearby Search (with pagination).
 3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch expanded Place Details (`business_status`, `reviews`, phone, website, `formatted_address`).
-4. Apply quality filters (operational status, review count, phone, review recency).
-5. Scrape surviving websites: emails, HTTPS, viewport meta, HTML length, CTA keywords. If the homepage has no email, also try `/contact`, `/contact-us`, `/about`, and `/about-us`.
-6. Compute normalized `lead_score` (0–100; higher = better outreach target).
-7. Drop leads below `min_score`.
-8. Save to JSON and/or bulk-ingest to dashboard API.
+4. Apply quality filters (operational status, review count, optional phone/website, review recency).
+5. Scrape surviving websites: emails (regex + `mailto:` hrefs), HTTPS, viewport meta, HTML length, CTA keywords. Requests use a browser User-Agent; bare/HTTP URLs retry HTTPS when the body is empty or tiny. If the homepage has no email, also try `/contact`, `/contact-us`, `/contact.html`, `/about`, `/about-us`, and `/get-in-touch`.
+6. If `require_email` is enabled, drop leads with no scraped email.
+7. Compute normalized `lead_score` (0–100; higher = better outreach target).
+8. Drop leads below `min_score`.
+9. Save to JSON and/or bulk-ingest to dashboard API.
 
 ```mermaid
 flowchart LR
@@ -117,8 +121,15 @@ Applied after Place Details, before website scraping:
 | Business status | Exclude `CLOSED_TEMPORARILY` and `CLOSED_PERMANENTLY`; keep missing or `OPERATIONAL` |
 | Franchise / chain | When `filter_franchises` is True (default), exclude if `business_name` matches a name in `franchises.json` **or** website host matches a listed domain |
 | Review count | Require `user_ratings_total >= min_reviews` (default 5) |
-| Phone | Require valid US-format `phone_google` from Google |
+| Phone | When `require_phone` is True (default), require valid US-format `phone_google` from Google |
+| Website | When `require_website` is True (default False), require a non-empty Place Details `website` |
 | Review recency | If review data exists, exclude when newest review is older than 18 months |
+
+Applied after website scrape:
+
+| Filter | Rule |
+|--------|------|
+| Email | When `require_email` is True (default False), require at least one scraped email |
 
 Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `rating`, `user_ratings_total`, website, phone, and `formatted_address`. Address falls back to Nearby Search `vicinity` when details address is empty.
 
@@ -140,7 +151,7 @@ Owner/decision-maker names are extracted from review text (patterns like "ask fo
 | `low_reviews` | `user_ratings_total` is None or `< 15` | 1 |
 | `unknown_status` | `business_status` missing (slight deprioritization) | 2 |
 
-Leads without email are kept (cold-call queue). Leads with email score higher (warm email/SMS sequence). Output includes `place_id`, `address`, `email`, `has_email`, `business_status`, and `owner_names` fields.
+Leads without email are kept by default (cold-call queue) unless `require_email` is enabled. Leads with email score higher (warm email/SMS sequence). Output includes `place_id`, `address`, `email`, `has_email`, `business_status`, and `owner_names` fields.
 
 Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 
