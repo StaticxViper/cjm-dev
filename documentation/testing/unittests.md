@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, CSV export, and website analysis.
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, CSV export, and website analysis, plus [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic.
 
 ## Prerequisites
 
@@ -20,6 +20,7 @@ From **repo root**:
 
 ```bash
 python -m unittest unittests.lead_automation.test_leadgen
+python -m unittest unittests.lead_automation.test_leadenrich
 ```
 
 Run all tests in the package:
@@ -71,7 +72,25 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 | `test_empty_url_no_request` | Empty URL skips HTTP |
 | `test_parses_email_and_cta` | Extracts email and CTA from HTML |
 
+## Test file: `unittests/lead_automation/test_leadenrich.py`
+
+Imports `leadenrich` the same way (CWD switched to `scripts/lead_automation/`). Apify actors are patched out, so no run costs credits.
+
+| Test class | What it checks |
+|------------|----------------|
+| `TestNormalizeFacebookUrl` | Canonicalizes vanity, `/pg/`, legacy `/pages/`, and `profile.php?id=` URLs; rejects groups, events, and non-Facebook hosts |
+| `TestNameMatching` | Name normalization (apostrophes, legal suffixes) and that only sufficiently similar pages are matched |
+| `TestLocationHint` | `City, Country` hint parsed from a Google formatted address |
+| `TestEmailExtraction` | Email pulled from page fields; image filenames and junk domains filtered |
+| `TestCandidateSelection` | Which leads are picked up, skipped, or retried across runs |
+| `TestApplyEnrichment` | Status and fields written for each outcome |
+| `TestResolvePageUrls` | Facebook websites skip the search actor; weak matches stay unresolved |
+| `TestScrapeFacebookPages` | Batching, URL-variant indexing, and actor failure handling |
+| `TestRunEnrichment` | End-to-end merge, `--limit`, `--dry-run`, dashboard payload, missing API key |
+| `TestSaveLeads` | Atomic write leaves no temp file; malformed input rejected |
+
 ## Related documentation
 
 - [leadgen.md](../scripts/leadgen.md) — script under test
+- [leadenrich.md](../scripts/leadenrich.md) — script under test
 - [setup.md](../setup.md) — environment setup
