@@ -168,5 +168,6 @@ Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sampl
 ## Related scripts
 
 - [leadfilter.md](leadfilter.md) — duplicate filtering
+- [leadenrich.md](leadenrich.md) — fill in missing emails from Facebook Pages
 - [lead_automation.md](lead_automation.md) — re-ingest existing CSV to Supabase
 - [testing/unittests.md](../testing/unittests.md) — unit tests for scoring and parsing

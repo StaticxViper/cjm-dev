@@ -10,6 +10,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 |--------|-----|
 | Blog automation (Chikara Realms) | [scripts/blog_automation.md](scripts/blog_automation.md) |
 | Lead generation | [scripts/leadgen.md](scripts/leadgen.md) |
+| Lead enrichment (Facebook) | [scripts/leadenrich.md](scripts/leadenrich.md) |
 | Lead ingest | [scripts/lead_automation.md](scripts/lead_automation.md) |
 | Lead filter (library) | [scripts/leadfilter.md](scripts/leadfilter.md) |
 | Stock analyzer | [scripts/stock_analyzer.md](scripts/stock_analyzer.md) |
@@ -38,8 +39,10 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 
 ```mermaid
 flowchart LR
-  leadgen[leadgen.py] --> csv[leads_output.csv]
-  csv --> ingest[lead_automation.py]
+  leadgen[leadgen.py] --> leads[leads_output.json]
+  leads --> enrich[leadenrich.py]
+  enrich --> leads
+  leads --> ingest[lead_automation.py]
   ingest --> supabase[Supabase leads-ingest]
   leadfilter[leadfilter.py] -.-> leadgen
 ```
@@ -52,8 +55,8 @@ flowchart LR
 | `PERPLEXITY_API_KEY` | `blog_automation`, `stock_analyzer`, `api_manager` |
 | `CHIKARA_REALMS_SECRET` | `blog_automation`, `api_manager` |
 | `GOOGLE_API_KEY` | `leadgen`, `api_manager` |
-| `LEAD_INGEST_KEY` | `lead_automation`, `api_manager` |
-| `APIFY_API_KEY` | `stock_analyzer`, `api_manager` |
+| `LEAD_INGEST_KEY` | `lead_automation`, `leadenrich`, `api_manager` |
+| `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `api_manager` |
 | `APIFY_USER_ID` | `api_manager` |
 | `STOCK_INGEST_TOKEN` | `stock_analyzer`, `api_manager` |
 | `LOVABLE_API_KEY` | `lovable_automation` |
@@ -66,7 +69,7 @@ flowchart LR
 | Working directory | Scripts |
 |-------------------|---------|
 | `scripts/chikara_realms/` | `blog_automation.py` |
-| `scripts/lead_automation/` | `leadgen.py`, `lead_automation.py` |
+| `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `lead_automation.py` |
 | `scripts/lovable_automation/` | `lovable_automation.py` |
 | `scripts/json_formatter/` | `json_formatter.py` |
 | `scripts/webhook_manager/` | `webhook_manager.py` |

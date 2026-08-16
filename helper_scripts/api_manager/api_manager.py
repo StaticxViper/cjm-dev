@@ -14,7 +14,8 @@ API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
-          'Instagram Post Scraper': 'apify/instagram-post-scraper'}
+          'Instagram Post Scraper': 'apify/instagram-post-scraper', 'Facebook Search': 'danek/facebook-search-ppr',
+          'Facebook Pages Scraper': 'apify/facebook-pages-scraper'}
 
 logger = setup_logger(
     name="api-manager",
@@ -128,6 +129,8 @@ class APIManager:
             Acquired JSON Data
         """
 
+        result = []
+
         try:
             if actor is None:
                 logger.error('Apify Actor not given...')
@@ -168,6 +171,8 @@ class APIManager:
         Returns:
             Acquired JSON Data
         """
+
+        result = []
 
         try:
             if actor_call is not None:
