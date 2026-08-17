@@ -6,6 +6,11 @@
 
 Fills in missing emails on leads produced by [leadgen](leadgen.md). Most Google Places leads have no email on their website (or have no website at all), but the business usually publishes one on its Facebook Page. For every lead with an empty `email`, this script resolves a Facebook Page URL, scrapes that page through Apify, and writes the email back into the leads JSON.
 
+Runs two ways:
+
+- **Automatically**, at the end of every leadgen run, while leadgen's `lead_enrichment` setting is on (the default). See [Lead enrichment](leadgen.md#lead-enrichment).
+- **Standalone**, over an existing leads JSON file, using the CLI below.
+
 ## Prerequisites
 
 - Python 3.12+
@@ -69,6 +74,15 @@ flowchart LR
   enrich --> supabase[Supabase leads-ingest-bulk]
 ```
 
+## Entry points
+
+| Function | Used by | Behavior |
+|----------|---------|----------|
+| `enrich_leads(leads, config=None)` | leadgen, in memory | Enriches a list of lead dicts in place; returns the rows that gained an email |
+| `run_enrichment(config)` | the CLI | Loads the JSON file, calls `enrich_leads`, saves atomically, optional dashboard ingest |
+
+leadgen imports `enrich_leads` lazily inside its own function, and this module imports `send_to_dashboard` from leadgen lazily, so neither import order creates a cycle.
+
 ## Apify actors
 
 Both are registered in the `ACTORS` map of [api_manager](../helper_scripts/api_manager.md) and called by their friendly name.
@@ -77,6 +91,8 @@ Both are registered in the `ACTORS` map of [api_manager](../helper_scripts/api_m
 |---------------|----------|----------|
 | `Facebook Search` | [`danek/facebook-search-ppr`](https://apify.com/danek/facebook-search-ppr) | Find the Facebook Page URL for a business name |
 | `Facebook Pages Scraper` | [`apify/facebook-pages-scraper`](https://apify.com/apify/facebook-pages-scraper) | Read email and contact details off a page |
+
+The search actor returns `{type, name, url, profile_url, facebook_id, is_verified, image}` per result; only items typed `page` are considered. Result names and URLs are read through several key variants so a field rename upstream degrades to "no match" rather than a crash.
 
 ## URL resolution
 
@@ -127,6 +143,7 @@ Use `--retry-all` to force another pass over every email-less lead — for examp
 
 - `--dry-run` resolves page URLs and prints the matches without running the page scraper or touching the file. Use it to sanity-check matching on a new niche before spending on scrapes.
 - `--limit` caps how many leads are processed in a single run.
+- `python leadgen.py --no-lead-enrichment` keeps enrichment out of a leadgen run entirely; enrich later in bulk from the JSON file.
 - Leads whose website is already a Facebook Page skip the search actor entirely.
 - Page scrapes are batched (25 URLs per actor run) and deduped by canonical URL.
 

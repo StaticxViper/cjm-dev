@@ -161,6 +161,28 @@ class TestNameMatching(unittest.TestCase):
         url, _, _ = LEADENRICH.best_page_match("Alspach Landscaping", results, 0.72)
         self.assertIsNone(url)
 
+    def test_best_page_match_reads_live_actor_field_names(self):
+        # Field names taken from a real danek/facebook-search-ppr run.
+        results = [{
+            "type": "page",
+            "name": "Alspach Landscaping",
+            "url": "https://www.facebook.com/alspachlandscaping",
+            "profile_url": "https://www.facebook.com/alspachlandscaping",
+            "facebook_id": "100064114021512",
+            "is_verified": True,
+        }]
+        url, _, _ = LEADENRICH.best_page_match("Alspach Landscaping", results, 0.72)
+        self.assertEqual(url, "https://www.facebook.com/alspachlandscaping")
+
+    def test_best_page_match_skips_non_page_result_types(self):
+        results = [{
+            "type": "place",
+            "name": "Alspach Landscaping",
+            "url": "https://www.facebook.com/alspachlandscaping",
+        }]
+        url, _, _ = LEADENRICH.best_page_match("Alspach Landscaping", results, 0.72)
+        self.assertIsNone(url)
+
     def test_best_page_match_handles_empty_results(self):
         self.assertEqual(LEADENRICH.best_page_match("Anything", [], 0.72), (None, 0.0, None))
 
@@ -409,6 +431,48 @@ class TestRunEnrichment(unittest.TestCase):
                     patch.object(LEADENRICH, "load_leads") as mock_load:
                 LEADENRICH.run_enrichment(LEADENRICH.EnrichConfig(json_path=path))
         mock_load.assert_not_called()
+
+
+@SKIP
+class TestEnrichLeads(unittest.TestCase):
+    """enrich_leads is the in-memory entry point leadgen calls at the end of a run."""
+
+    def test_enriches_rows_in_place_and_returns_changed_rows(self):
+        rows = [
+            _lead(place_id="pid1", website="https://www.facebook.com/found"),
+            _lead(place_id="pid2", email="known@biz.example", has_email=True),
+        ]
+        pages = {"https://www.facebook.com/found": {"email": "office@biz.example"}}
+        with patch.object(LEADENRICH, "APIFY_API_KEY", "fake-key"), \
+                patch.object(LEADENRICH, "scrape_facebook_pages", return_value=pages):
+            enriched = LEADENRICH.enrich_leads(rows, LEADENRICH.EnrichConfig(max_workers=1))
+
+        self.assertEqual(enriched, [rows[0]])
+        self.assertEqual(rows[0]["email"], "office@biz.example")
+        self.assertTrue(rows[0]["has_email"])
+
+    def test_no_candidates_skips_actors(self):
+        rows = [_lead(email="known@biz.example", has_email=True)]
+        with patch.object(LEADENRICH, "APIFY_API_KEY", "fake-key"), \
+                patch.object(LEADENRICH, "scrape_facebook_pages") as mock_scrape:
+            self.assertEqual(LEADENRICH.enrich_leads(rows), [])
+        mock_scrape.assert_not_called()
+
+    def test_missing_api_key_returns_empty(self):
+        rows = [_lead()]
+        with patch.object(LEADENRICH, "APIFY_API_KEY", None), \
+                patch.object(LEADENRICH, "scrape_facebook_pages") as mock_scrape:
+            self.assertEqual(LEADENRICH.enrich_leads(rows), [])
+        mock_scrape.assert_not_called()
+        self.assertNotIn("enrichment", rows[0])
+
+    def test_defaults_used_when_config_omitted(self):
+        rows = [_lead(website="https://www.facebook.com/found")]
+        pages = {"https://www.facebook.com/found": {}}
+        with patch.object(LEADENRICH, "APIFY_API_KEY", "fake-key"), \
+                patch.object(LEADENRICH, "scrape_facebook_pages", return_value=pages):
+            self.assertEqual(LEADENRICH.enrich_leads(rows), [])
+        self.assertEqual(rows[0]["enrichment"]["status"], LEADENRICH.STATUS_NO_EMAIL)
 
 
 @SKIP

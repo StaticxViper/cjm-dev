@@ -62,7 +62,10 @@ COUNTRY_ALIASES = {"USA": "United States", "US": "United States"}
 # Search results and page items come from two different actors, so read the
 # name/URL through the key variants each one uses rather than a single field.
 SEARCH_NAME_KEYS = ("name", "title", "pageName", "page_name")
-SEARCH_URL_KEYS = ("url", "pageUrl", "page_url", "facebookUrl", "facebook_url", "link", "profileUrl")
+SEARCH_URL_KEYS = (
+    "url", "profile_url", "profileUrl", "pageUrl", "page_url",
+    "facebookUrl", "facebook_url", "link",
+)
 PAGE_URL_KEYS = ("pageUrl", "facebookUrl", "url")
 
 NAME_APOSTROPHE_RE = re.compile(r"['\u2018\u2019\u02bc]")
@@ -228,6 +231,10 @@ def best_page_match(business_name, results, min_similarity):
 
     for item in results or []:
         if not isinstance(item, dict):
+            continue
+        # The search actor tags each result; drop places/posts that slip through.
+        item_type = item.get("type")
+        if isinstance(item_type, str) and item_type.strip().lower() != "page":
             continue
         url = normalize_facebook_url(_first_string(item, SEARCH_URL_KEYS))
         if not url:
