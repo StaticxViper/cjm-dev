@@ -53,6 +53,18 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 | `test_ideal_lead_zero_score` | Full signals (HTTPS, viewport, email, CTA) → score 0 |
 | `test_adds_for_http_no_viewport_short_html` | Penalties stack for HTTP, no viewport, short HTML |
 
+### `TestLeadEnrichmentSetting`
+
+| Test | What it checks |
+|------|----------------|
+| `test_enabled_by_default` | `lead_enrichment` defaults to on |
+| `test_legacy_settings_without_key_keep_default` | Older settings files without the key still enrich |
+| `test_cli_flag_disables_and_counts_as_override` | `--no-lead-enrichment` parses and skips the interactive menu |
+| `test_run_leadgen_enriches_before_output` | Enrichment runs on the qualifying rows before save/ingest |
+| `test_run_leadgen_skips_enrichment_when_disabled` | Setting off means no enrichment call |
+| `test_enriched_lead_already_contacted_is_dropped` | Newly found email in `contacted.txt` removes the lead |
+| `test_enrich_missing_emails_*` | Returns enriched rows; an actor failure is logged, not raised |
+
 ### `TestGetPlaces`
 
 | Test | What it checks |
@@ -87,6 +99,7 @@ Imports `leadenrich` the same way (CWD switched to `scripts/lead_automation/`). 
 | `TestResolvePageUrls` | Facebook websites skip the search actor; weak matches stay unresolved |
 | `TestScrapeFacebookPages` | Batching, URL-variant indexing, and actor failure handling |
 | `TestRunEnrichment` | End-to-end merge, `--limit`, `--dry-run`, dashboard payload, missing API key |
+| `TestEnrichLeads` | In-memory entry point used by leadgen: mutates rows in place, returns changed rows, no-ops without candidates or an API key |
 | `TestSaveLeads` | Atomic write leaves no temp file; malformed input rejected |
 
 ## Related documentation

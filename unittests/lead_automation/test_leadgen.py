@@ -163,6 +163,7 @@ class TestSettingsPersistence(unittest.TestCase):
             require_phone=True,
             require_website=True,
             require_email=True,
+            lead_enrichment=False,
             output_mode="both",
             json_output="custom_leads.json",
             keywords=["landscaping"],
@@ -174,6 +175,7 @@ class TestSettingsPersistence(unittest.TestCase):
             self.assertTrue(payload["require_website"])
             self.assertTrue(payload["require_email"])
             self.assertTrue(payload["require_phone"])
+            self.assertFalse(payload["lead_enrichment"])
             self.assertNotIn("keywords", payload)
             loaded = LEADGEN.load_saved_settings(path=path)
             self.assertEqual(loaded["min_score"], 70)
@@ -181,6 +183,7 @@ class TestSettingsPersistence(unittest.TestCase):
             self.assertFalse(loaded["filter_franchises"])
             self.assertTrue(loaded["require_website"])
             self.assertTrue(loaded["require_email"])
+            self.assertFalse(loaded["lead_enrichment"])
             self.assertEqual(loaded["output_mode"], "both")
             self.assertEqual(loaded["json_output"], "custom_leads.json")
             rebuilt = LEADGEN.config_from_saved_settings(path=path)
@@ -189,6 +192,7 @@ class TestSettingsPersistence(unittest.TestCase):
             self.assertTrue(rebuilt.require_website)
             self.assertTrue(rebuilt.require_email)
             self.assertTrue(rebuilt.require_phone)
+            self.assertFalse(rebuilt.lead_enrichment)
             self.assertEqual(list(LEADGEN.KEYWORD_CATEGORIES.keys()), rebuilt.keywords)
 
     def test_load_saved_settings_migrates_legacy_csv(self):
@@ -227,6 +231,92 @@ class TestSettingsPersistence(unittest.TestCase):
             saved = LEADGEN.load_saved_settings(path=path)
             self.assertEqual(saved["min_score"], 65)
             self.assertEqual(saved["output_mode"], "dashboard")
+
+
+@SKIP
+class TestLeadEnrichmentSetting(unittest.TestCase):
+    def _run_config(self, **overrides):
+        base = dict(
+            output_mode="json",
+            keywords=["landscaping"],
+            locations=[("NJ", "Cherry Hill", "39.9,-75.0")],
+        )
+        base.update(overrides)
+        return LEADGEN.LeadgenConfig(**base)
+
+    def _run_leadgen(self, config, rows, mock_enrich, contacted_file="no_contacted_file.txt"):
+        with patch.object(LEADGEN, "GOOGLE_API_KEY", "fake-key"), \
+                patch.object(LEADGEN, "CONTACTED_FILE", contacted_file), \
+                patch.object(LEADGEN, "load_existing_place_ids", return_value=set()), \
+                patch.object(LEADGEN, "get_places", return_value=[{"place_id": "pid1"}]), \
+                patch.object(LEADGEN, "process_businesses", return_value=rows), \
+                patch.object(LEADGEN, "enrich_missing_emails", mock_enrich), \
+                patch.object(LEADGEN, "save_results") as mock_save:
+            LEADGEN.run_leadgen(config)
+        return mock_save
+
+    def test_enabled_by_default(self):
+        self.assertTrue(LEADGEN.LeadgenConfig().lead_enrichment)
+
+    def test_legacy_settings_without_key_keep_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"min_score": 70}, f)
+            self.assertTrue(LEADGEN.config_from_saved_settings(path=path).lead_enrichment)
+
+    def test_cli_flag_disables_and_counts_as_override(self):
+        with patch.object(sys, "argv", ["leadgen.py", "--no-lead-enrichment"]):
+            args = LEADGEN.parse_args()
+        self.assertFalse(args.lead_enrichment)
+        self.assertTrue(LEADGEN._has_cli_overrides(args))
+        with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+            self.assertFalse(LEADGEN.config_from_args(args).lead_enrichment)
+
+    def test_run_leadgen_enriches_before_output(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "email": "", "lead_score": 90}]
+        mock_enrich = MagicMock(return_value=[])
+        mock_save = self._run_leadgen(self._run_config(lead_enrichment=True), rows, mock_enrich)
+        mock_enrich.assert_called_once_with(rows)
+        mock_save.assert_called_once()
+
+    def test_run_leadgen_skips_enrichment_when_disabled(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "email": "", "lead_score": 90}]
+        mock_enrich = MagicMock()
+        mock_save = self._run_leadgen(self._run_config(lead_enrichment=False), rows, mock_enrich)
+        mock_enrich.assert_not_called()
+        mock_save.assert_called_once()
+
+    def test_enriched_lead_already_contacted_is_dropped(self):
+        rows = [
+            {"business_name": "A", "place_id": "pid1", "email": "office@biz.example", "lead_score": 90},
+            {"business_name": "B", "place_id": "pid2", "email": "", "lead_score": 80},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            contacted = os.path.join(tmp, "contacted.txt")
+            with open(contacted, "w", encoding="utf-8") as f:
+                f.write("office@biz.example\n")
+            mock_save = self._run_leadgen(
+                self._run_config(lead_enrichment=True),
+                rows,
+                MagicMock(return_value=[rows[0]]),
+                contacted_file=contacted,
+            )
+        saved_rows = mock_save.call_args.args[0]
+        self.assertEqual([row["place_id"] for row in saved_rows], ["pid2"])
+
+    def test_enrich_missing_emails_returns_enriched_rows(self):
+        row = {"business_name": "A", "email": ""}
+        fake_module = MagicMock()
+        fake_module.enrich_leads.return_value = [row]
+        with patch.dict(sys.modules, {"leadenrich": fake_module}):
+            self.assertEqual(LEADGEN.enrich_missing_emails([row]), [row])
+
+    def test_enrich_missing_emails_swallows_failure(self):
+        fake_module = MagicMock()
+        fake_module.enrich_leads.side_effect = RuntimeError("actor down")
+        with patch.dict(sys.modules, {"leadenrich": fake_module}):
+            self.assertEqual(LEADGEN.enrich_missing_emails([{"email": ""}]), [])
 
 
 @SKIP
