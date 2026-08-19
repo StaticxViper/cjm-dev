@@ -20,7 +20,9 @@ CSV_FIELDS = [
     "LinkedIn URL",
     "current company",
     "relevance_score",
+    "needs_review",
     "hiring",
+    "verified",
     "searched_company",
 ]
 
@@ -59,15 +61,19 @@ def profile_company(item):
 
 
 def relevance_score(item):
-    headline = (item.get("headline") or "").lower()
+    # Short mode omits headline entirely and only sometimes returns summary,
+    # so current position titles are the primary signal.
+    positions = item.get("currentPosition") or item.get("currentPositions") or []
+    titles = [p.get("title") or p.get("position") or "" for p in positions if isinstance(p, dict)]
+    text = " ".join([item.get("headline") or "", item.get("summary") or "", *titles]).lower()
 
-    if any(term in headline for term in OFF_TARGET_TERMS):
+    if any(term in text for term in OFF_TARGET_TERMS):
         return -5
-    if any(term in headline for term in STRONG_TERMS):
+    if any(term in text for term in STRONG_TERMS):
         return 3
-    if "talent acquisition" in headline and ("tech" in headline or "engineering" in headline):
+    if "talent acquisition" in text and ("tech" in text or "engineering" in text):
         return 2
-    if "recruiter" in headline or "talent acquisition" in headline:
+    if "recruiter" in text or "talent acquisition" in text:
         return 1
     return 0
 
@@ -99,7 +105,7 @@ def main():
                         "companies": [company],
                         "profileScraperMode": "Short ($4 per 1k)",
                         "searchQuery": "recruiter",
-                        "functionIds": [12],
+                        "functionIds": ["12"],
                         "maxItems": 200,
                         "companyBatchMode": "one_by_one",
                     },
@@ -126,7 +132,9 @@ def main():
                         "LinkedIn URL": url,
                         "current company": profile_company(item),
                         "relevance_score": score,
+                        "needs_review": score == 0,
                         "hiring": item.get("hiring", False),
+                        "verified": item.get("verified", False),
                         "searched_company": company,
                     })
                     kept += 1
@@ -139,7 +147,15 @@ def main():
     with open(output_path, newline="", encoding="utf-8") as csvfile:
         rows = list(csv.DictReader(csvfile))
 
-    rows.sort(key=lambda row: (int(row["relevance_score"]), row["hiring"] == "True"), reverse=True)
+    rows.sort(
+        key=lambda row: (
+            int(row["relevance_score"]),
+            row["hiring"] == "True",
+            row["verified"] == "True",
+            row["needs_review"] != "True",
+        ),
+        reverse=True,
+    )
 
     with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=CSV_FIELDS)
