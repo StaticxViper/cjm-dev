@@ -1,15 +1,22 @@
 {
     "companies": [
-      "https://www.linkedin.com/company/plaid-/",
-      "https://www.linkedin.com/company/brex/",
-      "https://www.linkedin.com/company/ramp-financial/",
-      "https://www.linkedin.com/company/mercury-technologies/",
-      "https://www.linkedin.com/company/affirm/",
-      "https://www.linkedin.com/company/chime/",
-      "https://www.linkedin.com/company/wise-payments/",
-      "https://www.linkedin.com/company/gusto/",
-      "https://www.linkedin.com/company/carta/",
-      "https://www.linkedin.com/company/deel/",
-      "https://www.linkedin.com/company/remote-com/"
+        "https://www.linkedin.com/company/plaid-/",
+        "https://www.linkedin.com/company/brex/",
+        "https://www.linkedin.com/company/ramp-financial/",
+        "https://www.linkedin.com/company/mercury-technologies/",
+        "https://www.linkedin.com/company/affirm/",
+        "https://www.linkedin.com/company/chime/",
+        "https://www.linkedin.com/company/wise-payments/",
+        "https://www.linkedin.com/company/gusto/",
+        "https://www.linkedin.com/company/carta/",
+        "https://www.linkedin.com/company/deel/",
+        "https://www.linkedin.com/company/remote-com/",
+        "https://www.linkedin.com/company/gitlab-com/",
+        "https://www.linkedin.com/company/hashicorp/",
+        "https://www.linkedin.com/company/automattic/",
+        "https://www.linkedin.com/company/atlassian/",
+        "https://www.linkedin.com/company/elastic-co/",
+        "https://www.linkedin.com/company/digitalocean/",
+        "https://www.linkedin.com/company/confluent/"
     ]
   }
