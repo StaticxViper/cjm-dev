@@ -1,12 +1,63 @@
 import csv
+import re
 from datetime import datetime
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = SCRIPT_DIR / "output"
+RESUME_FILE = SCRIPT_DIR / "resume_2026.md"
 
-SENDER_NAME = "[Your name]"
 STRONG_TERMS = ("technical recruiter", "engineering recruiter", "tech recruiter", "software recruiter")
+
+
+def load_resume():
+    """Pull the handful of facts the drafts need out of resume_2026.md."""
+    lines = [line.strip() for line in RESUME_FILE.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    skills = []
+    if "Languages" in lines:
+        for line in lines[lines.index("Languages") + 1:]:
+            if not line.startswith("●"):
+                break
+            skills.append(line.lstrip("● ").strip())
+
+    cert = next((line.lstrip("● ").split(" (")[0].strip() for line in lines if "ISTQB" in line), "")
+
+    title = ""
+    years = 0
+    if "Experience" in lines:
+        experience = lines[lines.index("Experience") + 1:]
+        if experience and "–" in experience[0]:
+            title = experience[0].split("–")[-1].strip()
+        started = [int(y) for y in re.findall(r"\b(?:19|20)\d{2}\b", "\n".join(experience))]
+        if started:
+            years = datetime.now().year - min(started)
+
+    return {
+        "name": lines[0] if lines else "",
+        "title": title,
+        "years": years,
+        "cert": cert,
+        "skills": skills,
+    }
+
+
+def join_skills(skills):
+    top = skills[:3]
+    if len(top) > 1:
+        return ", ".join(top[:-1]) + f", and {top[-1]}"
+    return top[0] if top else ""
+
+
+def background_sentence(resume):
+    sentence = f"I'm a {resume['title'] or 'software engineer'}"
+    if resume["years"]:
+        sentence += f" with {resume['years']} years of experience"
+    if resume["cert"]:
+        sentence += f", {resume['cert']} certified in software testing"
+    if resume["skills"]:
+        sentence += f", working day to day in {join_skills(resume['skills'])}"
+    return sentence + "."
 
 
 def latest_csv():
@@ -50,7 +101,7 @@ def role_note(row, company):
     return f"since you recruit for {company}"
 
 
-def build_draft(row):
+def build_draft(row, resume):
     first = first_name(row.get("name"))
     company = company_name(row)
     note = role_note(row, company)
@@ -72,10 +123,9 @@ def build_draft(row):
     subject = f"Software Engineer — {company} openings?"
     body = (
         f"Hi {first},\n\n"
-        f"{opener} I'm a software engineer with 5 years of experience, "
-        f"a background in software testing and QA, and full-stack work across React/Vite "
-        f"and Supabase. {ask} My resume is attached if you'd like to take a look.\n\n"
-        f"Thanks,\n{SENDER_NAME}"
+        f"{opener} {background_sentence(resume)} {ask} "
+        f"My resume is attached if you'd like to take a look.\n\n"
+        f"Thanks,\n{resume['name']}"
     )
     return subject, body
 
@@ -86,7 +136,12 @@ def main():
         print("No output in dir")
         return
 
-    print(f"Reading {source.name}")
+    if not RESUME_FILE.exists():
+        print(f"No {RESUME_FILE.name} in dir")
+        return
+
+    resume = load_resume()
+    print(f"Reading {source.name} and {RESUME_FILE.name}")
     with open(source, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
 
@@ -97,7 +152,7 @@ def main():
             skipped += 1
             continue
 
-        subject, body = build_draft(row)
+        subject, body = build_draft(row, resume)
         blocks.append(
             f"## {len(blocks) + 1}. {row.get('name', '').strip()} — {company_name(row)}\n\n"
             f"LinkedIn: {row.get('LinkedIn URL', '')}\n\n"
@@ -110,7 +165,7 @@ def main():
     output_path = OUTPUT_DIR / f"email_drafts_{timestamp}.md"
     header = (
         f"# Recruiter email drafts\n\n"
-        f"Source: {source.name}\n\n"
+        f"Source: {source.name} | Resume: {RESUME_FILE.name}\n\n"
         f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
         f"Drafts: {len(blocks)} | Skipped (needs review or score < 1): {skipped}\n\n"
         f"Attach your resume manually before sending each one."
