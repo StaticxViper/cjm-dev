@@ -6,21 +6,36 @@ from datetime import datetime
 
 # ---- PATH SETUP ----
 BASE_DIR = Path(__file__).resolve().parent
-REPO_ROOT = BASE_DIR.parent   # if you want logs at repo root
+REPO_ROOT = BASE_DIR.parents[2]  # helper_scripts/utils/logger -> repo root
 LOG_DIR = REPO_ROOT / "logs"
-LOG_DIR.mkdir(exist_ok=True)
 
 # ---- GLOBAL LOG FILE (created once per execution) ----
 _LOG_FILE = None
+
+
+def _entry_script_name(fallback: str) -> str:
+    """Name of the process entry-point script, not a helper that imported the logger."""
+    main = sys.modules.get("__main__")
+    main_file = getattr(main, "__file__", None)
+    if main_file:
+        stem = Path(main_file).stem
+    elif sys.argv and sys.argv[0] not in ("", "-c", "-"):
+        stem = Path(sys.argv[0]).stem
+    else:
+        stem = fallback
+    return stem.replace("_", "-")
 
 
 def _get_log_file(class_name: str) -> Path:
     global _LOG_FILE
 
     if _LOG_FILE is None:
+        script_name = _entry_script_name(class_name)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{class_name}.log"
-        _LOG_FILE = LOG_DIR / filename
+        script_log_dir = LOG_DIR / script_name
+        script_log_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"{timestamp}_{script_name}.log"
+        _LOG_FILE = script_log_dir / filename
 
     return _LOG_FILE
 
