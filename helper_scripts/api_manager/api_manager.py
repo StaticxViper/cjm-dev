@@ -1,7 +1,7 @@
 from apify_client import ApifyClient
+import apify_client
 import httpx
 import json
-import time
 from typing import Optional, Dict, Any
 import os
 from dotenv import load_dotenv
@@ -21,6 +21,39 @@ logger = setup_logger(
     name="api-manager",
     console_levels=["INFO", "ERROR", "CRITICAL"]  # Only these show in console, any of them can be removed.
 )
+
+
+def _extract_dataset_id(actor_run) -> str:
+    """Read the default dataset ID off an Apify actor run.
+
+    apify-client < 3 returns a plain dict keyed by 'defaultDatasetId'; >= 3 returns a
+    typed Run model whose fields are snake_case and not subscriptable. dict(run) from
+    a v3 model also uses snake_case keys, so both spellings are checked.
+    """
+    if actor_run is None:
+        raise RuntimeError('Apify actor run returned nothing (the run likely failed or timed out).')
+
+    if isinstance(actor_run, dict):
+        dataset_id = actor_run.get('defaultDatasetId') or actor_run.get('default_dataset_id')
+        if dataset_id:
+            return dataset_id
+        raise RuntimeError(f'No default dataset ID in Apify run dict (keys: {list(actor_run.keys())}).')
+
+    for attribute in ('default_dataset_id', 'defaultDatasetId'):
+        dataset_id = getattr(actor_run, attribute, None)
+        if dataset_id:
+            return dataset_id
+
+    dump = getattr(actor_run, 'model_dump', None)
+    if callable(dump):
+        dumped = dump()
+        if isinstance(dumped, dict):
+            dataset_id = dumped.get('default_dataset_id') or dumped.get('defaultDatasetId')
+            if dataset_id:
+                return dataset_id
+
+    raise RuntimeError(f'No default dataset ID on Apify run object of type {type(actor_run).__name__}.')
+
 
 class APIManager:
 
@@ -61,12 +94,6 @@ class APIManager:
             else:
                 headers["X-API-Key"] = api_key
 
-        # #region agent log
-        _req_start = time.monotonic()
-        with open("debug-16fad7.log", "a", encoding="utf-8") as _df:
-            _df.write(json.dumps({"sessionId": "16fad7", "hypothesisId": "B", "location": "api_manager.py:build_request:pre", "message": "request starting", "data": {"api": api, "endpoint": endpoint, "timeout": timeout}, "timestamp": int(time.time() * 1000)}) + "\n")
-        # #endregion
-
         with httpx.Client(base_url=base_url, timeout=timeout) as client:
             response = client.request(
                 method=method.upper(),
@@ -78,10 +105,6 @@ class APIManager:
             logger.info("STATUS: %s", response.status_code)
             logger.info("RESPONSE: %s", response.text)
 
-            # #region agent log
-            with open("debug-16fad7.log", "a", encoding="utf-8") as _df:
-                _df.write(json.dumps({"sessionId": "16fad7", "hypothesisId": "B", "location": "api_manager.py:build_request:post", "message": "request completed", "data": {"api": api, "status": response.status_code, "elapsed_s": round(time.monotonic() - _req_start, 2)}, "timestamp": int(time.time() * 1000)}) + "\n")
-            # #endregion
             # Raise for bad HTTP status
             response.raise_for_status()
 
@@ -128,59 +151,44 @@ class APIManager:
         Returns:
             Acquired JSON Data
         """
+        del runtime
 
-        try:
-            if actor is None:
-                logger.error('Apify Actor not given...')
-                exit()
-            else:
-                actor_found = False
-                for key,value in ACTORS.items():
-                    if actor in key:
-                        actor = value
-                        actor_found = True
-                        break
-            
-            if actor_found:
-                logger.critical('Actor Found!')
-            else:
-                logger.error('Actor not Found...')
-                exit()
+        if actor is None:
+            raise ValueError('Apify actor not given.')
 
-            # Run Actor
-            actor_call = self.apify_client.actor(actor).call(run_input=input)
-            # Get data via Dataset ID
-            result = self.get_apify_data(actor_call=actor_call)
-            logger.info('Results Found via Dataset ID!')
-        except RuntimeError as e:
-            logger.error(f'Actor run error: {e}')
-        except Exception as e:
-            logger.error(f'Unexpected error communicating with Apify: {e}')
+        actor_id = None
+        for key, value in ACTORS.items():
+            if actor in key:
+                actor_id = value
+                break
 
+        if not actor_id:
+            raise ValueError(f'Apify actor not found: {actor}')
+
+        logger.critical('Actor Found!')
+        logger.info('apify-client version: %s', getattr(apify_client, '__version__', 'unknown'))
+
+        actor_call = self.apify_client.actor(actor_id).call(run_input=input)
+        dataset_id = _extract_dataset_id(actor_call)
+        logger.info('Apify dataset ID: %s', dataset_id)
+        result = self.get_apify_data(dataset_id=dataset_id)
+        logger.info('Results Found via Dataset ID!')
         return result
 
     def get_apify_data(self, actor_call = None, dataset_id = None):
         """ Extract the acquired data via Dataset ID. 
         
         Args:
-            actor_call: Actor Client obj reference
-            dataset_id: ID for acquirring existing data, without running an actor.
+            actor_call: Actor run object (dict or apify-client v3 Run model)
+            dataset_id: ID for acquiring existing data, without running an actor.
 
         Returns:
             Acquired JSON Data
         """
-
-        try:
-            if actor_call is not None:
-                result = self.apify_client.dataset(actor_call['defaultDatasetId']).list_items().items
-            else:
-                result = self.apify_client.dataset(str(dataset_id)).list_items().items
-        except ValueError as e:
-            logger.error(f'Dataset error: {e}')
-        except Exception as e:
-            logger.error(f'Unexpected error communicating with Apify: {e}')
-
-        return result
+        if dataset_id is None:
+            dataset_id = _extract_dataset_id(actor_call)
+        page = self.apify_client.dataset(str(dataset_id)).list_items()
+        return getattr(page, 'items', page)
 
 if __name__ == "__main__":
     instance = APIManager(test=True)
