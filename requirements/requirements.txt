@@ -4,6 +4,6 @@ pandas
 beautifulsoup4
 python-dotenv
 httpx
-apify-client
+apify-client>=2.5,<4
 openai
 perplexityai
