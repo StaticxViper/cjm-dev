@@ -16,8 +16,9 @@ Shared logging setup for cjm-dev scripts: colored console output (filtered by le
 
 | Setting | Default |
 |---------|---------|
-| Log directory | `helper_scripts/utils/logs/` |
-| Log filename | `{timestamp}_{name}.log` |
+| Log directory | `logs/<entry-script>/` at repo root (created at runtime if missing) |
+| Log filename | `{timestamp}_{entry-script}.log` |
+| Entry script | Taken from `__main__.__file__` (the process that was launched), not the helper that first called `setup_logger` |
 | Console colors | INFO (blue), ERROR (red), CRITICAL (magenta) |
 
 ## How to run
@@ -46,7 +47,7 @@ Both resolve to the same `setup_logger` implementation.
 
 | Parameter | Description |
 |-----------|-------------|
-| `name` | Logger name (used in log file name) |
+| `name` | Logger name (appears in each log line as `%(name)s`; file/folder use the entry-point script) |
 | `console_levels` | List of levels shown on console; file always logs DEBUG |
 
 Returns a configured `logging.Logger`. Handlers are not duplicated if the logger already exists.
