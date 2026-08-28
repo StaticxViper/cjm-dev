@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, CSV export, and website analysis.
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, CSV export, and website analysis, plus [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic.
 
 ## Prerequisites
 
@@ -20,6 +20,7 @@ From **repo root**:
 
 ```bash
 python -m unittest unittests.lead_automation.test_leadgen
+python -m unittest unittests.lead_automation.test_leadenrich
 ```
 
 Run all tests in the package:
@@ -52,6 +53,18 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 | `test_ideal_lead_zero_score` | Full signals (HTTPS, viewport, email, CTA) → score 0 |
 | `test_adds_for_http_no_viewport_short_html` | Penalties stack for HTTP, no viewport, short HTML |
 
+### `TestLeadEnrichmentSetting`
+
+| Test | What it checks |
+|------|----------------|
+| `test_enabled_by_default` | `lead_enrichment` defaults to on |
+| `test_legacy_settings_without_key_keep_default` | Older settings files without the key still enrich |
+| `test_cli_flag_disables_and_counts_as_override` | `--no-lead-enrichment` parses and skips the interactive menu |
+| `test_run_leadgen_enriches_before_output` | Enrichment runs on the qualifying rows before save/ingest |
+| `test_run_leadgen_skips_enrichment_when_disabled` | Setting off means no enrichment call |
+| `test_enriched_lead_already_contacted_is_dropped` | Newly found email in `contacted.txt` removes the lead |
+| `test_enrich_missing_emails_*` | Returns enriched rows; an actor failure is logged, not raised |
+
 ### `TestGetPlaces`
 
 | Test | What it checks |
@@ -71,7 +84,26 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 | `test_empty_url_no_request` | Empty URL skips HTTP |
 | `test_parses_email_and_cta` | Extracts email and CTA from HTML |
 
+## Test file: `unittests/lead_automation/test_leadenrich.py`
+
+Imports `leadenrich` the same way (CWD switched to `scripts/lead_automation/`). Apify actors are patched out, so no run costs credits.
+
+| Test class | What it checks |
+|------------|----------------|
+| `TestNormalizeFacebookUrl` | Canonicalizes vanity, `/pg/`, legacy `/pages/`, and `profile.php?id=` URLs; rejects groups, events, and non-Facebook hosts |
+| `TestNameMatching` | Name normalization (apostrophes, legal suffixes) and that only sufficiently similar pages are matched |
+| `TestLocationHint` | `City, Country` hint parsed from a Google formatted address |
+| `TestEmailExtraction` | Email pulled from page fields; image filenames and junk domains filtered |
+| `TestCandidateSelection` | Which leads are picked up, skipped, or retried across runs |
+| `TestApplyEnrichment` | Status and fields written for each outcome |
+| `TestResolvePageUrls` | Facebook websites skip the search actor; weak matches stay unresolved |
+| `TestScrapeFacebookPages` | Batching, URL-variant indexing, and actor failure handling |
+| `TestRunEnrichment` | End-to-end merge, `--limit`, `--dry-run`, dashboard payload, missing API key |
+| `TestEnrichLeads` | In-memory entry point used by leadgen: mutates rows in place, returns changed rows, no-ops without candidates or an API key |
+| `TestSaveLeads` | Atomic write leaves no temp file; malformed input rejected |
+
 ## Related documentation
 
 - [leadgen.md](../scripts/leadgen.md) — script under test
+- [leadenrich.md](../scripts/leadenrich.md) — script under test
 - [setup.md](../setup.md) — environment setup

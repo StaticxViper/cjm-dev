@@ -69,6 +69,7 @@ PERSISTED_SETTINGS_KEYS = (
     "require_phone",
     "require_website",
     "require_email",
+    "lead_enrichment",
     "output_mode",
     "json_output",
 )
@@ -142,6 +143,7 @@ class LeadgenConfig:
     require_phone: bool = True
     require_website: bool = False
     require_email: bool = False
+    lead_enrichment: bool = True
 
 
 def load_saved_settings(path=None):
@@ -180,6 +182,7 @@ def save_settings(config, path=None):
         "require_phone": config.require_phone,
         "require_website": config.require_website,
         "require_email": config.require_email,
+        "lead_enrichment": config.lead_enrichment,
         "output_mode": config.output_mode,
         "json_output": config.json_output,
     }
@@ -213,6 +216,8 @@ def config_from_saved_settings(path=None):
         config.require_website = bool(saved["require_website"])
     if "require_email" in saved:
         config.require_email = bool(saved["require_email"])
+    if "lead_enrichment" in saved:
+        config.lead_enrichment = bool(saved["lead_enrichment"])
     if "output_mode" in saved and saved["output_mode"] in ("json", "dashboard", "both"):
         config.output_mode = saved["output_mode"]
     if "json_output" in saved and saved["json_output"]:
@@ -897,6 +902,32 @@ def send_to_dashboard(rows):
     )
 
 
+def enrich_missing_emails(rows):
+    """Fill in missing emails from Facebook Pages; returns the rows that gained one.
+
+    leadenrich imports leadgen for dashboard ingest, so it is imported here
+    rather than at module level. Enrichment is best effort: a failure must not
+    cost the run its leads.
+    """
+    from leadenrich import EnrichConfig, enrich_leads
+
+    try:
+        enriched = enrich_leads(rows, EnrichConfig())
+    except Exception as e:
+        logger.error("Lead enrichment failed: %s", e)
+        return []
+
+    if enriched:
+        logger.critical("Enrichment found emails for %d leads", len(enriched))
+    return enriched
+
+
+def _is_contacted(row, contacted_emails):
+    """True if any email on the row has already been contacted."""
+    emails = [e.strip().lower() for e in (row.get("email") or "").split(";") if e.strip()]
+    return any(email in contacted_emails for email in emails)
+
+
 def _prompt_int(prompt, default):
     raw = input(f"{prompt} [{default}]: ").strip()
     if not raw:
@@ -1060,6 +1091,10 @@ def interactive_customize_config(base_config=None):
     cfg.require_phone = _prompt_bool("Require phone number", cfg.require_phone)
     cfg.require_website = _prompt_bool("Require website", cfg.require_website)
     cfg.require_email = _prompt_bool("Require email (from website scrape)", cfg.require_email)
+    cfg.lead_enrichment = _prompt_bool(
+        "Lead enrichment (find missing emails on Facebook)",
+        cfg.lead_enrichment,
+    )
     cfg.output_mode = _prompt_output_mode(cfg.output_mode)
     cfg.json_output = _prompt_text("JSON output path", cfg.json_output)
     return cfg
@@ -1073,6 +1108,7 @@ def _print_config_summary(config, include_run_scope=True):
     print(f"  Require phone:     {config.require_phone}")
     print(f"  Require website:   {config.require_website}")
     print(f"  Require email:     {config.require_email}")
+    print(f"  Lead enrichment:   {config.lead_enrichment}")
     print(f"  Output:            {config.output_mode}")
     print(f"  JSON path:         {config.json_output}")
     if include_run_scope:
@@ -1187,6 +1223,19 @@ def parse_args():
         help="Allow leads without scraped email (default)",
     )
     parser.add_argument(
+        "--lead-enrichment",
+        dest="lead_enrichment",
+        action="store_true",
+        default=None,
+        help="Look up missing emails on Facebook after scraping (default)",
+    )
+    parser.add_argument(
+        "--no-lead-enrichment",
+        dest="lead_enrichment",
+        action="store_false",
+        help="Skip Facebook email enrichment",
+    )
+    parser.add_argument(
         "--output",
         choices=["json", "dashboard", "both"],
         help="Output destination",
@@ -1210,6 +1259,7 @@ def _has_cli_overrides(args):
         args.require_phone is not None,
         args.require_website is not None,
         args.require_email is not None,
+        args.lead_enrichment is not None,
         args.output is not None,
         args.json_path is not None,
         args.keywords is not None,
@@ -1232,6 +1282,8 @@ def config_from_args(args):
         config.require_website = args.require_website
     if args.require_email is not None:
         config.require_email = args.require_email
+    if args.lead_enrichment is not None:
+        config.lead_enrichment = args.lead_enrichment
     if args.output is not None:
         config.output_mode = args.output
     if args.json_path is not None:
@@ -1320,6 +1372,18 @@ def run_leadgen(config):
         return
 
     logger.critical("Found %d qualifying leads (min score %d)", len(total_rows), config.min_score)
+
+    if config.lead_enrichment:
+        enriched = enrich_missing_emails(total_rows)
+        if enriched and contacted_emails:
+            kept = [row for row in total_rows if not _is_contacted(row, contacted_emails)]
+            if len(kept) != len(total_rows):
+                logger.info(
+                    "Dropped %d enriched leads already in %s",
+                    len(total_rows) - len(kept),
+                    CONTACTED_FILE,
+                )
+                total_rows = kept
 
     if config.output_mode in ("json", "both"):
         save_results(total_rows, config.json_output)

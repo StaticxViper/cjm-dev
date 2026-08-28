@@ -12,6 +12,7 @@ Discovers local business leads via Google Places Nearby Search, fetches place de
 - `requests`, `beautifulsoup4`, `python-dotenv`
 - `GOOGLE_API_KEY` in repo-root `.env`
 - `LEAD_INGEST_KEY` in repo-root `.env` (required for dashboard output mode)
+- `APIFY_API_KEY` in repo-root `.env` (required while lead enrichment is on)
 
 ## Configuration
 
@@ -20,7 +21,7 @@ Discovers local business leads via Google Places Nearby Search, fetches place de
 | `keywords.json` | Search keywords (keys used as categories) |
 | `coords.json` | Lat/lng for search center |
 | `franchises.json` | Franchise/chain name and domain blocklists |
-| `leadgen_settings.json` | Persisted run defaults (min score, reviews, franchise filter, require phone/website/email, output, JSON path) |
+| `leadgen_settings.json` | Persisted run defaults (min score, reviews, franchise filter, require phone/website/email, lead enrichment, output, JSON path) |
 | `leads_output.json` | Output JSON array (created/appended); includes `place_id` for cross-run dedupe |
 | `contacted.txt` | Emails already contacted (skipped on export) |
 
@@ -51,7 +52,7 @@ python leadgen.py --min-score 80 --output both --city "Cherry Hill"
 ```
 
 - **Option 1** — load `leadgen_settings.json` (or hardcoded defaults), always prompt for keywords and locations, confirm, then run.
-- **Option 2** — prompt for min score, min reviews, franchise filter, require phone/website/email, output mode, and JSON path; write `leadgen_settings.json`; return to the menu without running. Keywords and locations are never persisted.
+- **Option 2** — prompt for min score, min reviews, franchise filter, require phone/website/email, lead enrichment, output mode, and JSON path; write `leadgen_settings.json`; return to the menu without running. Keywords and locations are never persisted.
 
 Keyword and location pickers wrap across the terminal width (horizontal listing under each state for cities).
 
@@ -86,6 +87,7 @@ Enter comma-separated numbers to select specific items, or press Enter for all.
 | `--require-phone` / `--no-require-phone` | Require valid US phone from Google (default on) |
 | `--require-website` / `--no-require-website` | Require Place Details website URL (default off) |
 | `--require-email` / `--no-require-email` | Require scraped email after website analysis (default off) |
+| `--lead-enrichment` / `--no-lead-enrichment` | Look up missing emails on Facebook after scraping (default on) |
 | `--output {json,dashboard,both}` | Output destination |
 | `--json-path PATH` | JSON output path |
 | `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
@@ -103,11 +105,14 @@ CLI flags override values from `leadgen_settings.json`.
 6. If `require_email` is enabled, drop leads with no scraped email.
 7. Compute normalized `lead_score` (0–100; higher = better outreach target).
 8. Drop leads below `min_score`.
-9. Save to JSON and/or bulk-ingest to dashboard API.
+9. When **lead enrichment** is on (default), hand the qualifying leads to [leadenrich](leadenrich.md) to look up missing emails on Facebook, then drop any lead whose newly found email is already in `contacted.txt`.
+10. Save to JSON and/or bulk-ingest to dashboard API.
 
 ```mermaid
 flowchart LR
-  leadgen[leadgen.py] --> jsonOut[leads_output.json]
+  leadgen[leadgen.py] --> enrich[leadenrich.py]
+  enrich --> jsonOut[leads_output.json]
+  leadgen --> jsonOut
   leadgen --> supabase[Supabase leads-ingest-bulk]
   leadfilter[leadfilter.py] -.-> leadgen
 ```
@@ -155,6 +160,22 @@ Leads without email are kept by default (cold-call queue) unless `require_email`
 
 Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 
+## Lead enrichment
+
+`lead_enrichment` (default **on**) runs [leadenrich](leadenrich.md) automatically at the end of a run, after scoring and filtering but before any output. Every qualifying lead that still has no email is looked up on Facebook and updated in place, so both the JSON file and the dashboard payload carry the enriched emails.
+
+| Where | How to set it |
+|-------|---------------|
+| Interactive | Menu option 2 → *Lead enrichment (find missing emails on Facebook)* |
+| CLI | `--lead-enrichment` / `--no-lead-enrichment` |
+| Settings file | `"lead_enrichment": true` in `leadgen_settings.json` |
+
+Notes:
+
+- Enrichment needs `APIFY_API_KEY` and spends Apify credits per lead looked up. Turn it off with `--no-lead-enrichment` for cheap or exploratory runs, then enrich later in bulk with `python leadenrich.py`.
+- Enrichment is best effort: if the Apify actors fail, the error is logged and the run still saves its leads.
+- A lead whose enriched email already appears in `contacted.txt` is dropped, matching the behavior for emails found during the website scrape.
+
 ## Output modes
 
 | Mode | Behavior |
@@ -168,5 +189,6 @@ Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sampl
 ## Related scripts
 
 - [leadfilter.md](leadfilter.md) — duplicate filtering
+- [leadenrich.md](leadenrich.md) — fill in missing emails from Facebook Pages
 - [lead_automation.md](lead_automation.md) — re-ingest existing CSV to Supabase
 - [testing/unittests.md](../testing/unittests.md) — unit tests for scoring and parsing
