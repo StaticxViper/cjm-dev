@@ -66,6 +66,7 @@ APIFY_API_KEY=
 # Supabase / ingest tokens
 STOCK_INGEST_TOKEN=
 LEAD_INGEST_KEY=
+MVLLC_LOGS_KEY=
 CHIKARA_REALMS_SECRET=
 
 # Lovable (optional)
