@@ -57,6 +57,7 @@ flowchart LR
 | `GOOGLE_API_KEY` | `leadgen`, `api_manager` |
 | `LEAD_INGEST_KEY` | `lead_automation`, `leadenrich`, `api_manager` |
 | `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `api_manager` |
+| `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
 | `APIFY_USER_ID` | `api_manager` |
 | `STOCK_INGEST_TOKEN` | `stock_analyzer`, `api_manager` |
 | `LOVABLE_API_KEY` | `lovable_automation` |
