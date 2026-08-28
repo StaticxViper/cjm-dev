@@ -25,6 +25,7 @@ Central gateway for HTTP requests and Apify actor runs across cjm-dev scripts. L
 | `Perplexity` | `PERPLEXITY_API_KEY` |
 | `Chikara Realms` | `CHIKARA_REALMS_SECRET` |
 | `Lead Ingest` | `LEAD_INGEST_KEY` |
+| `MVLLC Logs` | `MVLLC_LOGS_KEY` |
 
 Also: `APIFY_USER_ID` for Apify account context.
 
@@ -65,7 +66,7 @@ Runs `APIManager(test=True)` against `https://httpbin.org`.
 
 ### `build_request(base_url, endpoint, method, api, params, json_body, timeout)`
 
-Generic HTTP client. Bearer auth for `Stock Analyzer` and `Perplexity`; `X-API-Key` for others. Returns parsed JSON.
+Generic HTTP client. Bearer auth for `Stock Analyzer`, `Perplexity`, and `MVLLC Logs`; `X-API-Key` for others. Returns parsed JSON.
 
 ### `get_api_key(api: str)`
 

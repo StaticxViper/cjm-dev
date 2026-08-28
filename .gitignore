@@ -9,6 +9,9 @@ __pycache__/
 .bashrc
 *.egg-info/
 
+# Runtime logs: per-script folders under /logs (created by the logger)
+/logs/
+
 *emails_to_send.csv
 *contacted.txt
 *leads_output.*
