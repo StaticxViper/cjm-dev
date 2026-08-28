@@ -1,5 +1,4 @@
 import json
-import time
 from datetime import date
 from pathlib import Path
 from helper_scripts.api_manager.api_manager import APIManager as api
@@ -50,11 +49,6 @@ def main():
     else:
         logger.critical('Same day detected. Skipping Perplexity analysis, but updating stock data...')
 
-    # #region agent log
-    with open("debug-16fad7.log", "a", encoding="utf-8") as _df:
-        _df.write(json.dumps({"sessionId": "16fad7", "hypothesisId": "C", "location": "stock_analyzer.py:main:date_check", "message": "date check", "data": {"previous_date": previous_date, "todays_date": todays_date, "run_perplexity": run_perplexity, "date_file": str(PREVIOUS_RUN_DATE_FILE)}, "timestamp": int(time.time() * 1000)}) + "\n")
-    # #endregion
-
     apify_input = {"end_date": todays_date,"start_date": previous_date,'tickers': result['tickers']}
     stock_data = api().run_apify(actor='Yahoo Finance', input=apify_input)
     PREVIOUS_RUN_DATE_FILE.write_text(todays_date, encoding="utf-8")
@@ -93,10 +87,6 @@ def main():
             perplexity_analysis.append(_parse_perplexity_analysis(perplexity_response, ticker))
         # Ingest endpoint accepts an array (Apify price rows) or {"stocks": [...]} for analysis rows.
         perplexity_payload = {"stocks": perplexity_analysis}
-        # #region agent log
-        with open("debug-16fad7.log", "a", encoding="utf-8") as _df:
-            _df.write(json.dumps({"sessionId": "16fad7", "hypothesisId": "D", "location": "stock_analyzer.py:main:perplexity_ingest", "message": "perplexity ingest payload", "data": {"record_count": len(perplexity_analysis), "payload_keys": list(perplexity_payload.keys()), "sample_ticker": perplexity_analysis[0].get("ticker") if perplexity_analysis else None}, "timestamp": int(time.time() * 1000)}) + "\n")
-        # #endregion
         logger.critical('Uploading Perplexity analysis to dashboard...')
         api().build_request(base_url=base_url, endpoint=analyzer_endpoint, json_body=perplexity_payload, api='Stock Analyzer')
         logger.critical('Stock analysis complete.')
