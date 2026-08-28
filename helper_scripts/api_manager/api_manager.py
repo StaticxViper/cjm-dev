@@ -10,7 +10,7 @@ from helper_scripts.utils.logger.logger import setup_logger
 load_dotenv()
 API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN"),
             'ChatGPT': os.getenv("CHATGPT_API_KEY"), 'Perplexity': os.getenv("PERPLEXITY_API_KEY"), 'Chikara Realms': os.getenv("CHIKARA_REALMS_SECRET"),
-            'Lead Ingest': os.getenv("LEAD_INGEST_KEY")}
+            'Lead Ingest': os.getenv("LEAD_INGEST_KEY"), 'MVLLC Logs': os.getenv("MVLLC_LOGS_KEY")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
@@ -54,7 +54,7 @@ class APIManager:
         headers = {"Content-Type": "application/json"}
 
         if api:
-            bearer_token_apis = ["Stock Analyzer", "Perplexity"]
+            bearer_token_apis = ["Stock Analyzer", "Perplexity", "MVLLC Logs"]
             api_key = self.get_api_key(api)
             if api in bearer_token_apis:
                 headers["Authorization"] = f"Bearer {api_key}"

@@ -6,11 +6,13 @@ Duplicate re-export: `helper_scripts/utilities/logger/` (used by `lovable_automa
 
 ## Purpose
 
-Shared logging setup for cjm-dev scripts: colored console output (filtered by level) plus a DEBUG-level file log per process execution.
+Shared logging setup for cjm-dev scripts: colored console output (filtered by level), a DEBUG-level file log per process execution, and an upload of that file to `logs-api` when the script exits.
 
 ## Prerequisites
 
-- Python 3.12+ (stdlib `logging` only)
+- Python 3.12+
+- `httpx`, `python-dotenv`
+- `MVLLC_LOGS_KEY` in the repo-root `.env` (Bearer token for log upload)
 
 ## Configuration
 
@@ -20,6 +22,7 @@ Shared logging setup for cjm-dev scripts: colored console output (filtered by le
 | Log filename | `{timestamp}_{entry-script}.log` |
 | Entry script | Taken from `__main__.__file__` (the process that was launched), not the helper that first called `setup_logger` |
 | Console colors | INFO (blue), ERROR (red), CRITICAL (magenta) |
+| Exit upload | POST `{timestamp}_{entry-script}.log` to `https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1/logs-api` with `MVLLC_LOGS_KEY` |
 
 ## How to run
 
@@ -51,6 +54,21 @@ Both resolve to the same `setup_logger` implementation.
 | `console_levels` | List of levels shown on console; file always logs DEBUG |
 
 Returns a configured `logging.Logger`. Handlers are not duplicated if the logger already exists.
+
+On process exit, the logger flushes the file and POSTs it as:
+
+```json
+{
+  "source": "<entry-script>",
+  "level": "info | warn | error",
+  "event_type": "script_complete",
+  "message": "<full log file>",
+  "actor": "<entry-script>",
+  "metadata": { "filename": "...", "script": "..." }
+}
+```
+
+`level` is `error` if the file contains ERROR/CRITICAL, `warn` if it contains WARNING, otherwise `info`. Missing `MVLLC_LOGS_KEY` skips the upload.
 
 ## Related scripts
 
