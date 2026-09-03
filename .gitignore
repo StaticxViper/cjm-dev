@@ -20,3 +20,4 @@ __pycache__/
 *log.txt
 *.log
 *leads_output*
+*property_urls.json

@@ -16,7 +16,8 @@ APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
           'Instagram Post Scraper': 'apify/instagram-post-scraper',
           'LinkedIn Company Employees': 'harvestapi/linkedin-company-employees', 'Facebook Search': 'danek/facebook-search-ppr',
-          'Facebook Pages Scraper': 'apify/facebook-pages-scraper'}
+          'Facebook Pages Scraper': 'apify/facebook-pages-scraper',
+          'Zillow ZIP Search': 'maxcopell/zillow-zip-search'}
 
 logger = setup_logger(
     name="api-manager",

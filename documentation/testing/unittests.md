@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright) and [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic.
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out).
 
 ## Prerequisites
 
@@ -22,6 +22,7 @@ From **repo root**:
 python -m unittest unittests.lead_automation.test_leadgen
 python -m unittest unittests.lead_automation.test_email_discovery
 python -m unittest unittests.lead_automation.test_leadenrich
+python -m unittest unittests.zillow_automation.test_property_listing_gen
 ```
 
 Run all tests in the package:
@@ -125,8 +126,21 @@ Imports `leadenrich` the same way (CWD switched to `scripts/lead_automation/`). 
 | `TestEnrichLeads` | In-memory entry point used by leadgen: mutates rows in place, returns changed rows, no-ops without candidates or an API key |
 | `TestSaveLeads` | Atomic write leaves no temp file; malformed input rejected |
 
+## Test file: `unittests/zillow_automation/test_property_listing_gen.py`
+
+Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_automation/`). Apify is patched out, so no run costs credits.
+
+| Test class | What it checks |
+|------------|----------------|
+| `TestExtractPropertyUrls` | Reads `propertyUrl` / `detailUrl`, skips missing or non-Zillow hosts, dedupes, unwraps `{items: [...]}` |
+| `TestNormalizeSearchInput` | Example actor input accepted; ZIP codes coerced to strings; empty/missing `zipCodes` rejected |
+| `TestLoadAndSave` | Settings JSON loads; URL list writes as a JSON array with no leftover temp file |
+| `TestResolveSearchInput` | CLI flags overlay file values without changing unspecified fields |
+| `TestGenerateListings` | Actor called as `Zillow ZIP Search`; URLs written; missing `APIFY_API_KEY` skips the run |
+
 ## Related documentation
 
 - [leadgen.md](../scripts/leadgen.md) — script under test
 - [leadenrich.md](../scripts/leadenrich.md) — script under test
+- [property_listing_gen.md](../scripts/property_listing_gen.md) — script under test
 - [setup.md](../setup.md) — environment setup

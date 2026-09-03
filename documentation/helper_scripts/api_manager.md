@@ -38,6 +38,7 @@ Also: `APIFY_USER_ID` for Apify account context.
 | `Instagram Post Scraper` | `apify/instagram-post-scraper` |
 | `Facebook Search` | `danek/facebook-search-ppr` |
 | `Facebook Pages Scraper` | `apify/facebook-pages-scraper` |
+| `Zillow ZIP Search` | `maxcopell/zillow-zip-search` |
 
 ## How to run
 
@@ -84,4 +85,4 @@ Fetches items from an Apify dataset by run reference or dataset ID.
 
 ## Related scripts
 
-Used by [blog_automation](../scripts/blog_automation.md), [lead_automation](../scripts/lead_automation.md), [leadenrich](../scripts/leadenrich.md), [stock_analyzer](../scripts/stock_analyzer.md), [lovable_automation](../scripts/lovable_automation.md), and others.
+Used by [blog_automation](../scripts/blog_automation.md), [lead_automation](../scripts/lead_automation.md), [leadenrich](../scripts/leadenrich.md), [stock_analyzer](../scripts/stock_analyzer.md), [lovable_automation](../scripts/lovable_automation.md), [property_listing_gen](../scripts/property_listing_gen.md), and others.
