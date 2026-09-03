@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, CSV export, and website analysis, plus [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic.
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright) and [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic.
 
 ## Prerequisites
 
@@ -20,6 +20,7 @@ From **repo root**:
 
 ```bash
 python -m unittest unittests.lead_automation.test_leadgen
+python -m unittest unittests.lead_automation.test_email_discovery
 python -m unittest unittests.lead_automation.test_leadenrich
 ```
 
@@ -83,6 +84,28 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 |------|----------------|
 | `test_empty_url_no_request` | Empty URL skips HTTP |
 | `test_parses_email_and_cta` | Extracts email and CTA from HTML |
+
+### `TestLeadMeetsObjective`
+
+| Test | What it checks |
+|------|----------------|
+| `test_phone_requires_phone` | `objective=phone` PASS/FAIL |
+| `test_email_requires_email` | `objective=email` PASS/FAIL |
+| `test_either_accepts_phone_or_email` | phone, email, both PASS; neither FAIL |
+| `test_both_requires_phone_and_email` | only both PASS |
+| `test_score_cannot_override_objective` | High score does not satisfy a missing contact |
+| `test_legacy_flags_map_to_objective` / CLI tests | Old require flags normalize; `--objective` wins |
+
+## Test file: `unittests/lead_automation/test_email_discovery.py`
+
+Imports `email_discovery` the same way. Playwright and HTTP are mocked; no live Google requests.
+
+| Test class | What it checks |
+|------------|----------------|
+| `TestExtractEmails` | Plain text, mailto, duplicates, malformed text, false positives, JSON-LD |
+| `TestQueriesAndConfidence` | Location-aware queries; HIGH domain match; LOW/MEDIUM Gmail rules |
+| `TestGoogleParsingAndBlocks` | SERP HTML parse, CAPTCHA detection, official-site pick |
+| `TestEnrichmentFlow` | Skip when email exists, cache hit, CAPTCHA does not raise, accept/reject rules |
 
 ## Test file: `unittests/lead_automation/test_leadenrich.py`
 

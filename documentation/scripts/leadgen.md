@@ -4,12 +4,15 @@
 
 ## Purpose
 
-Discovers local business leads via Google Places Nearby Search, fetches place details, scrapes business websites for emails and quality signals, scores each lead, filters by minimum score, and outputs to JSON and/or the dashboard API. Skips duplicates (by `place_id`) and previously contacted emails.
+Discovers local business leads via Google Places Nearby Search, fetches place details, scrapes business websites for emails and quality signals, scores each lead, applies a hard `objective` contact requirement (`phone`, `email`, `either`, or `both`), and outputs to JSON and/or the dashboard API. Skips duplicates (by `place_id`) and previously contacted emails.
+
+The `email` objective (and `either`/`both` when email is still missing) uses [email_discovery.py](../../scripts/lead_automation/email_discovery.py): Playwright Google searches plus a bounded website crawl. That path is slower by design; accuracy matters more than speed.
 
 ## Prerequisites
 
 - Python 3.12+
-- `requests`, `beautifulsoup4`, `python-dotenv`
+- `requests`, `beautifulsoup4`, `python-dotenv`, `playwright`
+- `playwright install chromium` (needed for `--objective email` / Google discovery)
 - `GOOGLE_API_KEY` in repo-root `.env`
 - `LEAD_INGEST_KEY` in repo-root `.env` (required for dashboard output mode)
 - `APIFY_API_KEY` in repo-root `.env` (required while lead enrichment is on)
@@ -21,7 +24,7 @@ Discovers local business leads via Google Places Nearby Search, fetches place de
 | `keywords.json` | Search keywords (keys used as categories) |
 | `coords.json` | Lat/lng for search center |
 | `franchises.json` | Franchise/chain name and domain blocklists |
-| `leadgen_settings.json` | Persisted run defaults (min score, reviews, franchise filter, require phone/website/email, lead enrichment, output, JSON path) |
+| `leadgen_settings.json` | Persisted run defaults (min score, reviews, franchise filter, `objective`, require website, lead enrichment, output, JSON path) |
 | `leads_output.json` | Output JSON array (created/appended); includes `place_id` for cross-run dedupe |
 | `contacted.txt` | Emails already contacted (skipped on export) |
 
@@ -40,6 +43,12 @@ python leadgen.py --defaults
 
 # Custom non-interactive
 python leadgen.py --min-score 80 --output both --city "Cherry Hill"
+
+# Contact objective (hard qualification after enrichment)
+python leadgen.py --objective phone
+python leadgen.py --objective email
+python leadgen.py --objective either
+python leadgen.py --objective both
 ```
 
 ### Interactive menu
@@ -52,7 +61,7 @@ python leadgen.py --min-score 80 --output both --city "Cherry Hill"
 ```
 
 - **Option 1** — load `leadgen_settings.json` (or hardcoded defaults), always prompt for keywords and locations, confirm, then run.
-- **Option 2** — prompt for min score, min reviews, franchise filter, require phone/website/email, lead enrichment, output mode, and JSON path; write `leadgen_settings.json`; return to the menu without running. Keywords and locations are never persisted.
+- **Option 2** — prompt for min score, min reviews, franchise filter, objective (phone/email/either/both), require website, lead enrichment, output mode, and JSON path; write `leadgen_settings.json`; return to the menu without running. Keywords and locations are never persisted.
 
 Keyword and location pickers wrap across the terminal width (horizontal listing under each state for cities).
 
@@ -84,9 +93,10 @@ Enter comma-separated numbers to select specific items, or press Enter for all.
 | `--min-score INT` | Minimum `lead_score` to keep (default 80) |
 | `--min-reviews INT` | Minimum `user_ratings_total` (default 5) |
 | `--filter-franchises` / `--no-filter-franchises` | Exclude (default) or allow franchise/chain leads |
-| `--require-phone` / `--no-require-phone` | Require valid US phone from Google (default on) |
+| `--objective {phone,email,either,both}` | Hard contact requirement (default `phone`) |
+| `--require-phone` / `--no-require-phone` | Legacy alias; combined with `--require-email` and normalized to `objective` |
 | `--require-website` / `--no-require-website` | Require Place Details website URL (default off) |
-| `--require-email` / `--no-require-email` | Require scraped email after website analysis (default off) |
+| `--require-email` / `--no-require-email` | Legacy alias; combined with `--require-phone` and normalized to `objective` |
 | `--lead-enrichment` / `--no-lead-enrichment` | Look up missing emails on Facebook after scraping (default on) |
 | `--output {json,dashboard,both}` | Output destination |
 | `--json-path PATH` | JSON output path |
@@ -102,11 +112,12 @@ CLI flags override values from `leadgen_settings.json`.
 3. For each new `place_id` (via [leadfilter](leadfilter.md)), fetch expanded Place Details (`business_status`, `reviews`, phone, website, `formatted_address`).
 4. Apply quality filters (operational status, review count, optional phone/website, review recency).
 5. Scrape surviving websites: emails (regex + `mailto:` hrefs), HTTPS, viewport meta, HTML length, CTA keywords. Requests use a browser User-Agent; bare/HTTP URLs retry HTTPS when the body is empty or tiny. If the homepage has no email, also try `/contact`, `/contact-us`, `/contact.html`, `/about`, `/about-us`, and `/get-in-touch`.
-6. If `require_email` is enabled, drop leads with no scraped email.
+6. If the objective still needs an email (or a phone for `both`), run Google/website discovery via [email_discovery.py](../../scripts/lead_automation/email_discovery.py). `--objective phone` skips this step and keeps the existing phone workflow.
 7. Compute normalized `lead_score` (0–100; higher = better outreach target).
 8. Drop leads below `min_score`.
-9. When **lead enrichment** is on (default), hand the qualifying leads to [leadenrich](leadenrich.md) to look up missing emails on Facebook, then drop any lead whose newly found email is already in `contacted.txt`.
-10. Save to JSON and/or bulk-ingest to dashboard API.
+9. Apply `lead_meets_objective` as a hard gate. A high score cannot override a missing required contact method.
+10. When **lead enrichment** is on (default), hand the qualifying leads to [leadenrich](leadenrich.md) to look up missing emails on Facebook, then drop any lead whose newly found email is already in `contacted.txt`.
+11. Save to JSON and/or bulk-ingest to dashboard API.
 
 ```mermaid
 flowchart LR
@@ -126,15 +137,28 @@ Applied after Place Details, before website scraping:
 | Business status | Exclude `CLOSED_TEMPORARILY` and `CLOSED_PERMANENTLY`; keep missing or `OPERATIONAL` |
 | Franchise / chain | When `filter_franchises` is True (default), exclude if `business_name` matches a name in `franchises.json` **or** website host matches a listed domain |
 | Review count | Require `user_ratings_total >= min_reviews` (default 5) |
-| Phone | When `require_phone` is True (default), require valid US-format `phone_google` from Google |
+| Phone | When `objective` is `phone` (default), require valid US-format `phone_google` from Google. Other objectives do not early-reject on missing phone. |
 | Website | When `require_website` is True (default False), require a non-empty Place Details `website` |
 | Review recency | If review data exists, exclude when newest review is older than 18 months |
 
-Applied after website scrape:
+Applied after website scrape and optional Google email discovery:
 
 | Filter | Rule |
 |--------|------|
-| Email | When `require_email` is True (default False), require at least one scraped email |
+| Objective | `phone` requires a valid phone; `email` requires a valid email; `either` requires one of them; `both` requires both |
+
+### Objective
+
+`objective` is the only contact-requirement system. Legacy `--require-phone` / `--require-email` flags and old settings keys are migrated:
+
+| Legacy flags | Objective |
+|--------------|-----------|
+| require phone, not email | `phone` |
+| require email, not phone | `email` |
+| both required | `both` |
+| neither required | `either` |
+
+`--objective` wins if both the new flag and the legacy flags are passed. Saved settings write `objective` only.
 
 Place Details requests `business_status`, `reviews` (`reviews_sort=newest`), `rating`, `user_ratings_total`, website, phone, and `formatted_address`. Address falls back to Nearby Search `vicinity` when details address is empty.
 
@@ -156,7 +180,7 @@ Owner/decision-maker names are extracted from review text (patterns like "ask fo
 | `low_reviews` | `user_ratings_total` is None or `< 15` | 1 |
 | `unknown_status` | `business_status` missing (slight deprioritization) | 2 |
 
-Leads without email are kept by default (cold-call queue) unless `require_email` is enabled. Leads with email score higher (warm email/SMS sequence). Output includes `place_id`, `address`, `email`, `has_email`, `business_status`, and `owner_names` fields.
+Leads without email are kept when `objective` is `phone` or `either` (and a phone is present). Leads with email score higher (warm email/SMS sequence). Output includes `place_id`, `address`, `email`, `has_email`, `business_status`, and `owner_names` fields. Google discovery may also set `email_source` and `email_confidence`.
 
 Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 

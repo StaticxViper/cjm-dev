@@ -27,6 +27,15 @@ from urllib.parse import urljoin, urlparse
 import os
 from dotenv import load_dotenv
 from leadfilter import load_existing_place_ids, is_new_place
+from email_discovery import (
+    EmailDiscoverySession,
+    enrich_lead_with_email,
+    extract_emails_from_html,
+    lead_emails,
+    lead_has_valid_email,
+    lead_has_valid_phone,
+    validate_email,
+)
 
 load_dotenv()
 
@@ -62,13 +71,13 @@ FETCH_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 MIN_USEFUL_HTML_LENGTH = 200
+VALID_OBJECTIVES = ("phone", "email", "either", "both")
 PERSISTED_SETTINGS_KEYS = (
     "min_score",
     "min_reviews",
     "filter_franchises",
-    "require_phone",
+    "objective",
     "require_website",
-    "require_email",
     "lead_enrichment",
     "output_mode",
     "json_output",
@@ -140,9 +149,8 @@ class LeadgenConfig:
     dashboard_bulk: bool = True
     filter_franchises: bool = True
     min_reviews: int = 0
-    require_phone: bool = True
+    objective: str = "phone"
     require_website: bool = False
-    require_email: bool = False
     lead_enrichment: bool = True
 
 
@@ -169,6 +177,10 @@ def load_saved_settings(path=None):
             path_val = path_val[:-4] + ".json"
         data["json_output"] = path_val
 
+    migrated = _migrate_objective_from_settings(data)
+    if migrated:
+        data["objective"] = migrated
+
     return {k: data[k] for k in PERSISTED_SETTINGS_KEYS if k in data}
 
 
@@ -179,9 +191,8 @@ def save_settings(config, path=None):
         "min_score": config.min_score,
         "min_reviews": config.min_reviews,
         "filter_franchises": config.filter_franchises,
-        "require_phone": config.require_phone,
+        "objective": normalize_objective(config.objective),
         "require_website": config.require_website,
-        "require_email": config.require_email,
         "lead_enrichment": config.lead_enrichment,
         "output_mode": config.output_mode,
         "json_output": config.json_output,
@@ -210,12 +221,10 @@ def config_from_saved_settings(path=None):
             pass
     if "filter_franchises" in saved:
         config.filter_franchises = bool(saved["filter_franchises"])
-    if "require_phone" in saved:
-        config.require_phone = bool(saved["require_phone"])
+    if "objective" in saved:
+        config.objective = normalize_objective(saved["objective"])
     if "require_website" in saved:
         config.require_website = bool(saved["require_website"])
-    if "require_email" in saved:
-        config.require_email = bool(saved["require_email"])
     if "lead_enrichment" in saved:
         config.lead_enrichment = bool(saved["lead_enrichment"])
     if "output_mode" in saved and saved["output_mode"] in ("json", "dashboard", "both"):
@@ -223,6 +232,70 @@ def config_from_saved_settings(path=None):
     if "json_output" in saved and saved["json_output"]:
         config.json_output = str(saved["json_output"])
     return config
+
+
+def normalize_objective(value, default="phone"):
+    """Return a valid objective string, falling back to default."""
+    if isinstance(value, str) and value.strip().lower() in VALID_OBJECTIVES:
+        return value.strip().lower()
+    return default
+
+
+def objective_from_require_flags(require_phone, require_email):
+    """Map legacy require_phone/require_email flags to a single objective."""
+    if require_phone and require_email:
+        return "both"
+    if require_phone:
+        return "phone"
+    if require_email:
+        return "email"
+    return "either"
+
+
+def _migrate_objective_from_settings(data):
+    """Return an objective from new or legacy settings keys, or None."""
+    if not isinstance(data, dict):
+        return None
+    if data.get("objective") in VALID_OBJECTIVES:
+        return data["objective"]
+    if "require_phone" in data or "require_email" in data:
+        return objective_from_require_flags(
+            bool(data.get("require_phone", False)),
+            bool(data.get("require_email", False)),
+        )
+    return None
+
+
+def lead_meets_objective(lead, objective):
+    """Hard qualification: score cannot override a missing required contact."""
+    objective = normalize_objective(objective)
+    has_phone = lead_has_valid_phone(lead)
+    has_email = lead_has_valid_email(lead)
+    if objective == "phone":
+        return has_phone
+    if objective == "email":
+        return has_email
+    if objective == "either":
+        return has_phone or has_email
+    if objective == "both":
+        return has_phone and has_email
+    return False
+
+
+def should_run_email_discovery(lead, objective):
+    """True when the Google/website email workflow should run for this lead."""
+    objective = normalize_objective(objective)
+    if objective == "phone":
+        return False
+    has_email = lead_has_valid_email(lead)
+    has_phone = lead_has_valid_phone(lead)
+    if objective == "email":
+        return not has_email
+    if objective == "either":
+        return not has_email and not has_phone
+    if objective == "both":
+        return not has_email or not has_phone
+    return False
 
 
 def get_places(location, radius, keywords, api_key):
@@ -434,24 +507,8 @@ def passes_quality_filters(
 
 
 def _extract_emails_from_html(html, soup=None):
-    """Return sorted unique emails found in HTML, filtering image-like false positives."""
-    emails = set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", html or ""))
-    if soup is not None:
-        for a in soup.find_all("a", href=True):
-            href = (a.get("href") or "").strip()
-            if href.lower().startswith("mailto:"):
-                addr = href.split(":", 1)[1].split("?", 1)[0].strip()
-                if addr:
-                    emails.add(addr)
-    filtered = []
-    for e in emails:
-        low = e.lower()
-        if any(low.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".svg")):
-            continue
-        if low.startswith("mailto:"):
-            low = low.replace("mailto:", "", 1)
-        filtered.append(low)
-    return sorted(set(filtered))
+    """Return sorted unique emails found in HTML, filtering junk and false positives."""
+    return extract_emails_from_html(html, soup=soup)
 
 
 def _extract_phones_from_html(html):
@@ -644,11 +701,13 @@ def process_businesses(
     max_workers=12,
     filter_franchises=True,
     min_reviews=5,
-    require_phone=True,
     require_website=False,
-    require_email=False,
+    objective="phone",
+    city=None,
+    state=None,
 ):
     """Given list of basic business entries, enrich with place details and analyze websites concurrently."""
+    objective = normalize_objective(objective)
     enriched = []
     quality_rejects = {}
     logger.critical("Fetching place details for %d businesses", len(businesses))
@@ -682,7 +741,7 @@ def process_businesses(
             entry,
             filter_franchises=filter_franchises,
             min_reviews=min_reviews,
-            require_phone=require_phone,
+            require_phone=(objective == "phone"),
             require_website=require_website,
         )
         if not ok:
@@ -743,68 +802,102 @@ def process_businesses(
 
     rows = []
     filtered_below_min = 0
-    filtered_no_email = 0
-    for b in businesses_unique:
-        place_id = b.get("place_id")
-        if not place_id:
-            continue
+    filtered_objective = 0
+    session = EmailDiscoverySession() if objective != "phone" else None
+    try:
+        for b in businesses_unique:
+            place_id = b.get("place_id")
+            if not place_id:
+                continue
 
-        if not is_new_place(place_id, existing_ids):
-            continue
+            if not is_new_place(place_id, existing_ids):
+                continue
 
-        a = analyses.get(place_id, {})
-        emails = a.get("emails") or []
-        emails_clean = [e.strip().lower() for e in emails if e and e.strip()]
+            a = analyses.get(place_id, {})
+            emails = a.get("emails") or []
+            emails_clean = []
+            seen_emails = set()
+            for raw in emails:
+                email = validate_email(raw)
+                if email and email not in seen_emails:
+                    seen_emails.add(email)
+                    emails_clean.append(email)
 
-        if any(email in contacted_emails for email in emails_clean):
-            continue
+            row = {
+                "business_name": b.get("business_name"),
+                "place_id": place_id,
+                "address": b.get("address") or "",
+                "phone_google": b.get("phone_google"),
+                "phone_website": ";".join(a.get("phones_website", [])) if a.get("phones_website") else None,
+                "email": ";".join(emails_clean),
+                "has_email": bool(emails_clean),
+                "website": b.get("website"),
+                "rating": b.get("rating"),
+                "user_ratings_total": b.get("user_ratings_total"),
+                "business_status": b.get("business_status"),
+                "https": a.get("https", False),
+                "has_viewport": a.get("has_viewport", False),
+                "html_length": a.get("html_length", 0),
+                "has_cta": a.get("has_cta", False),
+                "niche_key": b.get("niche_key"),
+            }
+            if emails_clean:
+                row["email_source"] = "website"
 
-        if require_email and not emails_clean:
-            filtered_no_email += 1
-            continue
+            if session is not None and should_run_email_discovery(row, objective):
+                logger.info("[EMAIL] Processing: %s", row.get("business_name"))
+                if not emails_clean:
+                    logger.info("[EMAIL] No email found in primary source")
+                try:
+                    enrich_lead_with_email(row, city=city, state=state, session=session)
+                except Exception as e:
+                    logger.error("[EMAIL] Enrichment failed for %s: %s", row.get("business_name"), e)
 
-        has_website = bool(b.get("website"))
-        has_email = bool(emails_clean)
-        lead_score = score_lead(
-            has_website,
-            a.get("https", False),
-            a.get("has_viewport", False),
-            a.get("html_length", 0),
-            has_email,
-            a.get("has_cta", False),
-            b.get("rating"),
-            b.get("user_ratings_total"),
-            b.get("business_status"),
-        )
+            emails_clean = lead_emails(row)
+            row["email"] = ";".join(emails_clean)
+            row["has_email"] = bool(emails_clean)
 
-        if lead_score < min_score:
-            filtered_below_min += 1
-            continue
+            if any(email in contacted_emails for email in emails_clean):
+                continue
 
-        owner_names = extract_owner_names(b.get("reviews") or [])
-        row = {
-            "business_name": b.get("business_name"),
-            "place_id": place_id,
-            "address": b.get("address") or "",
-            "phone_google": b.get("phone_google"),
-            "phone_website": ";".join(a.get("phones_website", [])) if a.get("phones_website") else None,
-            "email": ";".join(emails_clean),
-            "has_email": has_email,
-            "owner_names": ";".join(owner_names) if owner_names else None,
-            "website": b.get("website"),
-            "rating": b.get("rating"),
-            "user_ratings_total": b.get("user_ratings_total"),
-            "business_status": b.get("business_status"),
-            "https": a.get("https", False),
-            "has_viewport": a.get("has_viewport", False),
-            "html_length": a.get("html_length", 0),
-            "lead_score": lead_score,
-            "niche_key": b.get("niche_key"),
-        }
-        rows.append(row)
+            has_website = bool(row.get("website"))
+            lead_score = score_lead(
+                has_website,
+                row.get("https", False),
+                row.get("has_viewport", False),
+                row.get("html_length", 0),
+                row.get("has_email"),
+                row.get("has_cta", False),
+                row.get("rating"),
+                row.get("user_ratings_total"),
+                row.get("business_status"),
+            )
+            logger.info("[SCORE] Lead score: %s", lead_score)
+            row["lead_score"] = lead_score
 
-    if filtered_no_email:
-        logger.info("Filtered %d leads with no email (require_email)", filtered_no_email)
+            if lead_score < min_score:
+                filtered_below_min += 1
+                continue
+
+            if not lead_meets_objective(row, objective):
+                logger.info("[OBJECTIVE] %s -> FAIL", objective)
+                logger.info("[LEAD] Rejected")
+                filtered_objective += 1
+                continue
+
+            logger.info("[OBJECTIVE] %s -> PASS", objective)
+            logger.info("[LEAD] Qualified")
+
+            owner_names = extract_owner_names(b.get("reviews") or [])
+            row["owner_names"] = ";".join(owner_names) if owner_names else None
+            row.pop("has_cta", None)
+            rows.append(row)
+    finally:
+        if session is not None:
+            session.close()
+
+    if filtered_objective:
+        logger.info("Filtered %d leads that failed objective %s", filtered_objective, objective)
     if filtered_below_min:
         logger.info(
             "Filtered %d leads below minimum score %d",
@@ -961,6 +1054,17 @@ def _prompt_output_mode(default="json"):
     return labels.get(raw, default)
 
 
+def _prompt_objective(default="phone"):
+    labels = {"1": "phone", "2": "email", "3": "either", "4": "both"}
+    default_num = {"phone": "1", "email": "2", "either": "3", "both": "4"}.get(default, "1")
+    raw = input(
+        f"Objective: 1=phone  2=email  3=either  4=both [{default_num}]: "
+    ).strip()
+    if not raw:
+        return normalize_objective(default)
+    return labels.get(raw, normalize_objective(default))
+
+
 def _prompt_text(prompt, default):
     raw = input(f"{prompt} [{default}]: ").strip()
     return raw if raw else default
@@ -1088,9 +1192,8 @@ def interactive_customize_config(base_config=None):
     cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
     cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
     cfg.filter_franchises = _prompt_bool("Filter out franchises/chains", cfg.filter_franchises)
-    cfg.require_phone = _prompt_bool("Require phone number", cfg.require_phone)
+    cfg.objective = _prompt_objective(cfg.objective)
     cfg.require_website = _prompt_bool("Require website", cfg.require_website)
-    cfg.require_email = _prompt_bool("Require email (from website scrape)", cfg.require_email)
     cfg.lead_enrichment = _prompt_bool(
         "Lead enrichment (find missing emails on Facebook)",
         cfg.lead_enrichment,
@@ -1105,9 +1208,8 @@ def _print_config_summary(config, include_run_scope=True):
     print(f"  Min score:         {config.min_score}")
     print(f"  Min reviews:       {config.min_reviews}")
     print(f"  Filter franchises: {config.filter_franchises}")
-    print(f"  Require phone:     {config.require_phone}")
+    print(f"  Objective:         {config.objective}")
     print(f"  Require website:   {config.require_website}")
-    print(f"  Require email:     {config.require_email}")
     print(f"  Lead enrichment:   {config.lead_enrichment}")
     print(f"  Output:            {config.output_mode}")
     print(f"  JSON path:         {config.json_output}")
@@ -1184,17 +1286,23 @@ def parse_args():
         help="Allow franchise/chain leads",
     )
     parser.add_argument(
+        "--objective",
+        choices=list(VALID_OBJECTIVES),
+        default=None,
+        help="Hard contact requirement: phone, email, either, or both (default phone)",
+    )
+    parser.add_argument(
         "--require-phone",
         dest="require_phone",
         action="store_true",
         default=None,
-        help="Require valid US phone from Google (default)",
+        help="Legacy alias: require a valid phone (maps to --objective)",
     )
     parser.add_argument(
         "--no-require-phone",
         dest="require_phone",
         action="store_false",
-        help="Allow leads without a valid Google phone",
+        help="Legacy alias: do not require a phone (maps to --objective)",
     )
     parser.add_argument(
         "--require-website",
@@ -1214,13 +1322,13 @@ def parse_args():
         dest="require_email",
         action="store_true",
         default=None,
-        help="Require at least one email from website scrape",
+        help="Legacy alias: require an email (maps to --objective)",
     )
     parser.add_argument(
         "--no-require-email",
         dest="require_email",
         action="store_false",
-        help="Allow leads without scraped email (default)",
+        help="Legacy alias: do not require an email (maps to --objective)",
     )
     parser.add_argument(
         "--lead-enrichment",
@@ -1256,6 +1364,7 @@ def _has_cli_overrides(args):
         args.min_score is not None,
         args.min_reviews is not None,
         args.filter_franchises is not None,
+        args.objective is not None,
         args.require_phone is not None,
         args.require_website is not None,
         args.require_email is not None,
@@ -1276,12 +1385,18 @@ def config_from_args(args):
         config.min_reviews = args.min_reviews
     if args.filter_franchises is not None:
         config.filter_franchises = args.filter_franchises
-    if args.require_phone is not None:
-        config.require_phone = args.require_phone
+    if args.objective is not None:
+        config.objective = normalize_objective(args.objective)
+    elif args.require_phone is not None or args.require_email is not None:
+        require_phone = config.objective in ("phone", "both")
+        require_email = config.objective in ("email", "both")
+        if args.require_phone is not None:
+            require_phone = args.require_phone
+        if args.require_email is not None:
+            require_email = args.require_email
+        config.objective = objective_from_require_flags(require_phone, require_email)
     if args.require_website is not None:
         config.require_website = args.require_website
-    if args.require_email is not None:
-        config.require_email = args.require_email
     if args.lead_enrichment is not None:
         config.lead_enrichment = args.lead_enrichment
     if args.output is not None:
@@ -1358,9 +1473,10 @@ def run_leadgen(config):
                 max_workers=config.max_workers,
                 filter_franchises=config.filter_franchises,
                 min_reviews=config.min_reviews,
-                require_phone=config.require_phone,
                 require_website=config.require_website,
-                require_email=config.require_email,
+                objective=config.objective,
+                city=city,
+                state=state,
             )
             total_rows.extend(rows)
         except Exception as e:
