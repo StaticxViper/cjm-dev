@@ -160,9 +160,8 @@ class TestSettingsPersistence(unittest.TestCase):
             min_score=70,
             min_reviews=8,
             filter_franchises=False,
-            require_phone=True,
+            objective="both",
             require_website=True,
-            require_email=True,
             lead_enrichment=False,
             output_mode="both",
             json_output="custom_leads.json",
@@ -173,8 +172,9 @@ class TestSettingsPersistence(unittest.TestCase):
             payload = LEADGEN.save_settings(cfg, path=path)
             self.assertEqual(payload["min_score"], 70)
             self.assertTrue(payload["require_website"])
-            self.assertTrue(payload["require_email"])
-            self.assertTrue(payload["require_phone"])
+            self.assertEqual(payload["objective"], "both")
+            self.assertNotIn("require_phone", payload)
+            self.assertNotIn("require_email", payload)
             self.assertFalse(payload["lead_enrichment"])
             self.assertNotIn("keywords", payload)
             loaded = LEADGEN.load_saved_settings(path=path)
@@ -182,7 +182,7 @@ class TestSettingsPersistence(unittest.TestCase):
             self.assertEqual(loaded["min_reviews"], 8)
             self.assertFalse(loaded["filter_franchises"])
             self.assertTrue(loaded["require_website"])
-            self.assertTrue(loaded["require_email"])
+            self.assertEqual(loaded["objective"], "both")
             self.assertFalse(loaded["lead_enrichment"])
             self.assertEqual(loaded["output_mode"], "both")
             self.assertEqual(loaded["json_output"], "custom_leads.json")
@@ -190,8 +190,7 @@ class TestSettingsPersistence(unittest.TestCase):
             self.assertEqual(rebuilt.min_score, 70)
             self.assertEqual(rebuilt.output_mode, "both")
             self.assertTrue(rebuilt.require_website)
-            self.assertTrue(rebuilt.require_email)
-            self.assertTrue(rebuilt.require_phone)
+            self.assertEqual(rebuilt.objective, "both")
             self.assertFalse(rebuilt.lead_enrichment)
             self.assertEqual(list(LEADGEN.KEYWORD_CATEGORIES.keys()), rebuilt.keywords)
 
@@ -216,6 +215,23 @@ class TestSettingsPersistence(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "missing.json"
             self.assertEqual(LEADGEN.load_saved_settings(path=path), {})
+
+    def test_load_saved_settings_migrates_require_flags_to_objective(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "min_score": 60,
+                        "require_phone": False,
+                        "require_email": True,
+                    },
+                    f,
+                )
+            loaded = LEADGEN.load_saved_settings(path=path)
+            self.assertEqual(loaded["objective"], "email")
+            rebuilt = LEADGEN.config_from_saved_settings(path=path)
+            self.assertEqual(rebuilt.objective, "email")
 
     def test_interactive_customize_saves_without_running(self):
         fake_cfg = LEADGEN.LeadgenConfig(min_score=65, output_mode="dashboard")
@@ -636,10 +652,11 @@ class TestProcessBusinessesFilter(unittest.TestCase):
         self.assertEqual(rows, [])
         mock_analyze.assert_not_called()
 
+    @patch("leadgen.enrich_lead_with_email", side_effect=lambda lead, **_kwargs: lead)
     @patch("leadgen.get_place_details")
     @patch("leadgen.analyze_website")
     @patch("leadgen.time.sleep", return_value=None)
-    def test_require_email_filters_after_scrape(self, _sleep, mock_analyze, mock_details):
+    def test_require_email_filters_after_scrape(self, _sleep, mock_analyze, mock_details, _enrich):
         mock_details.return_value = self._details()
         mock_analyze.return_value = {
             "emails": [],
@@ -665,7 +682,7 @@ class TestProcessBusinessesFilter(unittest.TestCase):
             set(),
             set(),
             min_score=0,
-            require_email=True,
+            objective="email",
         )
         self.assertEqual(rows, [])
         mock_analyze.assert_called_once()
@@ -676,7 +693,7 @@ class TestProcessBusinessesFilter(unittest.TestCase):
     def test_require_email_keeps_lead_with_email(self, _sleep, mock_analyze, mock_details):
         mock_details.return_value = self._details()
         mock_analyze.return_value = {
-            "emails": ["hello@example.com"],
+            "emails": ["hello@biz.example"],
             "phones_website": [],
             "https": False,
             "has_viewport": False,
@@ -699,10 +716,10 @@ class TestProcessBusinessesFilter(unittest.TestCase):
             set(),
             set(),
             min_score=0,
-            require_email=True,
+            objective="email",
         )
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["email"], "hello@example.com")
+        self.assertEqual(rows[0]["email"], "hello@biz.example")
         self.assertTrue(rows[0]["has_email"])
 
 
@@ -852,14 +869,14 @@ class TestAnalyzeWebsite(unittest.TestCase):
     def test_parses_email_and_cta(self, mock_get):
         html = b"""<!doctype html><html><head><title>T</title>
         <meta name="viewport" content="width=device-width">
-        </head><body>Contact us at support@example.com for a quote.
+        </head><body>Contact us at support@biz.example for a quote.
         </body></html>"""
         resp = MagicMock()
         resp.text = html.decode("utf-8")
         mock_get.return_value = resp
 
-        out = LEADGEN.analyze_website("https://example.com")
-        self.assertIn("support@example.com", out["emails"])
+        out = LEADGEN.analyze_website("https://biz.example")
+        self.assertIn("support@biz.example", out["emails"])
         self.assertTrue(out["has_cta"])
         mock_get.assert_called()
         call_kwargs = mock_get.call_args.kwargs
@@ -916,10 +933,93 @@ class TestAnalyzeWebsite(unittest.TestCase):
         self.assertGreaterEqual(mock_get.call_count, 2)
 
     def test_extract_emails_from_mailto_soup(self):
-        html = '<a href="mailto:Owner@Example.COM">mail</a>'
+        html = '<a href="mailto:Owner@Biz.example">mail</a>'
         soup = LEADGEN.BeautifulSoup(html, "html.parser")
         emails = LEADGEN._extract_emails_from_html(html, soup=soup)
-        self.assertEqual(emails, ["owner@example.com"])
+        self.assertEqual(emails, ["owner@biz.example"])
+
+
+@SKIP
+class TestLeadMeetsObjective(unittest.TestCase):
+    def _lead(self, phone=None, email=""):
+        return {
+            "business_name": "Local Plumbing LLC",
+            "phone_google": phone,
+            "phone_website": None,
+            "email": email,
+            "has_email": bool(email),
+        }
+
+    def test_phone_requires_phone(self):
+        self.assertTrue(
+            LEADGEN.lead_meets_objective(self._lead(phone="(215) 555-1234"), "phone")
+        )
+        self.assertFalse(LEADGEN.lead_meets_objective(self._lead(), "phone"))
+
+    def test_email_requires_email(self):
+        self.assertTrue(
+            LEADGEN.lead_meets_objective(self._lead(email="info@biz.example"), "email")
+        )
+        self.assertFalse(LEADGEN.lead_meets_objective(self._lead(), "email"))
+
+    def test_either_accepts_phone_or_email(self):
+        self.assertTrue(
+            LEADGEN.lead_meets_objective(self._lead(phone="(215) 555-1234"), "either")
+        )
+        self.assertTrue(
+            LEADGEN.lead_meets_objective(self._lead(email="info@biz.example"), "either")
+        )
+        self.assertTrue(
+            LEADGEN.lead_meets_objective(
+                self._lead(phone="(215) 555-1234", email="info@biz.example"),
+                "either",
+            )
+        )
+        self.assertFalse(LEADGEN.lead_meets_objective(self._lead(), "either"))
+
+    def test_both_requires_phone_and_email(self):
+        self.assertFalse(
+            LEADGEN.lead_meets_objective(self._lead(phone="(215) 555-1234"), "both")
+        )
+        self.assertFalse(
+            LEADGEN.lead_meets_objective(self._lead(email="info@biz.example"), "both")
+        )
+        self.assertTrue(
+            LEADGEN.lead_meets_objective(
+                self._lead(phone="(215) 555-1234", email="info@biz.example"),
+                "both",
+            )
+        )
+
+    def test_score_cannot_override_objective(self):
+        lead = self._lead()
+        lead["lead_score"] = 99
+        self.assertFalse(LEADGEN.lead_meets_objective(lead, "email"))
+        self.assertFalse(LEADGEN.lead_meets_objective(lead, "phone"))
+
+    def test_legacy_flags_map_to_objective(self):
+        self.assertEqual(LEADGEN.objective_from_require_flags(True, False), "phone")
+        self.assertEqual(LEADGEN.objective_from_require_flags(False, True), "email")
+        self.assertEqual(LEADGEN.objective_from_require_flags(True, True), "both")
+        self.assertEqual(LEADGEN.objective_from_require_flags(False, False), "either")
+
+    def test_cli_objective_wins_over_legacy_flags(self):
+        with patch.object(
+            sys,
+            "argv",
+            ["leadgen.py", "--objective", "either", "--require-phone", "--require-email"],
+        ):
+            args = LEADGEN.parse_args()
+        with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+            config = LEADGEN.config_from_args(args)
+        self.assertEqual(config.objective, "either")
+
+    def test_cli_legacy_flags_normalize_to_both(self):
+        with patch.object(sys, "argv", ["leadgen.py", "--require-phone", "--require-email"]):
+            args = LEADGEN.parse_args()
+        with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+            config = LEADGEN.config_from_args(args)
+        self.assertEqual(config.objective, "both")
 
 
 if __name__ == "__main__":
