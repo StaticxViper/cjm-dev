@@ -43,7 +43,13 @@ source .venv/bin/activate
 pip install -r requirements/requirements.txt
 ```
 
-Packages include: `requests`, `pandas`, `beautifulsoup4`, `python-dotenv`, `httpx`, `apify-client`, `openai`, `perplexityai`.
+Packages include: `requests`, `pandas`, `beautifulsoup4`, `python-dotenv`, `httpx`, `apify-client`, `openai`, `perplexityai`, `playwright`.
+
+For the leadgen **email** objective (Google search), also install the Chromium browser used by Playwright:
+
+```bash
+playwright install chromium
+```
 
 ## 5. Create a `.env` file at the repo root
 
@@ -119,6 +125,7 @@ python helper_scripts/api_manager/api_manager.py
 
 ```bash
 python -m unittest unittests.lead_automation.test_leadgen
+python -m unittest unittests.lead_automation.test_email_discovery
 ```
 
 See [testing/unittests.md](testing/unittests.md) for details.
