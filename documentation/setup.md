@@ -90,7 +90,7 @@ Most scripts add the repo root to `sys.path` automatically. A few behaviors diff
 | Run from | Scripts |
 |----------|---------|
 | **Repo root** | `stock_analyzer` (reads `scripts/stock_analyzer/previous_run_date.txt`) |
-| **Script folder** | `blog_automation`, `leadgen`, `lead_automation`, `json_formatter`, `lovable_automation`, `webhook_manager` |
+| **Script folder** | `blog_automation`, `leadgen`, `lead_automation`, `json_formatter`, `lovable_automation`, `webhook_manager`, `property_listing_gen` |
 | **Either** | `clip_generator`, `montage_builder` (paths via `--base-dir` or `MOTO_VIDS_BASE`) |
 
 In CI, stock analysis uses:
@@ -126,6 +126,7 @@ python helper_scripts/api_manager/api_manager.py
 ```bash
 python -m unittest unittests.lead_automation.test_leadgen
 python -m unittest unittests.lead_automation.test_email_discovery
+python -m unittest unittests.zillow_automation.test_property_listing_gen
 ```
 
 See [testing/unittests.md](testing/unittests.md) for details.
