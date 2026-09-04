@@ -20,6 +20,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 | Montage builder | [scripts/montage_builder.md](scripts/montage_builder.md) |
 | JSON formatter | [scripts/json_formatter.md](scripts/json_formatter.md) |
 | Email manager (library) | [scripts/email_manager.md](scripts/email_manager.md) |
+| Zillow property listing | [scripts/property_listing_gen.md](scripts/property_listing_gen.md) |
 
 ## Helper scripts
 
@@ -56,7 +57,7 @@ flowchart LR
 | `CHIKARA_REALMS_SECRET` | `blog_automation`, `api_manager` |
 | `GOOGLE_API_KEY` | `leadgen`, `api_manager` |
 | `LEAD_INGEST_KEY` | `lead_automation`, `leadenrich`, `api_manager` |
-| `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `api_manager` |
+| `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `property_listing_gen`, `api_manager` |
 | `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
 | `APIFY_USER_ID` | `api_manager` |
 | `STOCK_INGEST_TOKEN` | `stock_analyzer`, `api_manager` |
@@ -71,6 +72,7 @@ flowchart LR
 |-------------------|---------|
 | `scripts/chikara_realms/` | `blog_automation.py` |
 | `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `lead_automation.py` |
+| `scripts/zillow_automation/` | `property_listing_gen.py` |
 | `scripts/lovable_automation/` | `lovable_automation.py` |
 | `scripts/json_formatter/` | `json_formatter.py` |
 | `scripts/webhook_manager/` | `webhook_manager.py` |
