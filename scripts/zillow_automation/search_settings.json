@@ -1,0 +1,14 @@
+{
+  "zipCodes": [
+    "08057",
+    "08021",
+    "08075"
+  ],
+  "priceMin": 100000,
+  "priceMax": 500000,
+  "forSaleByAgent": true,
+  "forSaleByOwner": false,
+  "forRent": false,
+  "sold": false,
+  "resultsLimit": 100
+}
