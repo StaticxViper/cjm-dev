@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out).
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out), and [city-data scraper](../scripts/city_data_scraper.md) URL slugs, config validation, and HTML parsers (Playwright patched out).
 
 ## Prerequisites
 
@@ -23,6 +23,7 @@ python -m unittest unittests.lead_automation.test_leadgen
 python -m unittest unittests.lead_automation.test_email_discovery
 python -m unittest unittests.lead_automation.test_leadenrich
 python -m unittest unittests.zillow_automation.test_property_listing_gen
+python -m unittest unittests.city_data.test_city_data_scraper
 ```
 
 Run all tests in the package:
@@ -138,9 +139,25 @@ Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_aut
 | `TestResolveSearchInput` | CLI flags overlay file values without changing unspecified fields |
 | `TestGenerateListings` | Actor called as `Zillow ZIP Search`; URLs written; missing `APIFY_API_KEY` skips the run |
 
+## Test file: `unittests/city_data/test_city_data_scraper.py`
+
+Imports `city_data_scraper` the same way (CWD switched to `scripts/city_data/`). Playwright is not started; fetches use a fake session and HTML fixtures.
+
+| Test class | What it checks |
+|------------|----------------|
+| `TestSlugsAndUrls` | State abbr/full name, optional `slug`, city and crime URL construction |
+| `TestNormalizeConfig` | Default config accepted; city strings coerced; empty cities and unknown fields rejected |
+| `TestCityParsers` | Population, income, housing, cost of living, and education from fixture HTML |
+| `TestCrimeParsers` | Crime index, rates, yearly table; city-page table fallback; sex-offender text ignored |
+| `TestLoadAndSave` | Config JSON loads; output writes atomically with no leftover temp file |
+| `TestResolveConfig` | CLI flags overlay file values without changing unspecified fields |
+| `TestScrapeCities` | Session fetches city then crime; 404 crime uses city fallback; missing city sets `ok: false` |
+| `TestNotFound` | City-data 404 markup and HTTP 404 detected |
+
 ## Related documentation
 
 - [leadgen.md](../scripts/leadgen.md) — script under test
 - [leadenrich.md](../scripts/leadenrich.md) — script under test
 - [property_listing_gen.md](../scripts/property_listing_gen.md) — script under test
+- [city_data_scraper.md](../scripts/city_data_scraper.md) — script under test
 - [setup.md](../setup.md) — environment setup
