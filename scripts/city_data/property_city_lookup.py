@@ -41,7 +41,15 @@ DEFAULT_INGEST_ENDPOINT = "/api/public/city-data"
 INGEST_API_NAME = "City Data Ingest"
 
 ZIP_RE = re.compile(r"\b(\d{5})(?:-\d{4})?\b")
-STATE_RE = re.compile(r"\b([A-Z]{2})\b")
+# Case-insensitive token match; validated against known US abbreviations so
+# words like "la" in street names are not treated as Louisiana.
+STATE_TOKEN_RE = re.compile(r"\b([A-Za-z]{2})\b")
+US_STATE_ABBRS = {
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID",
+    "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO",
+    "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA",
+    "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+}
 
 logger = setup_logger(
     name="property-city-lookup",
@@ -49,12 +57,21 @@ logger = setup_logger(
 )
 
 
+def _match_state_token(text: str) -> Optional[re.Match]:
+    """Return the rightmost known US state abbreviation match in text."""
+    found = None
+    for match in STATE_TOKEN_RE.finditer(text or ""):
+        if match.group(1).upper() in US_STATE_ABBRS:
+            found = match
+    return found
+
+
 def _chunk_is_state_or_zip(chunk: str) -> bool:
     """True when a comma chunk is only a state and/or ZIP (no city name)."""
     tokens = chunk.split()
     if not tokens:
         return False
-    if STATE_RE.fullmatch(tokens[0]):
+    if tokens[0].upper() in US_STATE_ABBRS and STATE_TOKEN_RE.fullmatch(tokens[0]):
         rest = tokens[1:]
         return not rest or all(ZIP_RE.fullmatch(token) for token in rest)
     return bool(ZIP_RE.fullmatch(tokens[0])) and len(tokens) == 1
@@ -64,7 +81,8 @@ def parse_address_parts(address: str) -> Dict[str, Optional[str]]:
     """Best-effort US address split: street, city, state, zip.
 
     Supports both full addresses ("123 Main St, Clementon, NJ 08021") and
-    city/state only ("Clementon, NJ").
+    city/state only ("Clementon, NJ"). State abbreviations are matched
+    case-insensitively and normalized to uppercase.
     """
     parts: Dict[str, Optional[str]] = {
         "street": None,
@@ -84,36 +102,53 @@ def parse_address_parts(address: str) -> Dict[str, Optional[str]]:
 
     if len(chunks) == 1:
         # "Clementon NJ 08021" without commas — take leading words before state.
-        state_match = STATE_RE.search(chunks[0])
+        state_match = _match_state_token(chunks[0])
         if state_match:
-            parts["state"] = state_match.group(1)
+            parts["state"] = state_match.group(1).upper()
             before = chunks[0][: state_match.start()].strip(" ,")
             parts["city"] = before or None
         else:
             parts["city"] = chunks[0]
     elif len(chunks) == 2 and _chunk_is_state_or_zip(chunks[1]):
         parts["city"] = chunks[0]
-        state_match = STATE_RE.search(chunks[1])
+        state_match = _match_state_token(chunks[1])
         if state_match:
-            parts["state"] = state_match.group(1)
+            parts["state"] = state_match.group(1).upper()
     else:
         parts["street"] = chunks[0]
         if not parts["city"]:
             maybe_city = chunks[1]
             first_token = maybe_city.split()[0] if maybe_city else ""
-            if not STATE_RE.fullmatch(first_token):
-                cleaned = re.sub(r"\s+[A-Z]{2}\s+\d{5}.*$", "", maybe_city).strip()
-                parts["city"] = cleaned or maybe_city
+            if first_token.upper() not in US_STATE_ABBRS:
+                # "Clementon nj" or "Clementon NJ 08021" → city without state/zip.
+                cleaned = re.sub(
+                    r"\s+[A-Za-z]{2}(\s+\d{5}(?:-\d{4})?)?$",
+                    "",
+                    maybe_city,
+                ).strip()
+                # Only strip trailing token when it is a known state.
+                trailing = _match_state_token(maybe_city)
+                if trailing and trailing.end() >= len(maybe_city.rstrip()) - len(
+                    (ZIP_RE.search(maybe_city) or type("m", (), {"group": lambda *_: ""})()).group(0)
+                ):
+                    city_only = maybe_city[: trailing.start()].strip(" ,")
+                    parts["city"] = city_only or cleaned or maybe_city
+                    if not parts["state"]:
+                        parts["state"] = trailing.group(1).upper()
+                else:
+                    parts["city"] = cleaned or maybe_city
+            else:
+                parts["city"] = maybe_city
         for chunk in chunks[1:]:
-            state_match = STATE_RE.search(chunk)
+            state_match = _match_state_token(chunk)
             if state_match and not parts["state"]:
-                parts["state"] = state_match.group(1)
+                parts["state"] = state_match.group(1).upper()
                 break
 
     if not parts["state"]:
-        state_match = STATE_RE.search(text)
+        state_match = _match_state_token(text)
         if state_match:
-            parts["state"] = state_match.group(1)
+            parts["state"] = state_match.group(1).upper()
     return parts
 
 

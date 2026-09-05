@@ -60,6 +60,13 @@ class TestParseAddressParts(unittest.TestCase):
         self.assertEqual(parts["state"], "NJ")
         self.assertEqual(parts["zip"], "08021")
 
+    def test_lowercase_state_in_city_chunk(self):
+        parts = LOOKUP.parse_address_parts("132 la Cascata, Clementon nj, 08021")
+        self.assertEqual(parts["street"], "132 la Cascata")
+        self.assertEqual(parts["city"], "Clementon")
+        self.assertEqual(parts["state"], "NJ")
+        self.assertEqual(parts["zip"], "08021")
+
     def test_empty_address(self):
         parts = LOOKUP.parse_address_parts("")
         self.assertIsNone(parts["city"])
