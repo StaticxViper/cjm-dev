@@ -22,6 +22,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 | Email manager (library) | [scripts/email_manager.md](scripts/email_manager.md) |
 | Zillow property listing | [scripts/property_listing_gen.md](scripts/property_listing_gen.md) |
 | City-data scraper | [scripts/city_data_scraper.md](scripts/city_data_scraper.md) |
+| Property city-data lookup | [scripts/property_city_lookup.md](scripts/property_city_lookup.md) |
 
 ## Helper scripts
 
@@ -62,6 +63,9 @@ flowchart LR
 | `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
 | `APIFY_USER_ID` | `api_manager` |
 | `STOCK_INGEST_TOKEN` | `stock_analyzer`, `api_manager` |
+| `CITY_DATA_INGEST_BASE_URL` | `property_city_lookup` (optional ingest) |
+| `CITY_DATA_INGEST_ENDPOINT` | `property_city_lookup` (optional, default `/city-data/ingest`) |
+| `CITY_DATA_INGEST_API` | `property_city_lookup` (optional APIManager key name) |
 | `LOVABLE_API_KEY` | `lovable_automation` |
 | `LOVABLE_WORKSPACE_ID` | `lovable_automation` (optional) |
 | `LOVABLE_CREDIT_THRESHOLD` | `lovable_automation` (optional, default `5`) |
@@ -74,7 +78,7 @@ flowchart LR
 | `scripts/chikara_realms/` | `blog_automation.py` |
 | `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `lead_automation.py` |
 | `scripts/zillow_automation/` | `property_listing_gen.py` |
-| `scripts/city_data/` | `city_data_scraper.py` |
+| `scripts/city_data/` | `city_data_scraper.py`, `property_city_lookup.py` |
 | `scripts/lovable_automation/` | `lovable_automation.py` |
 | `scripts/json_formatter/` | `json_formatter.py` |
 | `scripts/webhook_manager/` | `webhook_manager.py` |

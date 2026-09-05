@@ -147,5 +147,6 @@ Example output:
 
 ## Related scripts
 
+- [property_city_lookup.md](property_city_lookup.md) — address → demographics/crime GitHub Action envelope
 - [property_listing_gen.md](property_listing_gen.md) — Zillow ZIP listing URLs for the same markets
 - [leadgen.md](leadgen.md) — city coordinates used as the default NJ sample
