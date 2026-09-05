@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out), and [city-data scraper](../scripts/city_data_scraper.md) URL slugs, config validation, and HTML parsers (Playwright patched out).
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out), [city-data scraper](../scripts/city_data_scraper.md) URL slugs, config validation, and HTML parsers (Playwright patched out), and [property city-data lookup](../scripts/property_city_lookup.md) address parsing and API envelope shaping (scraper mocked).
 
 ## Prerequisites
 
@@ -24,6 +24,7 @@ python -m unittest unittests.lead_automation.test_email_discovery
 python -m unittest unittests.lead_automation.test_leadenrich
 python -m unittest unittests.zillow_automation.test_property_listing_gen
 python -m unittest unittests.city_data.test_city_data_scraper
+python -m unittest unittests.city_data.test_property_city_lookup
 ```
 
 Run all tests in the package:

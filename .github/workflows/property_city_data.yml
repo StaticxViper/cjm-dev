@@ -1,0 +1,80 @@
+name: Property City Data Lookup
+on:
+  workflow_dispatch:
+    inputs:
+      address:
+        description: 'Full US property address (e.g. "123 Main St, Clementon, NJ 08021")'
+        required: true
+        type: string
+      fields:
+        description: "Comma-separated field groups (default: all demographics + crime)"
+        required: false
+        type: string
+        default: "population,income,housing,cost_of_living,education,crime"
+      slug:
+        description: "Optional city-data URL slug override"
+        required: false
+        type: string
+        default: ""
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+  PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+  CHATGPT_API_KEY: ${{ secrets.CHATGPT_API_KEY }}
+  GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+  APIFY_USER_ID: ${{ secrets.APIFY_USER_ID }}
+  APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
+
+  DISCORD_NOTIFICATION_KEY: ${{ secrets.DISCORD_NOTIFICATION_KEY }}
+  DISCORD_NOTIFICATION_Webhook_URL: ${{ secrets.DISCORD_NOTIFICATION_Webhook_URL }}
+  STOCK_INGEST_TOKEN: ${{ secrets.STOCK_INGEST_TOKEN }}
+  LEAD_INGEST_KEY: ${{ secrets.LEAD_INGEST_KEY }}
+
+  CHIKARA_REALMS_SECRET: ${{ secrets.CHIKARA_REALMS_SECRET }}
+
+  # Lovable public city-data ingest (URL is hardcoded in the script; key required)
+  CITY_DATA_INGEST_KEY: ${{ secrets.CITY_DATA_INGEST_KEY }}
+  CITY_DATA_INGEST_BASE_URL: https://project--b0a20b71-38d1-47e5-9069-be4eabcd8b2a.lovable.app
+  CITY_DATA_INGEST_ENDPOINT: /api/public/city-data
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements/requirements.txt
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Look up demographics and crime
+        env:
+          ADDRESS: ${{ inputs.address }}
+          FIELDS: ${{ inputs.fields }}
+          SLUG: ${{ inputs.slug }}
+        run: |
+          set -euo pipefail
+          ARGS=(--address "$ADDRESS" --output-path scripts/city_data/property_city_data_output.json)
+          if [ -n "${FIELDS:-}" ]; then
+            ARGS+=(--fields "$FIELDS")
+          fi
+          if [ -n "${SLUG:-}" ]; then
+            ARGS+=(--slug "$SLUG")
+          fi
+          PYTHONPATH=$GITHUB_WORKSPACE python scripts/city_data/property_city_lookup.py "${ARGS[@]}"
+
+      - name: Upload property city-data JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: property-city-data
+          path: scripts/city_data/property_city_data_output.json
+          if-no-files-found: warn

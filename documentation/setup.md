@@ -79,6 +79,9 @@ CHIKARA_REALMS_SECRET=
 LOVABLE_API_KEY=
 LOVABLE_WORKSPACE_ID=
 LOVABLE_CREDIT_THRESHOLD=5
+
+# City-data property lookup ingest (Lovable public API)
+CITY_DATA_INGEST_KEY=
 ```
 
 Never commit `.env` or paste real keys into documentation.

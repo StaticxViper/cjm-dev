@@ -10,7 +10,8 @@ from helper_scripts.utils.logger.logger import setup_logger
 load_dotenv()
 API_KEYS = {'Google': os.getenv("GOOGLE_API_KEY"), 'Apify': os.getenv("APIFY_API_KEY"), 'Stock Analyzer': os.getenv("STOCK_INGEST_TOKEN"),
             'ChatGPT': os.getenv("CHATGPT_API_KEY"), 'Perplexity': os.getenv("PERPLEXITY_API_KEY"), 'Chikara Realms': os.getenv("CHIKARA_REALMS_SECRET"),
-            'Lead Ingest': os.getenv("LEAD_INGEST_KEY"), 'MVLLC Logs': os.getenv("MVLLC_LOGS_KEY")}
+            'Lead Ingest': os.getenv("LEAD_INGEST_KEY"), 'MVLLC Logs': os.getenv("MVLLC_LOGS_KEY"),
+            'City Data Ingest': os.getenv("CITY_DATA_INGEST_KEY")}
 APIFY_USER_ID = os.getenv("APIFY_USER_ID")
 
 ACTORS = {'Yahoo Finance': 'architjn/yahoo-finance', 'Website Content Crawler': 'apify/website-content-crawler',
