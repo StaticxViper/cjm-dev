@@ -63,9 +63,9 @@ flowchart LR
 | `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
 | `APIFY_USER_ID` | `api_manager` |
 | `STOCK_INGEST_TOKEN` | `stock_analyzer`, `api_manager` |
-| `CITY_DATA_INGEST_BASE_URL` | `property_city_lookup` (optional ingest) |
-| `CITY_DATA_INGEST_ENDPOINT` | `property_city_lookup` (optional, default `/city-data/ingest`) |
-| `CITY_DATA_INGEST_API` | `property_city_lookup` (optional APIManager key name) |
+| `CITY_DATA_INGEST_KEY` | `property_city_lookup`, `api_manager` (required for ingest POST) |
+| `CITY_DATA_INGEST_BASE_URL` | `property_city_lookup` (optional URL override) |
+| `CITY_DATA_INGEST_ENDPOINT` | `property_city_lookup` (optional, default `/api/public/city-data`) |
 | `LOVABLE_API_KEY` | `lovable_automation` |
 | `LOVABLE_WORKSPACE_ID` | `lovable_automation` (optional) |
 | `LOVABLE_CREDIT_THRESHOLD` | `lovable_automation` (optional, default `5`) |

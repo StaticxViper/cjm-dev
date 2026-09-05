@@ -34,6 +34,11 @@ DEMOGRAPHIC_GROUPS = (
     "cost_of_living",
     "education",
 )
+DEFAULT_INGEST_BASE_URL = (
+    "https://project--b0a20b71-38d1-47e5-9069-be4eabcd8b2a.lovable.app"
+)
+DEFAULT_INGEST_ENDPOINT = "/api/public/city-data"
+INGEST_API_NAME = "City Data Ingest"
 
 ZIP_RE = re.compile(r"\b(\d{5})(?:-\d{4})?\b")
 STATE_RE = re.compile(r"\b([A-Z]{2})\b")
@@ -205,17 +210,30 @@ def save_envelope(payload: Dict[str, Any], output_path: Path) -> None:
 
 
 def maybe_ingest(payload: Dict[str, Any]) -> None:
-    """POST via APIManager when CITY_DATA_INGEST_BASE_URL is configured."""
-    base_url = os.getenv("CITY_DATA_INGEST_BASE_URL", "").strip()
-    if not base_url:
-        logger.info(
-            "CITY_DATA_INGEST_BASE_URL unset; skipping ingest "
-            "(payload written to file only)"
-        )
+    """POST envelope to the Lovable city-data public API via APIManager.
+
+    Defaults to the project public endpoint. Auth uses CITY_DATA_INGEST_KEY
+    (X-API-Key). Set CITY_DATA_INGEST_SKIP=1 to skip the POST (tests/local).
+    """
+    if os.getenv("CITY_DATA_INGEST_SKIP", "").strip() in {"1", "true", "TRUE", "yes"}:
+        logger.info("CITY_DATA_INGEST_SKIP set; skipping ingest")
         return
 
-    endpoint = os.getenv("CITY_DATA_INGEST_ENDPOINT", "/city-data/ingest").strip() or "/city-data/ingest"
-    api_name = os.getenv("CITY_DATA_INGEST_API", "").strip() or None
+    base_url = (
+        os.getenv("CITY_DATA_INGEST_BASE_URL", "").strip() or DEFAULT_INGEST_BASE_URL
+    )
+    endpoint = (
+        os.getenv("CITY_DATA_INGEST_ENDPOINT", "").strip() or DEFAULT_INGEST_ENDPOINT
+    )
+    api_name = os.getenv("CITY_DATA_INGEST_API", "").strip() or INGEST_API_NAME
+
+    if not os.getenv("CITY_DATA_INGEST_KEY", "").strip():
+        raise RuntimeError(
+            "CITY_DATA_INGEST_KEY is required to POST city-data results. "
+            "Add it as a GitHub Actions secret (or in .env), or set "
+            "CITY_DATA_INGEST_SKIP=1 to skip ingest."
+        )
+
     logger.critical("Posting city-data payload to %s%s", base_url, endpoint)
 
     from helper_scripts.api_manager.api_manager import APIManager
@@ -257,6 +275,7 @@ def lookup_address(
         path = Path(output_path or DEFAULT_OUTPUT_PATH)
         save_envelope(envelope, path)
         print(json.dumps(envelope, indent=2, ensure_ascii=False))
+        maybe_ingest(envelope)
         return envelope
 
     field_list = list(fields) if fields else list(FIELD_GROUPS)

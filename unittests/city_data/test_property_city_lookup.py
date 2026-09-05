@@ -176,8 +176,7 @@ class TestLookupAddress(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             out = Path(tmpdir) / "out.json"
             with mock.patch.object(LOOKUP, "scrape_cities", return_value=scrape_payload) as scrape:
-                with mock.patch.dict(os.environ, {}, clear=False):
-                    os.environ.pop("CITY_DATA_INGEST_BASE_URL", None)
+                with mock.patch.dict(os.environ, {"CITY_DATA_INGEST_SKIP": "1"}, clear=False):
                     envelope = LOOKUP.lookup_address(
                         "123 Main St, Clementon, NJ 08021",
                         output_path=out,
@@ -195,10 +194,45 @@ class TestLookupAddress(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             out = Path(tmpdir) / "out.json"
             with mock.patch.object(LOOKUP, "scrape_cities") as scrape:
-                envelope = LOOKUP.lookup_address("incomplete", output_path=out)
+                with mock.patch.dict(os.environ, {"CITY_DATA_INGEST_SKIP": "1"}, clear=False):
+                    envelope = LOOKUP.lookup_address("incomplete", output_path=out)
             scrape.assert_not_called()
             self.assertFalse(envelope["ok"])
             self.assertTrue(out.exists())
+
+    def test_maybe_ingest_posts_to_lovable_endpoint(self):
+        payload = {"ok": True, "schema_version": "1.0"}
+        with mock.patch.dict(
+            os.environ,
+            {
+                "CITY_DATA_INGEST_KEY": "test-key",
+                "CITY_DATA_INGEST_SKIP": "",
+            },
+            clear=False,
+        ):
+            os.environ.pop("CITY_DATA_INGEST_SKIP", None)
+            with mock.patch(
+                "helper_scripts.api_manager.api_manager.APIManager"
+            ) as mock_mgr:
+                instance = mock_mgr.return_value
+                LOOKUP.maybe_ingest(payload)
+                instance.build_request.assert_called_once()
+                kwargs = instance.build_request.call_args.kwargs
+                self.assertEqual(
+                    kwargs["base_url"],
+                    "https://project--b0a20b71-38d1-47e5-9069-be4eabcd8b2a.lovable.app",
+                )
+                self.assertEqual(kwargs["endpoint"], "/api/public/city-data")
+                self.assertEqual(kwargs["api"], "City Data Ingest")
+                self.assertEqual(kwargs["json_body"], payload)
+                self.assertEqual(kwargs["method"], "POST")
+
+    def test_maybe_ingest_requires_key(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CITY_DATA_INGEST_KEY", None)
+            os.environ.pop("CITY_DATA_INGEST_SKIP", None)
+            with self.assertRaises(RuntimeError):
+                LOOKUP.maybe_ingest({"ok": True})
 
 
 if __name__ == "__main__":

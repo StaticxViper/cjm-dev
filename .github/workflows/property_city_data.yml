@@ -32,9 +32,11 @@ env:
   LEAD_INGEST_KEY: ${{ secrets.LEAD_INGEST_KEY }}
 
   CHIKARA_REALMS_SECRET: ${{ secrets.CHIKARA_REALMS_SECRET }}
-  CITY_DATA_INGEST_BASE_URL: ${{ secrets.CITY_DATA_INGEST_BASE_URL }}
-  CITY_DATA_INGEST_ENDPOINT: ${{ secrets.CITY_DATA_INGEST_ENDPOINT }}
-  CITY_DATA_INGEST_API: ${{ secrets.CITY_DATA_INGEST_API }}
+
+  # Lovable public city-data ingest (URL is hardcoded in the script; key required)
+  CITY_DATA_INGEST_KEY: ${{ secrets.CITY_DATA_INGEST_KEY }}
+  CITY_DATA_INGEST_BASE_URL: https://project--b0a20b71-38d1-47e5-9069-be4eabcd8b2a.lovable.app
+  CITY_DATA_INGEST_ENDPOINT: /api/public/city-data
 
 jobs:
   lookup:

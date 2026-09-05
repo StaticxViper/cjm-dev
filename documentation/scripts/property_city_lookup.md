@@ -16,7 +16,7 @@ Data is **city-level**, not street-level. The address is used only to derive `ci
 - Dependencies from `requirements/requirements.txt`
 - `playwright install chromium`
 
-No API keys for scrape-only runs. Ingest is skipped until `CITY_DATA_INGEST_BASE_URL` is set.
+Scraping needs no API keys. Posting results requires `CITY_DATA_INGEST_KEY` (or set `CITY_DATA_INGEST_SKIP=1`).
 
 ## How to run locally
 
@@ -147,17 +147,23 @@ This is the payload the future ingest endpoint should expect. Empty scraper grou
 
 **Failure shape:** same envelope with `ok: false`, an `error` string, and empty `demographics` / `crime`.
 
-## Ingest (later)
+## Ingest
 
-When the endpoint is ready, set:
+The script POSTs the envelope to the Lovable public city-data API after every lookup:
+
+`https://project--b0a20b71-38d1-47e5-9069-be4eabcd8b2a.lovable.app/api/public/city-data`
+
+Auth is `X-API-Key` via APIManager (`City Data Ingest` → `CITY_DATA_INGEST_KEY`).
 
 | Variable | Purpose |
 |----------|---------|
-| `CITY_DATA_INGEST_BASE_URL` | Base URL for `APIManager.build_request` |
-| `CITY_DATA_INGEST_ENDPOINT` | Path (default `/city-data/ingest`) |
-| `CITY_DATA_INGEST_API` | Optional APIManager key name for auth |
+| `CITY_DATA_INGEST_KEY` | **Required** API key (GitHub Actions secret / `.env`) |
+| `CITY_DATA_INGEST_BASE_URL` | Override base URL (default: Lovable project URL above) |
+| `CITY_DATA_INGEST_ENDPOINT` | Override path (default `/api/public/city-data`) |
+| `CITY_DATA_INGEST_API` | Override APIManager key name (default `City Data Ingest`) |
+| `CITY_DATA_INGEST_SKIP` | Set to `1` to skip the POST (local/tests) |
 
-Until `CITY_DATA_INGEST_BASE_URL` is set, the script logs a skip and only writes/prints the JSON.
+Add the key in GitHub → **Settings → Secrets and variables → Actions** as `CITY_DATA_INGEST_KEY`.
 
 ## Related
 

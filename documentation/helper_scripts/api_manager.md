@@ -25,6 +25,7 @@ Central gateway for HTTP requests and Apify actor runs across cjm-dev scripts. L
 | `Perplexity` | `PERPLEXITY_API_KEY` |
 | `Chikara Realms` | `CHIKARA_REALMS_SECRET` |
 | `Lead Ingest` | `LEAD_INGEST_KEY` |
+| `City Data Ingest` | `CITY_DATA_INGEST_KEY` |
 | `MVLLC Logs` | `MVLLC_LOGS_KEY` |
 
 Also: `APIFY_USER_ID` for Apify account context.
