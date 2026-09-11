@@ -26,11 +26,13 @@ The `email` objective (and `either`/`both` when email is still missing) uses [em
 | `keywords.json` | Search keywords (keys used as categories) |
 | `coords.json` | Lat/lng for search center |
 | `franchises.json` | Franchise/chain name and domain blocklists |
-| `leadgen_settings.json` | Persisted run defaults (leadgen type, Playwright page limits, min score, reviews, franchise filter, `objective`, require website, lead enrichment, output, JSON path) |
+| `leadgen_settings.json` | Persisted run defaults (leadgen type, Playwright page limits, skip-searched, history path, min score, reviews, franchise filter, `objective`, require website, lead enrichment, output, JSON path) |
+| `leadgen_search_history.json` | Completed keyword×location×mode searches; used to skip repeat work |
+| `leadgen_usage.json` | Cumulative Places Nearby/Details call counters (API Manager mode) |
 | `leads_output.json` | Output JSON array (created/appended); includes `place_id` for cross-run dedupe |
 | `contacted.txt` | Emails already contacted (skipped on export) |
 
-Hardcoded fallbacks when no settings file exists: `leadgen_type` `api_manager` (preserves prior Places API behavior), `playwright_max_pages` 10, `playwright_max_results_per_search` 200, `min_score` 80, `min_reviews` 5, `filter_franchises` True, `search_radius` 50 km, `max_workers` 12, `PLACES_SLEEP` 2 s between API calls.
+Hardcoded fallbacks when no settings file exists: `leadgen_type` `api_manager` (preserves prior Places API behavior), `playwright_max_pages` 10, `playwright_max_results_per_search` 200, `skip_searched` True, `search_history_path` `leadgen_search_history.json`, `min_score` 80, `min_reviews` 5, `filter_franchises` True, `search_radius` 50 km, `max_workers` 12, `PLACES_SLEEP` 2 s between API calls.
 
 ### Lead generation type
 
@@ -39,21 +41,24 @@ Hardcoded fallbacks when no settings file exists: `leadgen_type` `api_manager` (
 | `api_manager` (default) | Google Places Nearby Search + Place Details via `GOOGLE_API_KEY` |
 | `playwright` | One Chromium browser scrapes Google Maps results with multi-page scrolling; **no Places API calls** for discovery or details |
 
-Example `leadgen_settings.json` keys:
+### Search history (skip already-searched)
+
+Each completed keyword × city × state × mode unit is stored in `leadgen_search_history.json` (radius or Playwright page limit is part of the key). On later runs, matching units are skipped unless forced.
 
 ```json
 {
   "leadgen_type": "playwright",
   "playwright_max_pages": 10,
-  "playwright_max_results_per_search": 200
+  "playwright_max_results_per_search": 200,
+  "skip_searched": true,
+  "search_history_path": "leadgen_search_history.json"
 }
 ```
-
-CLI equivalents:
 
 ```bash
 python leadgen.py --leadgen-type playwright --playwright-max-pages 10 --defaults
 python leadgen.py --leadgen-type api_manager --defaults
+python leadgen.py --force-research --defaults   # ignore history; re-run searches
 ```
 
 ## How to run
@@ -119,6 +124,9 @@ Enter comma-separated numbers to select specific items, or press Enter for all.
 | `--leadgen-type {api_manager,playwright}` | Business discovery provider (default `api_manager`) |
 | `--playwright-max-pages INT` | Max Maps result pages per keyword/location (Playwright; default 10) |
 | `--playwright-max-results-per-search INT` | Cap businesses collected per keyword/location (Playwright; default 200) |
+| `--skip-searched` | Skip keyword/location combos already in search history (default) |
+| `--force-research` | Re-run searches even if present in history |
+| `--search-history-path PATH` | Search history JSON path (default `leadgen_search_history.json`) |
 | `--min-score INT` | Minimum `lead_score` to keep (default 80) |
 | `--min-reviews INT` | Minimum `user_ratings_total` (default 5) |
 | `--filter-franchises` / `--no-filter-franchises` | Exclude (default) or allow franchise/chain leads |
@@ -136,18 +144,17 @@ CLI flags override values from `leadgen_settings.json`.
 
 ## How it works
 
-1. Resolve configuration (interactive menu or CLI flags), including `leadgen_type`.
-2. **Discover businesses** (provider switch only):
-   - `api_manager` — for each selected location and keyword, call Google Places Nearby Search (with pagination), then Place Details.
-   - `playwright` — for each keyword × location, open Google Maps in one shared Chromium browser, scroll/paginate up to `playwright_max_pages`, collect listings, then open each unique place panel for phone/website/address (no Places API).
-3. Apply quality filters (operational status, review count, optional phone/website, review recency). Playwright skips closed-status when Maps does not expose it.
-4. Scrape surviving websites: emails (regex + `mailto:` hrefs), HTTPS, viewport meta, HTML length, CTA keywords. Requests use a browser User-Agent; bare/HTTP URLs retry HTTPS when the body is empty or tiny. If the homepage has no email, also try `/contact`, `/contact-us`, `/contact.html`, `/about`, `/about-us`, and `/get-in-touch`.
-5. If the objective still needs an email (or a phone for `both`), run Google/website discovery via [email_discovery.py](../../scripts/lead_automation/email_discovery.py). `--objective phone` skips this step and keeps the existing phone workflow.
-6. Compute normalized `lead_score` (0–100; higher = better outreach target).
-7. Drop leads below `min_score`.
-8. Apply `lead_meets_objective` as a hard gate. A high score cannot override a missing required contact method.
-9. When **lead enrichment** is on (default), hand the qualifying leads to [leadenrich](leadenrich.md) to look up missing emails on Facebook, then drop any lead whose newly found email is already in `contacted.txt`.
-10. Save to JSON and/or bulk-ingest to dashboard API.
+1. **Initialize** — resolve configuration (interactive menu or CLI), including `leadgen_type` and `skip_searched`.
+2. **Load prior state** — contacted emails, existing lead identities, and `leadgen_search_history.json`.
+3. **Discover businesses** (provider switch only; skips history hits when `skip_searched` is on):
+   - `api_manager` — for each selected location and pending keyword, call Google Places Nearby Search (with pagination), then Place Details.
+   - `playwright` — for each pending keyword × location, open Google Maps in one shared Chromium browser, scroll/paginate up to `playwright_max_pages`, collect listings, then open each unique place panel for phone/website/address (no Places API).
+4. **Qualify & analyze** — quality filters, website scrape, optional email discovery, scoring, objective gate.
+5. **Lead enrichment** (optional) — Facebook email lookup via [leadenrich](leadenrich.md).
+6. **Output** — JSON and/or dashboard ingest.
+7. **Finalize** — append run summary to search history; update `leadgen_usage.json` when Places API calls were made.
+
+Logs use `[STAGE n/7]` and `[STEP n.m]` markers (enrichment uses `[ENRICH STAGE]` / `[ENRICH STEP]`) so progress is visible at a glance.
 
 ```mermaid
 flowchart LR
