@@ -1022,5 +1022,137 @@ class TestLeadMeetsObjective(unittest.TestCase):
         self.assertEqual(config.objective, "both")
 
 
+@SKIP
+class TestLeadgenTypeConfig(unittest.TestCase):
+    def test_default_is_api_manager(self):
+        cfg = LEADGEN.LeadgenConfig()
+        self.assertEqual(cfg.leadgen_type, "api_manager")
+        self.assertEqual(cfg.playwright_max_pages, 10)
+        self.assertEqual(cfg.playwright_max_results_per_search, 200)
+
+    def test_settings_round_trip_leadgen_type(self):
+        cfg = LEADGEN.LeadgenConfig(
+            leadgen_type="playwright",
+            playwright_max_pages=7,
+            playwright_max_results_per_search=50,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            payload = LEADGEN.save_settings(cfg, path=path)
+            self.assertEqual(payload["leadgen_type"], "playwright")
+            self.assertEqual(payload["playwright_max_pages"], 7)
+            rebuilt = LEADGEN.config_from_saved_settings(path=path)
+            self.assertEqual(rebuilt.leadgen_type, "playwright")
+            self.assertEqual(rebuilt.playwright_max_pages, 7)
+            self.assertEqual(rebuilt.playwright_max_results_per_search, 50)
+
+    def test_legacy_settings_keep_api_manager_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "leadgen_settings.json"
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"min_score": 70}, f)
+            rebuilt = LEADGEN.config_from_saved_settings(path=path)
+            self.assertEqual(rebuilt.leadgen_type, "api_manager")
+
+    def test_cli_leadgen_type_playwright(self):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "leadgen.py",
+                "--leadgen-type",
+                "playwright",
+                "--playwright-max-pages",
+                "5",
+                "--playwright-max-results-per-search",
+                "40",
+            ],
+        ):
+            args = LEADGEN.parse_args()
+        self.assertTrue(LEADGEN._has_cli_overrides(args))
+        with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+            config = LEADGEN.config_from_args(args)
+        self.assertEqual(config.leadgen_type, "playwright")
+        self.assertEqual(config.playwright_max_pages, 5)
+        self.assertEqual(config.playwright_max_results_per_search, 40)
+
+    def test_normalize_leadgen_type_rejects_unknown(self):
+        self.assertEqual(LEADGEN.normalize_leadgen_type("nope"), "api_manager")
+        self.assertEqual(LEADGEN.normalize_leadgen_type("Playwright"), "playwright")
+
+
+@SKIP
+class TestPlaywrightDiscoveryHelpers(unittest.TestCase):
+    def test_extract_place_id_prefers_chij(self):
+        from playwright_discovery import extract_place_id_from_url, dedupe_businesses
+
+        url = (
+            "https://www.google.com/maps/place/TrueLine+Roofing/data=!4m7!3m6!"
+            "1s0x89c6c91835a39afb:0x1b0b7cb83bb89836!19sChIJ-5qjNRjJxokRNpi4O7h8Cxs"
+        )
+        self.assertEqual(extract_place_id_from_url(url), "ChIJ-5qjNRjJxokRNpi4O7h8Cxs")
+
+        businesses = [
+            {"place_id": "ChIJ1", "business_name": "A", "address": "1 Main"},
+            {"place_id": "ChIJ1", "business_name": "A Dup", "address": "1 Main"},
+            {
+                "business_name": "B Plumbing",
+                "phone_google": "(856) 555-1212",
+                "address": "2 Oak",
+            },
+            {
+                "business_name": "B Plumbing",
+                "phone_google": "856-555-1212",
+                "address": "Different",
+            },
+        ]
+        unique, removed = dedupe_businesses(businesses)
+        self.assertEqual(removed, 2)
+        self.assertEqual(len(unique), 2)
+
+    def test_process_businesses_skips_place_details_when_disabled(self):
+        businesses = [
+            {
+                "business_name": "Local Roofing",
+                "place_id": "ChIJtest123",
+                "address": "1 Main St, Camden, NJ",
+                "phone_google": "(856) 555-0100",
+                "website": None,
+                "rating": 4.2,
+                "user_ratings_total": 12,
+                "niche_key": "roofing",
+                "source": "playwright",
+            }
+        ]
+        with patch.object(LEADGEN, "get_place_details") as mock_details, \
+                patch.object(LEADGEN, "analyze_website") as mock_analyze:
+            mock_analyze.return_value = {
+                "emails": [],
+                "phones_website": [],
+                "https": False,
+                "has_viewport": False,
+                "html_length": 0,
+                "has_title": False,
+                "has_cta": False,
+                "error": None,
+            }
+            rows = LEADGEN.process_businesses(
+                businesses,
+                api_key="unused",
+                existing_ids=set(),
+                contacted_emails=set(),
+                min_score=0,
+                min_reviews=0,
+                objective="phone",
+                fetch_details=False,
+                existing_identities=set(),
+                source="playwright",
+            )
+        mock_details.assert_not_called()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["source"], "playwright")
+        self.assertEqual(rows[0]["business_name"], "Local Roofing")
+
+
 if __name__ == "__main__":
     unittest.main()
