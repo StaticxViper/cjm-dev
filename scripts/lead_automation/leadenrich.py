@@ -272,7 +272,7 @@ def scrape_facebook_pages(urls, batch_size=PAGE_SCRAPE_BATCH):
     pages = {}
     urls = sorted(set(urls))
     for batch in _chunked(urls, batch_size):
-        logger.critical("Scraping %d Facebook Pages", len(batch))
+        logger.critical("[ENRICH] Scraping Facebook Pages batch of %d", len(batch))
         run_input = {"startUrls": [{"url": url} for url in batch]}
         try:
             items = APIManager().run_apify(actor=PAGES_ACTOR, input=run_input) or []
@@ -324,7 +324,10 @@ def resolve_page_urls(leads, config):
     if not needs_search:
         return resolved
 
-    logger.critical("Running Facebook page search for %d leads", len(needs_search))
+    logger.critical(
+        "[ENRICH] Running Facebook page search for %d leads",
+        len(needs_search),
+    )
     with ThreadPoolExecutor(max_workers=config.max_workers) as executor:
         future_map = {
             executor.submit(
@@ -441,30 +444,57 @@ def enrich_leads(leads, config=None):
     if _apify_key_missing():
         return []
 
+    enrich_stages = 4
+    logger.critical("[ENRICH STAGE 1/%d] Select candidates", enrich_stages)
+
     # Candidates are references into leads, so enrichment mutates both.
     candidates = [lead for lead in leads if needs_enrichment(lead, config.retry_all)]
     if config.limit > 0:
         candidates = candidates[:config.limit]
     if not candidates:
-        logger.critical("No leads need Facebook enrichment")
+        logger.critical(
+            "[ENRICH STAGE 1/%d] No leads need Facebook enrichment "
+            "(%d total leads inspected)",
+            enrich_stages,
+            len(leads),
+        )
         return []
 
     logger.critical(
-        "Enriching %d of %d leads with no email",
+        "[ENRICH STAGE 1/%d] Enriching %d of %d leads with no email",
+        enrich_stages,
         len(candidates),
         len(leads),
     )
+    for index, lead in enumerate(candidates, 1):
+        logger.info(
+            "[ENRICH STEP 1.%d] Candidate %d/%d: %s (address=%s website=%s)",
+            index,
+            index,
+            len(candidates),
+            lead.get("business_name") or "(unnamed)",
+            (lead.get("address") or "")[:60] or "none",
+            "yes" if (lead.get("website") or "").strip() else "no",
+        )
 
+    logger.critical(
+        "[ENRICH STAGE 2/%d] Resolve Facebook Page URLs",
+        enrich_stages,
+    )
     resolved = resolve_page_urls(candidates, config)
     from_website = sum(1 for _, source in resolved.values() if source == "website")
     logger.critical(
-        "Resolved %d Facebook Pages (%d from lead website, %d from search)",
+        "[ENRICH STAGE 2/%d] Resolved %d Facebook Pages "
+        "(%d from lead website, %d from search, %d unresolved)",
+        enrich_stages,
         len(resolved),
         from_website,
         len(resolved) - from_website,
+        len(candidates) - len(resolved),
     )
 
     if config.dry_run:
+        logger.critical("[ENRICH STAGE 3/%d] Dry run — skip scrape/apply", enrich_stages)
         for index, (url, source) in sorted(resolved.items()):
             logger.critical(
                 "[dry run] %s -> %s (%s)",
@@ -474,20 +504,56 @@ def enrich_leads(leads, config=None):
             )
         return []
 
+    logger.critical(
+        "[ENRICH STAGE 3/%d] Scrape Facebook Pages (%d URLs)",
+        enrich_stages,
+        len({url for url, _ in resolved.values()}),
+    )
     pages = scrape_facebook_pages(url for url, _ in resolved.values())
+    logger.critical(
+        "[ENRICH STAGE 3/%d] Scrape returned %d page records",
+        enrich_stages,
+        len(pages),
+    )
 
+    logger.critical(
+        "[ENRICH STAGE 4/%d] Apply emails to leads",
+        enrich_stages,
+    )
     enriched = []
     status_counts = {}
     for index, lead in enumerate(candidates):
         url, source = resolved.get(index, (None, None))
         status = apply_enrichment(lead, url, pages.get(url) if url else None, source)
         status_counts[status] = status_counts.get(status, 0) + 1
+        business_name = lead.get("business_name") or "(unnamed)"
         if status == STATUS_ENRICHED:
             enriched.append(lead)
-            logger.info("Found %s for %s", lead["email"], lead.get("business_name"))
+            logger.info(
+                "[ENRICH STEP 4.%d] Found %s for %s (via %s)",
+                index + 1,
+                lead["email"],
+                business_name,
+                source or "unknown",
+            )
+        else:
+            logger.info(
+                "[ENRICH STEP 4.%d] %s -> %s (facebook=%s source=%s)",
+                index + 1,
+                business_name,
+                status,
+                url or "none",
+                source or "none",
+            )
 
     for status, count in sorted(status_counts.items()):
-        logger.critical("%s: %d", status, count)
+        logger.critical("[ENRICH STAGE 4/%d] %s: %d", enrich_stages, status, count)
+    logger.critical(
+        "[ENRICH STAGE 4/%d] Done — %d newly emailed / %d candidates",
+        enrich_stages,
+        len(enriched),
+        len(candidates),
+    )
 
     return enriched
 

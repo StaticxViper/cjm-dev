@@ -256,20 +256,25 @@ class TestLeadEnrichmentSetting(unittest.TestCase):
             output_mode="json",
             keywords=["landscaping"],
             locations=[("NJ", "Cherry Hill", "39.9,-75.0")],
+            skip_searched=False,
         )
         base.update(overrides)
         return LEADGEN.LeadgenConfig(**base)
 
     def _run_leadgen(self, config, rows, mock_enrich, contacted_file="no_contacted_file.txt"):
-        with patch.object(LEADGEN, "GOOGLE_API_KEY", "fake-key"), \
-                patch.object(LEADGEN, "CONTACTED_FILE", contacted_file), \
-                patch.object(LEADGEN, "load_existing_place_ids", return_value=set()), \
-                patch.object(LEADGEN, "get_places", return_value=[{"place_id": "pid1"}]), \
-                patch.object(LEADGEN, "process_businesses", return_value=rows), \
-                patch.object(LEADGEN, "enrich_missing_emails", mock_enrich), \
-                patch.object(LEADGEN, "save_results") as mock_save:
-            LEADGEN.run_leadgen(config)
-        return mock_save
+        with tempfile.TemporaryDirectory() as tmp:
+            config.search_history_path = str(Path(tmp) / "history.json")
+            with patch.object(LEADGEN, "GOOGLE_API_KEY", "fake-key"), \
+                    patch.object(LEADGEN, "CONTACTED_FILE", contacted_file), \
+                    patch.object(LEADGEN, "load_existing_place_ids", return_value=set()), \
+                    patch.object(LEADGEN, "load_existing_identities", return_value=set()), \
+                    patch.object(LEADGEN, "get_places", return_value=[{"place_id": "pid1"}]), \
+                    patch.object(LEADGEN, "process_businesses", return_value=rows), \
+                    patch.object(LEADGEN, "enrich_missing_emails", mock_enrich), \
+                    patch.object(LEADGEN, "update_usage_stats", return_value={"total_calls": 0}), \
+                    patch.object(LEADGEN, "save_results") as mock_save:
+                LEADGEN.run_leadgen(config)
+                return mock_save
 
     def test_enabled_by_default(self):
         self.assertTrue(LEADGEN.LeadgenConfig().lead_enrichment)
@@ -1152,6 +1157,63 @@ class TestPlaywrightDiscoveryHelpers(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["source"], "playwright")
         self.assertEqual(rows[0]["business_name"], "Local Roofing")
+
+
+@SKIP
+class TestSearchHistory(unittest.TestCase):
+    def test_make_search_key_and_skip(self):
+        from search_history import SearchHistory, make_search_key, update_usage_stats
+
+        key = make_search_key("api_manager", "Roofing", "Camden", "nj", search_radius=50000)
+        self.assertEqual(key, "api_manager|roofing|camden|NJ|radius:50000")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.json"
+            history = SearchHistory(path)
+            self.assertFalse(history.was_searched(key))
+            history.record_search(
+                leadgen_type="api_manager",
+                keyword="Roofing",
+                city="Camden",
+                state="NJ",
+                search_radius=50000,
+                businesses_found=12,
+            )
+            history.save()
+            reloaded = SearchHistory(path)
+            self.assertTrue(reloaded.was_searched(key))
+            pending, skipped = reloaded.pending_keywords_for_location(
+                ["Roofing", "plumbing"],
+                "Camden",
+                "NJ",
+                leadgen_type="api_manager",
+                search_radius=50000,
+                skip_searched=True,
+            )
+            self.assertEqual(pending, ["plumbing"])
+            self.assertEqual(len(skipped), 1)
+            usage_path = Path(tmp) / "usage.json"
+            data = update_usage_stats(
+                usage_path,
+                nearby_calls=2,
+                details_calls=5,
+            )
+            self.assertEqual(data["nearby_calls"], 2)
+            self.assertEqual(data["details_calls"], 5)
+            self.assertEqual(data["total_calls"], 7)
+            self.assertEqual(data["runs"], 1)
+
+    def test_cli_force_research(self):
+        with patch.object(sys, "argv", ["leadgen.py", "--force-research"]):
+            args = LEADGEN.parse_args()
+        self.assertFalse(args.skip_searched)
+        self.assertTrue(LEADGEN._has_cli_overrides(args))
+        with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+            config = LEADGEN.config_from_args(args)
+        self.assertFalse(config.skip_searched)
+
+    def test_log_stage_helpers_exist(self):
+        self.assertTrue(callable(LEADGEN.log_stage))
+        self.assertTrue(callable(LEADGEN.log_step))
 
 
 if __name__ == "__main__":

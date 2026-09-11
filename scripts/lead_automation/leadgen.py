@@ -47,6 +47,12 @@ from playwright_discovery import (
     dedupe_businesses,
     extract_place_id_from_url,
 )
+from search_history import (
+    DEFAULT_HISTORY_PATH,
+    DEFAULT_USAGE_PATH,
+    SearchHistory,
+    update_usage_stats,
+)
 
 load_dotenv()
 
@@ -87,6 +93,7 @@ VALID_LEADGEN_TYPES = ("api_manager", "playwright")
 DEFAULT_LEADGEN_TYPE = "api_manager"
 DEFAULT_PLAYWRIGHT_MAX_PAGES = 10
 DEFAULT_PLAYWRIGHT_MAX_RESULTS_PER_SEARCH = 200
+LEADGEN_STAGE_TOTAL = 7
 PERSISTED_SETTINGS_KEYS = (
     "min_score",
     "min_reviews",
@@ -99,6 +106,8 @@ PERSISTED_SETTINGS_KEYS = (
     "leadgen_type",
     "playwright_max_pages",
     "playwright_max_results_per_search",
+    "skip_searched",
+    "search_history_path",
 )
 
 SCORE_WEIGHTS = {
@@ -143,6 +152,22 @@ logger = setup_logger(
 )
 
 
+def log_stage(number, name, detail=None, total=LEADGEN_STAGE_TOTAL):
+    """Emit a high-visibility stage marker for at-a-glance progress."""
+    if detail:
+        logger.critical("[STAGE %d/%d] %s — %s", number, total, name, detail)
+    else:
+        logger.critical("[STAGE %d/%d] %s", number, total, name)
+
+
+def log_step(stage, step, name, detail=None):
+    """Emit a step marker nested under a stage."""
+    if detail:
+        logger.info("[STEP %d.%d] %s — %s", stage, step, name, detail)
+    else:
+        logger.info("[STEP %d.%d] %s", stage, step, name)
+
+
 def _default_keywords():
     return list(KEYWORD_CATEGORIES.keys())
 
@@ -174,6 +199,8 @@ class LeadgenConfig:
     leadgen_type: str = DEFAULT_LEADGEN_TYPE
     playwright_max_pages: int = DEFAULT_PLAYWRIGHT_MAX_PAGES
     playwright_max_results_per_search: int = DEFAULT_PLAYWRIGHT_MAX_RESULTS_PER_SEARCH
+    skip_searched: bool = True
+    search_history_path: str = DEFAULT_HISTORY_PATH
 
 
 def load_saved_settings(path=None):
@@ -223,6 +250,8 @@ def save_settings(config, path=None):
         "playwright_max_results_per_search": int(
             config.playwright_max_results_per_search
         ),
+        "skip_searched": bool(config.skip_searched),
+        "search_history_path": str(config.search_history_path or DEFAULT_HISTORY_PATH),
     }
     with open(settings_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
@@ -272,6 +301,10 @@ def config_from_saved_settings(path=None):
             )
         except (TypeError, ValueError):
             pass
+    if "skip_searched" in saved:
+        config.skip_searched = bool(saved["skip_searched"])
+    if "search_history_path" in saved and saved["search_history_path"]:
+        config.search_history_path = str(saved["search_history_path"])
     return config
 
 
@@ -773,8 +806,10 @@ def process_businesses(
     enriched = []
     quality_rejects = {}
     if fetch_details:
+        log_step(4, 2, "Fetch Place Details", f"{len(businesses)} businesses")
         logger.critical("Fetching place details for %d businesses", len(businesses))
     else:
+        log_step(4, 2, "Use discovered fields", "Place Details API skipped")
         logger.critical(
             "Processing %d discovered businesses (Place Details API skipped)",
             len(businesses),
@@ -855,9 +890,22 @@ def process_businesses(
             continue
         unique[key] = e
     businesses_unique = list(unique.values())
+    log_step(
+        4,
+        3,
+        "After quality filters + dedupe",
+        f"{len(businesses_unique)} businesses remain",
+    )
     logger.critical("After deduplication: %d businesses", len(businesses_unique))
 
     analyses = {}
+    with_website = sum(1 for b in businesses_unique if (b.get("website") or "").strip())
+    log_step(
+        4,
+        4,
+        "Website analysis",
+        f"{with_website} with website / {len(businesses_unique) - with_website} without",
+    )
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         future_map = {}
         for b in businesses_unique:
@@ -900,6 +948,10 @@ def process_businesses(
     filtered_below_min = 0
     filtered_objective = 0
     session = EmailDiscoverySession() if objective != "phone" else None
+    if session is not None:
+        log_step(4, 5, "Email discovery", f"objective={objective}")
+    else:
+        log_step(4, 5, "Email discovery", "skipped (objective=phone)")
     try:
         for b in businesses_unique:
             place_id = b.get("place_id")
@@ -1111,14 +1163,21 @@ def enrich_missing_emails(rows):
     """
     from leadenrich import EnrichConfig, enrich_leads
 
+    log_stage(5, "Lead enrichment", f"{len(rows)} qualifying leads")
+    log_step(5, 1, "Hand off to Facebook enrichment")
     try:
         enriched = enrich_leads(rows, EnrichConfig())
     except Exception as e:
-        logger.error("Lead enrichment failed: %s", e)
+        logger.error("[STAGE 5] Lead enrichment failed: %s", e)
         return []
 
     if enriched:
-        logger.critical("Enrichment found emails for %d leads", len(enriched))
+        logger.critical(
+            "[STEP 5.2] Enrichment found emails for %d leads",
+            len(enriched),
+        )
+    else:
+        log_step(5, 2, "Enrichment complete", "no new emails found")
     return enriched
 
 
@@ -1319,6 +1378,14 @@ def interactive_customize_config(base_config=None):
             "Playwright max results per search",
             cfg.playwright_max_results_per_search,
         )
+    cfg.skip_searched = _prompt_bool(
+        "Skip keyword/location searches already in history",
+        cfg.skip_searched,
+    )
+    cfg.search_history_path = _prompt_text(
+        "Search history path",
+        cfg.search_history_path,
+    )
     cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
     cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
     cfg.filter_franchises = _prompt_bool("Filter out franchises/chains", cfg.filter_franchises)
@@ -1339,6 +1406,8 @@ def _print_config_summary(config, include_run_scope=True):
     if normalize_leadgen_type(config.leadgen_type) == "playwright":
         print(f"  Playwright pages:  {config.playwright_max_pages}")
         print(f"  Playwright max:    {config.playwright_max_results_per_search} results/search")
+    print(f"  Skip searched:     {config.skip_searched}")
+    print(f"  Search history:    {config.search_history_path}")
     print(f"  Min score:         {config.min_score}")
     print(f"  Min reviews:       {config.min_reviews}")
     print(f"  Filter franchises: {config.filter_franchises}")
@@ -1426,6 +1495,24 @@ def parse_args():
             "Max businesses to collect per keyword/location in Playwright mode "
             f"(default {DEFAULT_PLAYWRIGHT_MAX_RESULTS_PER_SEARCH})"
         ),
+    )
+    parser.add_argument(
+        "--skip-searched",
+        dest="skip_searched",
+        action="store_true",
+        default=None,
+        help="Skip keyword/location combos already recorded in search history (default)",
+    )
+    parser.add_argument(
+        "--force-research",
+        dest="skip_searched",
+        action="store_false",
+        help="Re-run searches even if they appear in search history",
+    )
+    parser.add_argument(
+        "--search-history-path",
+        default=None,
+        help=f"Path to search history JSON (default {DEFAULT_HISTORY_PATH})",
     )
     parser.add_argument("--min-score", type=int, help="Minimum lead_score to keep (default 80)")
     parser.add_argument(
@@ -1525,6 +1612,8 @@ def _has_cli_overrides(args):
         args.leadgen_type is not None,
         args.playwright_max_pages is not None,
         args.playwright_max_results_per_search is not None,
+        args.skip_searched is not None,
+        args.search_history_path is not None,
         args.min_score is not None,
         args.min_reviews is not None,
         args.filter_franchises is not None,
@@ -1551,6 +1640,10 @@ def config_from_args(args):
         config.playwright_max_results_per_search = max(
             1, int(args.playwright_max_results_per_search)
         )
+    if args.skip_searched is not None:
+        config.skip_searched = bool(args.skip_searched)
+    if args.search_history_path is not None:
+        config.search_history_path = str(args.search_history_path)
     if args.min_score is not None:
         config.min_score = args.min_score
     if args.min_reviews is not None:
@@ -1635,6 +1728,7 @@ def _print_run_summary(stats):
     print("Lead Generation Complete")
     print(f"Mode: {stats.get('mode', '')}")
     print(f"Searches performed: {stats.get('searches_performed', 0)}")
+    print(f"Searches skipped (history): {stats.get('searches_skipped', 0)}")
     print(f"Locations searched: {stats.get('locations_searched', 0)}")
     print(f"Pages processed: {stats.get('pages_processed', 0)}")
     print(f"Businesses discovered: {stats.get('businesses_discovered', 0)}")
@@ -1646,8 +1740,11 @@ def _print_run_summary(stats):
     print(f"API Manager calls used: {stats.get('api_manager_calls', 0)}")
     print()
     logger.critical(
-        "Summary mode=%s discovered=%s unique=%s qualified=%s api_calls=%s",
+        "Summary mode=%s performed=%s skipped=%s discovered=%s unique=%s "
+        "qualified=%s api_calls=%s",
         stats.get("mode"),
+        stats.get("searches_performed"),
+        stats.get("searches_skipped"),
         stats.get("businesses_discovered"),
         stats.get("unique_businesses"),
         stats.get("qualified_leads"),
@@ -1662,32 +1759,91 @@ def _load_contacted_emails():
     return set()
 
 
-def gather_leads_api_manager(config, contacted_emails, existing_place_ids, api_call_counter):
+def gather_leads_api_manager(
+    config,
+    contacted_emails,
+    existing_place_ids,
+    api_call_counter,
+    history=None,
+):
     """Existing Google Places Nearby Search + Place Details discovery path."""
+    history = history or SearchHistory(config.search_history_path)
     total_rows = []
     discovered = 0
+    searches_performed = 0
+    searches_skipped = 0
+    locations_touched = set()
+
+    log_stage(3, "Discovery", "API Manager (Google Places)")
     for state, city, coords in config.locations:
         try:
-            logger.critical(
-                "Starting lead generation for %s, %s. Using Coords: %s",
+            pending, skipped = history.pending_keywords_for_location(
+                config.keywords,
                 city,
                 state,
-                coords,
+                leadgen_type="api_manager",
+                search_radius=config.search_radius,
+                skip_searched=config.skip_searched,
+            )
+            for prior in skipped:
+                searches_skipped += 1
+                log_step(
+                    3,
+                    1,
+                    "Skip searched",
+                    f"{prior.get('keyword')} × {city}, {state} "
+                    f"(last completed {prior.get('completed_at')})",
+                )
+            if not pending:
+                log_step(
+                    3,
+                    2,
+                    "Location complete",
+                    f"{city}, {state} — all keywords already in history",
+                )
+                continue
+
+            locations_touched.add(f"{city}, {state}")
+            log_step(
+                3,
+                3,
+                "Location search",
+                f"{city}, {state} coords={coords} keywords={len(pending)}",
             )
             places = get_places(
                 coords,
                 config.search_radius,
-                config.keywords,
+                pending,
                 GOOGLE_API_KEY,
                 api_call_counter=api_call_counter,
             )
+            # Count one completed search unit per pending keyword for this location.
+            for keyword in pending:
+                found_for_kw = sum(1 for p in places if p.get("niche_key") == keyword)
+                history.record_search(
+                    leadgen_type="api_manager",
+                    keyword=keyword,
+                    city=city,
+                    state=state,
+                    search_radius=config.search_radius,
+                    businesses_found=found_for_kw,
+                    status="completed",
+                )
+                searches_performed += 1
+
             for place in places:
                 place["location_searched"] = f"{city}, {state}"
                 place["source"] = "api_manager"
             discovered += len(places)
             if not places:
-                logger.critical("No places found; moving to next location.")
+                logger.critical(
+                    "[STEP 3.4] No places found for %s, %s; moving on",
+                    city,
+                    state,
+                )
                 continue
+
+            log_stage(4, "Qualify & analyze", f"{len(places)} businesses from {city}, {state}")
             rows = process_businesses(
                 places,
                 GOOGLE_API_KEY,
@@ -1710,11 +1866,13 @@ def gather_leads_api_manager(config, contacted_emails, existing_place_ids, api_c
             logger.error("Error processing businesses for %s, %s: %s", city, state, e)
             continue
 
+    history.save()
     with_website = sum(1 for row in total_rows if (row.get("website") or "").strip())
     stats = {
         "mode": "API Manager",
-        "searches_performed": len(config.locations) * len(config.keywords),
-        "locations_searched": len(config.locations),
+        "searches_performed": searches_performed,
+        "searches_skipped": searches_skipped,
+        "locations_searched": len(locations_touched),
         "pages_processed": api_call_counter.get("places_nearby", 0),
         "businesses_discovered": discovered,
         "duplicates_removed": max(0, discovered - len({r.get("place_id") for r in total_rows})),
@@ -1730,19 +1888,51 @@ def gather_leads_api_manager(config, contacted_emails, existing_place_ids, api_c
     return total_rows, stats
 
 
-def gather_leads_playwright(config, contacted_emails, existing_identities, api_call_counter):
+def gather_leads_playwright(
+    config,
+    contacted_emails,
+    existing_identities,
+    api_call_counter,
+    history=None,
+):
     """Browser-based Google Maps discovery path (no Places API calls)."""
+    history = history or SearchHistory(config.search_history_path)
     stubs = []
     session = BusinessDiscoverySession()
-    locations_searched = 0
+    locations_searched = set()
     discovery_stats = {}
     duplicates_removed = 0
     unique = []
+    searches_performed = 0
+    searches_skipped = 0
+
+    log_stage(3, "Discovery", "Playwright (Google Maps)")
     try:
         for state, city, _coords in config.locations:
-            locations_searched += 1
-            for keyword in config.keywords:
+            pending, skipped = history.pending_keywords_for_location(
+                config.keywords,
+                city,
+                state,
+                leadgen_type="playwright",
+                playwright_max_pages=config.playwright_max_pages,
+                skip_searched=config.skip_searched,
+            )
+            for prior in skipped:
+                searches_skipped += 1
+                log_step(
+                    3,
+                    1,
+                    "Skip searched",
+                    f"{prior.get('keyword')} × {city}, {state} "
+                    f"(last completed {prior.get('completed_at')})",
+                )
+            if not pending:
+                continue
+
+            locations_searched.add(f"{city}, {state}")
+            for keyword in pending:
                 try:
+                    log_step(3, 2, "Maps search", f"{keyword} × {city}, {state}")
                     listings = session.search_listings(
                         keyword,
                         city,
@@ -1750,6 +1940,16 @@ def gather_leads_playwright(config, contacted_emails, existing_identities, api_c
                         max_pages=config.playwright_max_pages,
                         max_results=config.playwright_max_results_per_search,
                     )
+                    history.record_search(
+                        leadgen_type="playwright",
+                        keyword=keyword,
+                        city=city,
+                        state=state,
+                        playwright_max_pages=config.playwright_max_pages,
+                        businesses_found=len(listings),
+                        status="completed",
+                    )
+                    searches_performed += 1
                     for stub in listings:
                         entry = dict(stub)
                         entry["niche_key"] = keyword
@@ -1776,18 +1976,27 @@ def gather_leads_playwright(config, contacted_emails, existing_identities, api_c
             if session.google_blocked:
                 break
 
+        history.save()
         unique_stubs, duplicates_removed = dedupe_businesses(stubs)
         logger.critical(
-            "[Playwright] After deduplication: %d (removed %d)",
+            "[STEP 3.3] After discovery dedupe: %d unique (removed %d)",
             len(unique_stubs),
             duplicates_removed,
         )
 
+        log_step(3, 4, "Open place panels", f"{len(unique_stubs)} listings")
         discovered = []
-        for stub in unique_stubs:
+        for index, stub in enumerate(unique_stubs, 1):
             if session.google_blocked:
                 discovered.append(stub)
                 continue
+            if index == 1 or index % 10 == 0 or index == len(unique_stubs):
+                log_step(
+                    3,
+                    4,
+                    "Detail progress",
+                    f"{index}/{len(unique_stubs)} {stub.get('business_name')}",
+                )
             try:
                 entry = session.enrich_listing(stub)
             except Exception as exc:
@@ -1817,6 +2026,8 @@ def gather_leads_playwright(config, contacted_emails, existing_identities, api_c
         by_location.setdefault(loc, []).append(entry)
 
     total_rows = []
+    if unique:
+        log_stage(4, "Qualify & analyze", f"{len(unique)} unique businesses")
     for loc, businesses in by_location.items():
         city = state = None
         if "," in loc:
@@ -1824,6 +2035,7 @@ def gather_leads_playwright(config, contacted_emails, existing_identities, api_c
             city = city_part.strip()
             state = state_part.strip()
         try:
+            log_step(4, 1, "Process location batch", f"{loc} ({len(businesses)} businesses)")
             rows = process_businesses(
                 businesses,
                 api_key=None,
@@ -1850,8 +2062,9 @@ def gather_leads_playwright(config, contacted_emails, existing_identities, api_c
     with_website = sum(1 for b in unique if (b.get("website") or "").strip())
     stats = {
         "mode": "Playwright",
-        "searches_performed": discovery_stats.get("searches_performed", 0),
-        "locations_searched": locations_searched,
+        "searches_performed": searches_performed,
+        "searches_skipped": searches_skipped,
+        "locations_searched": len(locations_searched),
         "pages_processed": discovery_stats.get("pages_processed", 0),
         "businesses_discovered": len(stubs),
         "duplicates_removed": duplicates_removed,
@@ -1869,8 +2082,18 @@ def gather_leads_playwright(config, contacted_emails, existing_identities, api_c
 
 def run_leadgen(config):
     """Run lead generation with the given configuration."""
+    from datetime import datetime, timezone
+
+    started_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     leadgen_type = normalize_leadgen_type(config.leadgen_type)
     config.leadgen_type = leadgen_type
+
+    log_stage(
+        1,
+        "Initialize",
+        f"mode={leadgen_type} objective={config.objective} "
+        f"skip_searched={config.skip_searched}",
+    )
 
     if leadgen_type == "api_manager":
         if not GOOGLE_API_KEY or GOOGLE_API_KEY == "YOUR_GOOGLE_API_KEY":
@@ -1885,10 +2108,31 @@ def run_leadgen(config):
         logger.error("LEAD_INGEST_KEY is required for dashboard output mode.")
         return
 
-    logger.critical("Loading contacted emails to avoid re-contacting...")
+    log_stage(2, "Load prior state")
+    log_step(2, 1, "Load contacted emails", CONTACTED_FILE)
     contacted_emails = _load_contacted_emails()
+    log_step(2, 2, "Contacted emails loaded", f"{len(contacted_emails)} addresses")
+
+    log_step(2, 3, "Load existing leads", config.json_output)
     existing_place_ids = load_existing_place_ids(config.json_output)
     existing_identities = load_existing_identities(config.json_output)
+    log_step(
+        2,
+        4,
+        "Existing lead identities",
+        f"{len(existing_place_ids)} place_ids / {len(existing_identities)} identity keys",
+    )
+
+    log_step(2, 5, "Load search history", config.search_history_path)
+    history = SearchHistory(config.search_history_path)
+    prior_searches = len(history._data.get("searches") or {})
+    log_step(
+        2,
+        6,
+        "Search history ready",
+        f"{prior_searches} prior searches; skip_searched={config.skip_searched}",
+    )
+
     api_call_counter = {"places_nearby": 0, "places_details": 0}
 
     if leadgen_type == "playwright":
@@ -1897,6 +2141,7 @@ def run_leadgen(config):
             contacted_emails,
             existing_identities,
             api_call_counter,
+            history=history,
         )
     else:
         total_rows, stats = gather_leads_api_manager(
@@ -1904,33 +2149,83 @@ def run_leadgen(config):
             contacted_emails,
             existing_place_ids,
             api_call_counter,
+            history=history,
         )
 
     if not total_rows:
-        logger.critical("No qualifying leads found.")
+        logger.critical("[STAGE] No qualifying leads found after discovery/filters.")
+        log_stage(6, "Output", "skipped — nothing to save")
+        log_stage(7, "Finalize")
+        history.record_run({
+            "started_at": started_at,
+            "leadgen_type": leadgen_type,
+            "stats": stats,
+            "keywords": list(config.keywords),
+            "locations": [f"{city}, {state}" for state, city, _ in config.locations],
+        })
+        history.save()
+        if leadgen_type == "api_manager":
+            update_usage_stats(
+                nearby_calls=api_call_counter.get("places_nearby", 0),
+                details_calls=api_call_counter.get("places_details", 0),
+            )
         _print_run_summary(stats)
         return
 
-    logger.critical("Found %d qualifying leads (min score %d)", len(total_rows), config.min_score)
+    logger.critical(
+        "[STAGE 4 complete] Found %d qualifying leads (min score %d)",
+        len(total_rows),
+        config.min_score,
+    )
 
     if config.lead_enrichment:
         enriched = enrich_missing_emails(total_rows)
         if enriched and contacted_emails:
             kept = [row for row in total_rows if not _is_contacted(row, contacted_emails)]
             if len(kept) != len(total_rows):
-                logger.info(
-                    "Dropped %d enriched leads already in %s",
-                    len(total_rows) - len(kept),
-                    CONTACTED_FILE,
+                log_step(
+                    5,
+                    3,
+                    "Drop contacted after enrichment",
+                    f"{len(total_rows) - len(kept)} leads already in {CONTACTED_FILE}",
                 )
                 total_rows = kept
         stats["qualified_leads"] = len(total_rows)
+    else:
+        log_stage(5, "Lead enrichment", "skipped by configuration")
 
+    log_stage(6, "Output", config.output_mode)
     if config.output_mode in ("json", "both"):
+        log_step(6, 1, "Save JSON", config.json_output)
         save_results(total_rows, config.json_output)
 
     if config.output_mode in ("dashboard", "both"):
+        log_step(6, 2, "Dashboard bulk ingest", f"{len(total_rows)} leads")
         send_to_dashboard(total_rows)
+
+    log_stage(7, "Finalize")
+    history.record_run({
+        "started_at": started_at,
+        "leadgen_type": leadgen_type,
+        "stats": stats,
+        "keywords": list(config.keywords),
+        "locations": [f"{city}, {state}" for state, city, _ in config.locations],
+        "qualified_leads": len(total_rows),
+    })
+    history.save()
+    log_step(7, 1, "Search history updated", config.search_history_path)
+
+    if leadgen_type == "api_manager":
+        usage = update_usage_stats(
+            nearby_calls=api_call_counter.get("places_nearby", 0),
+            details_calls=api_call_counter.get("places_details", 0),
+        )
+        log_step(
+            7,
+            2,
+            "API usage updated",
+            f"{DEFAULT_USAGE_PATH} total_calls={usage.get('total_calls')}",
+        )
 
     _print_run_summary(stats)
 
