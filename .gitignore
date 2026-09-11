@@ -16,6 +16,7 @@ __pycache__/
 *contacted.txt
 *output*.json
 *leadgen_settings.json
+*leadgen_search_history.json
 
 *log.txt
 *.log
