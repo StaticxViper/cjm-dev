@@ -43,9 +43,11 @@ from email_discovery import (
 )
 from playwright_discovery import (
     BusinessDiscoverySession,
+    area_search_multiplier,
     business_dedupe_key,
     dedupe_businesses,
     extract_place_id_from_url,
+    normalize_area_expansion,
 )
 from search_history import (
     DEFAULT_HISTORY_PATH,
@@ -90,9 +92,11 @@ FETCH_HEADERS = {
 MIN_USEFUL_HTML_LENGTH = 200
 VALID_OBJECTIVES = ("phone", "email", "either", "both")
 VALID_LEADGEN_TYPES = ("api_manager", "playwright")
+VALID_AREA_EXPANSIONS = ("off", "light", "dense")
 DEFAULT_LEADGEN_TYPE = "api_manager"
-DEFAULT_PLAYWRIGHT_MAX_PAGES = 10
-DEFAULT_PLAYWRIGHT_MAX_RESULTS_PER_SEARCH = 200
+DEFAULT_PLAYWRIGHT_MAX_PAGES = 20
+DEFAULT_PLAYWRIGHT_MAX_RESULTS_PER_SEARCH = 400
+DEFAULT_PLAYWRIGHT_AREA_EXPANSION = "off"
 LEADGEN_STAGE_TOTAL = 7
 PERSISTED_SETTINGS_KEYS = (
     "min_score",
@@ -106,6 +110,7 @@ PERSISTED_SETTINGS_KEYS = (
     "leadgen_type",
     "playwright_max_pages",
     "playwright_max_results_per_search",
+    "playwright_area_expansion",
     "skip_searched",
     "search_history_path",
 )
@@ -199,6 +204,7 @@ class LeadgenConfig:
     leadgen_type: str = DEFAULT_LEADGEN_TYPE
     playwright_max_pages: int = DEFAULT_PLAYWRIGHT_MAX_PAGES
     playwright_max_results_per_search: int = DEFAULT_PLAYWRIGHT_MAX_RESULTS_PER_SEARCH
+    playwright_area_expansion: str = DEFAULT_PLAYWRIGHT_AREA_EXPANSION
     skip_searched: bool = True
     search_history_path: str = DEFAULT_HISTORY_PATH
 
@@ -249,6 +255,9 @@ def save_settings(config, path=None):
         "playwright_max_pages": int(config.playwright_max_pages),
         "playwright_max_results_per_search": int(
             config.playwright_max_results_per_search
+        ),
+        "playwright_area_expansion": normalize_area_expansion(
+            config.playwright_area_expansion
         ),
         "skip_searched": bool(config.skip_searched),
         "search_history_path": str(config.search_history_path or DEFAULT_HISTORY_PATH),
@@ -301,6 +310,10 @@ def config_from_saved_settings(path=None):
             )
         except (TypeError, ValueError):
             pass
+    if "playwright_area_expansion" in saved:
+        config.playwright_area_expansion = normalize_area_expansion(
+            saved["playwright_area_expansion"]
+        )
     if "skip_searched" in saved:
         config.skip_searched = bool(saved["skip_searched"])
     if "search_history_path" in saved and saved["search_history_path"]:
@@ -313,6 +326,209 @@ def normalize_leadgen_type(value, default=DEFAULT_LEADGEN_TYPE):
     if isinstance(value, str) and value.strip().lower() in VALID_LEADGEN_TYPES:
         return value.strip().lower()
     return default
+
+
+KEYWORD_GROUP_LABELS = {
+    "home_exterior": "Home exterior",
+    "home_interior": "Home interior",
+    "cleaning": "Cleaning / junk",
+    "auto": "Auto",
+    "events": "Events / food",
+    "pets": "Pets",
+    "personal_care": "Personal care",
+    "professional": "Professional services",
+    "education_care": "Education / care",
+    "other": "Other",
+}
+KEYWORD_GROUPS = {
+    "home_exterior": [
+        "landscaping",
+        "lawn care",
+        "tree service",
+        "roofing",
+        "fencing",
+        "deck building",
+        "garage door",
+        "window installation",
+        "siding",
+        "gutter cleaning",
+        "pressure washing",
+        "concrete",
+        "masonry",
+    ],
+    "home_interior": [
+        "plumbing",
+        "hvac",
+        "electrician",
+        "general contractor",
+        "remodeling",
+        "home renovation",
+        "painting",
+        "flooring",
+        "carpentry",
+        "handyman",
+        "drywall",
+        "appliance repair",
+    ],
+    "cleaning": [
+        "window cleaning",
+        "carpet cleaning",
+        "house cleaning",
+        "commercial cleaning",
+        "junk removal",
+        "upholstery cleaning",
+    ],
+    "auto": [
+        "mobile detailing",
+        "auto detailing",
+        "auto repair",
+        "tire shop",
+        "towing",
+        "car window tinting",
+        "mobile mechanic",
+    ],
+    "events": [
+        "photography",
+        "wedding photography",
+        "videography",
+        "dj services",
+        "event planning",
+        "catering",
+        "bakery",
+        "florist",
+    ],
+    "pets": [
+        "pet grooming",
+        "dog walking",
+        "pet sitting",
+        "dog training",
+    ],
+    "personal_care": [
+        "barber",
+        "hair salon",
+        "nail salon",
+        "massage therapy",
+        "personal trainer",
+        "fitness studio",
+        "tattoo shop",
+        "med spa",
+        "beauty salon",
+    ],
+    "professional": [
+        "accounting",
+        "bookkeeping",
+        "tax preparation",
+        "real estate agent",
+        "insurance agency",
+        "mortgage broker",
+        "financial advisor",
+        "law firm",
+        "attorney",
+        "private investigator",
+    ],
+    "education_care": [
+        "tutoring",
+        "music lessons",
+        "driving school",
+        "childcare",
+        "senior care",
+        "home care",
+    ],
+    "other": [
+        "moving company",
+        "pest control",
+        "pool service",
+        "pool cleaning",
+        "locksmith",
+    ],
+}
+
+
+def keyword_group_for(keyword):
+    """Return the industry group key for a keywords.json term."""
+    for group, names in KEYWORD_GROUPS.items():
+        if keyword in names:
+            return group
+    return "other"
+
+
+def listing_needs_detail(entry, config):
+    """True when a Maps card is missing fields required by the current run."""
+    objective = normalize_objective(config.objective)
+    phone = (entry.get("phone_google") or "").strip()
+    website = (entry.get("website") or "").strip()
+    if objective in ("phone", "both") and not phone:
+        return True
+    if objective in ("email", "both") and not website:
+        return True
+    if objective == "either" and not phone and not website:
+        return True
+    if config.require_website and not website:
+        return True
+    min_reviews = int(config.min_reviews or 0)
+    if min_reviews > 0:
+        reviews = entry.get("user_ratings_total")
+        if reviews is None:
+            return True
+        try:
+            if int(reviews) < min_reviews:
+                return True
+        except (TypeError, ValueError):
+            return True
+    return False
+
+
+def apply_high_volume_preset(config=None):
+    """Tune a config for large Playwright runs (hundreds–thousands of leads)."""
+    cfg = config or LeadgenConfig()
+    cfg.leadgen_type = "playwright"
+    cfg.playwright_max_pages = max(20, int(cfg.playwright_max_pages or 20))
+    cfg.playwright_max_results_per_search = max(
+        400, int(cfg.playwright_max_results_per_search or 400)
+    )
+    cfg.playwright_area_expansion = "light"
+    cfg.skip_searched = True
+    cfg.min_score = min(int(cfg.min_score), 55)
+    cfg.min_reviews = 0
+    cfg.filter_franchises = True
+    cfg.objective = "phone"
+    cfg.require_website = False
+    cfg.lead_enrichment = False
+    if cfg.output_mode not in ("json", "dashboard", "both"):
+        cfg.output_mode = "json"
+    return cfg
+
+
+def estimate_discovery_volume(config):
+    """Return a dict describing expected search count and lead yield."""
+    n_kw = len(config.keywords or [])
+    n_loc = len(config.locations or [])
+    leadgen_type = normalize_leadgen_type(config.leadgen_type)
+    expansion = normalize_area_expansion(
+        getattr(config, "playwright_area_expansion", "off")
+    )
+    areas = area_search_multiplier(expansion) if leadgen_type == "playwright" else 1
+    searches = n_kw * n_loc * areas
+    # Maps typically returns 40–120 unique listings per query; area overlap is high.
+    per_query_low = 40 if leadgen_type == "playwright" else 20
+    per_query_high = 120 if leadgen_type == "playwright" else 60
+    discovered_low = searches * per_query_low
+    discovered_high = searches * per_query_high
+    # Unique after cross-city overlap, then quality filters (~20–50% keep).
+    unique_low = max(n_kw * n_loc * 15, int(discovered_low * 0.15))
+    unique_high = max(unique_low, int(discovered_high * 0.45))
+    return {
+        "keywords": n_kw,
+        "locations": n_loc,
+        "areas_per_search": areas,
+        "searches": searches,
+        "discovered_low": discovered_low,
+        "discovered_high": discovered_high,
+        "unique_low": unique_low,
+        "unique_high": unique_high,
+        "leadgen_type": leadgen_type,
+        "expansion": expansion,
+    }
 
 
 def normalize_objective(value, default="phone"):
@@ -1233,6 +1449,20 @@ def _prompt_leadgen_type(default=DEFAULT_LEADGEN_TYPE):
     return labels.get(raw, normalize_leadgen_type(default))
 
 
+def _prompt_area_expansion(default=DEFAULT_PLAYWRIGHT_AREA_EXPANSION):
+    labels = {"1": "off", "2": "light", "3": "dense"}
+    current = normalize_area_expansion(default)
+    default_num = {"off": "1", "light": "2", "dense": "3"}.get(current, "1")
+    raw = input(
+        "Area expansion (more leads per city): "
+        "1=off  2=light (~5 map cells)  3=dense (~9 cells) "
+        f"[{default_num}]: "
+    ).strip()
+    if not raw:
+        return current
+    return labels.get(raw, current)
+
+
 def _prompt_objective(default="phone"):
     labels = {"1": "phone", "2": "email", "3": "either", "4": "both"}
     default_num = {"phone": "1", "email": "2", "either": "3", "both": "4"}.get(default, "1")
@@ -1259,17 +1489,39 @@ def _locations_by_state(coords_data=None):
 
 
 def _parse_index_selection(raw, max_index):
-    """Parse '1,3,5' into 0-based indices; empty string means all."""
-    if not raw.strip():
+    """Parse '1,3,5' or '1-4,8' into 0-based indices.
+
+    Empty / 'all' means all (returns None). 'none' means nothing (returns []).
+    """
+    if not raw or not raw.strip():
         return None
+    lowered = raw.strip().lower()
+    if lowered in ("all", "*"):
+        return None
+    if lowered in ("none", "n"):
+        return []
     indices = []
     for part in raw.split(","):
         part = part.strip()
         if not part:
             continue
+        if "-" in part and not part.startswith("-"):
+            ends = part.split("-", 1)
+            try:
+                start = int(ends[0].strip())
+                end = int(ends[1].strip())
+            except ValueError:
+                continue
+            if start > end:
+                start, end = end, start
+            for number in range(start, end + 1):
+                idx = number - 1
+                if 0 <= idx < max_index and idx not in indices:
+                    indices.append(idx)
+            continue
         try:
             idx = int(part) - 1
-            if 0 <= idx < max_index:
+            if 0 <= idx < max_index and idx not in indices:
                 indices.append(idx)
         except ValueError:
             continue
@@ -1305,22 +1557,146 @@ def _format_numbered_items_horizontal(items, width=None):
     return "\n".join(lines)
 
 
-def _prompt_keywords(keyword_map):
-    """Prompt user to select keywords from keywords.json."""
+def _prompt_choice(title, options, default="1"):
+    """Numbered single-choice prompt. options is [(key, label), ...]."""
+    print(f"\n{title}")
+    keys = []
+    for key, label in options:
+        keys.append(str(key))
+        print(f"{key}) {label}")
+    raw = input(f"Select [{default}]: ").strip() or str(default)
+    if raw in keys:
+        return raw
+    print(f"Invalid choice, using {default}.")
+    return str(default)
+
+
+def _prompt_keyword_groups(keyword_map):
     keys = list(keyword_map.keys())
-    print("\n--- Keywords (keywords.json) ---")
-    labels = [f"{kw} -> {keyword_map[kw]}" for kw in keys]
+    present_groups = []
+    for group, label in KEYWORD_GROUP_LABELS.items():
+        names = [kw for kw in KEYWORD_GROUPS.get(group, []) if kw in keyword_map]
+        extra = [kw for kw in keys if keyword_group_for(kw) == group and kw not in names]
+        names.extend(extra)
+        if names:
+            present_groups.append((group, label, names))
+    print("\nIndustry groups:")
+    labels = [
+        f"{label} ({len(names)})" for _group, label, names in present_groups
+    ]
     print(_format_numbered_items_horizontal(labels))
-    raw = input("Enter numbers (comma-separated) or press Enter for all: ").strip()
-    indices = _parse_index_selection(raw, len(keys))
-    if indices is None:
-        return list(keys)
-    selected = [keys[i] for i in indices]
+    raw = input(
+        "Enter group numbers or ranges (e.g. 1-3,5), or Enter for all groups: "
+    ).strip()
+    indices = _parse_index_selection(raw, len(present_groups))
+    chosen = present_groups if indices is None else [
+        present_groups[i] for i in indices
+    ]
+    selected = []
+    seen = set()
+    for _group, _label, names in chosen:
+        for kw in names:
+            if kw not in seen:
+                seen.add(kw)
+                selected.append(kw)
     return selected or list(keys)
 
 
-def _prompt_locations(all_locations):
-    """Prompt user to select locations from coords.json, grouped by state."""
+def _prompt_keyword_numbers(keyword_map):
+    keys = list(keyword_map.keys())
+    print("\n--- Keywords ---")
+    print(_format_numbered_items_horizontal(keys))
+    raw = input(
+        "Enter numbers/ranges (e.g. 1-8,12) or press Enter for all: "
+    ).strip()
+    indices = _parse_index_selection(raw, len(keys))
+    if indices is None:
+        return list(keys)
+    return [keys[i] for i in indices] or list(keys)
+
+
+def _prompt_keyword_search(keyword_map):
+    keys = list(keyword_map.keys())
+    needle = input("Search text (matches keyword names): ").strip().lower()
+    if not needle:
+        print("No search text; using all keywords.")
+        return list(keys)
+    matches = [kw for kw in keys if needle in kw.lower()]
+    if not matches:
+        print("No keywords matched; using all.")
+        return list(keys)
+    print(f"\nMatched {len(matches)} keyword(s):")
+    print(_format_numbered_items_horizontal(matches))
+    raw = input("Enter numbers/ranges from this list, or Enter for all matches: ").strip()
+    indices = _parse_index_selection(raw, len(matches))
+    if indices is None:
+        return matches
+    return [matches[i] for i in indices] or matches
+
+
+def _prompt_keywords(keyword_map):
+    """Prompt user to select keywords from keywords.json."""
+    keys = list(keyword_map.keys())
+    print(f"\n--- Keywords ({len(keys)} in keywords.json) ---")
+    choice = _prompt_choice(
+        "How do you want to choose keywords?",
+        [
+            ("1", f"All {len(keys)} keywords  (best for volume)"),
+            ("2", "By industry group"),
+            ("3", "Pick numbers / ranges  (e.g. 1-8,12)"),
+            ("4", "Search by name"),
+        ],
+        default="1",
+    )
+    if choice == "2":
+        selected = _prompt_keyword_groups(keyword_map)
+    elif choice == "3":
+        selected = _prompt_keyword_numbers(keyword_map)
+    elif choice == "4":
+        selected = _prompt_keyword_search(keyword_map)
+    else:
+        selected = list(keys)
+    print(f"Selected {len(selected)} keyword(s).")
+    return selected
+
+
+def _prompt_locations_by_state(all_locations):
+    by_state = _locations_by_state()
+    states = list(by_state.keys())
+    print("\nStates:")
+    labels = [
+        f"{state} ({len(cities)} cities)" for state, cities in by_state.items()
+    ]
+    print(_format_numbered_items_horizontal(labels))
+    raw = input(
+        "Enter state numbers, ranges, or codes (e.g. 1-3 or NJ,PA). Enter for all: "
+    ).strip()
+    if not raw:
+        return list(all_locations)
+    selected_states = set()
+    tokens = [part.strip() for part in raw.replace(";", ",").split(",") if part.strip()]
+    numeric_raw = ",".join(t for t in tokens if t.isdigit() or "-" in t)
+    code_tokens = [t.upper() for t in tokens if not (t.isdigit() or "-" in t)]
+    if numeric_raw:
+        indices = _parse_index_selection(numeric_raw, len(states))
+        if indices is None:
+            return list(all_locations)
+        selected_states.update(states[i] for i in indices)
+    for code in code_tokens:
+        if code in by_state:
+            selected_states.add(code)
+        else:
+            print(f"Unknown state '{code}', ignored.")
+    if not selected_states:
+        print("No states matched; using all locations.")
+        return list(all_locations)
+    selected = [
+        loc for loc in all_locations if loc[0] in selected_states
+    ]
+    return selected or list(all_locations)
+
+
+def _prompt_location_numbers(all_locations):
     by_state = _locations_by_state()
     print("\n--- Locations (coords.json) ---")
     index_map = []
@@ -1330,7 +1706,6 @@ def _prompt_locations(all_locations):
         for city, coords in cities:
             index_map.append((state, city, coords))
             state_items.append(city)
-        # Global numbering continues across states; format only this state's slice.
         start = len(index_map) - len(state_items) + 1
         width = _terminal_width()
         current = ""
@@ -1349,12 +1724,40 @@ def _prompt_locations(all_locations):
         if current:
             lines.append(current)
         print("\n".join(lines))
-    raw = input("\nEnter numbers (comma-separated) or press Enter for all: ").strip()
+    raw = input(
+        "\nEnter numbers/ranges (e.g. 1-4,7) or press Enter for all: "
+    ).strip()
     indices = _parse_index_selection(raw, len(index_map))
     if indices is None:
         return list(all_locations)
     selected = [index_map[i] for i in indices]
     return selected or list(all_locations)
+
+
+def _prompt_locations(all_locations):
+    """Prompt user to select locations from coords.json."""
+    print(f"\n--- Locations ({len(all_locations)} cities in coords.json) ---")
+    choice = _prompt_choice(
+        "How do you want to choose locations?",
+        [
+            ("1", f"All {len(all_locations)} cities  (best for volume)"),
+            ("2", "By state  (numbers or codes like NJ, PA)"),
+            ("3", "Pick cities by number / range"),
+        ],
+        default="1",
+    )
+    if choice == "2":
+        selected = _prompt_locations_by_state(all_locations)
+    elif choice == "3":
+        selected = _prompt_location_numbers(all_locations)
+    else:
+        selected = list(all_locations)
+    print(
+        f"Selected {len(selected)} location(s): "
+        + ", ".join(f"{city}, {state}" for state, city, _ in selected[:12])
+        + ("..." if len(selected) > 12 else "")
+    )
+    return selected
 
 
 def interactive_select_locations_and_keywords():
@@ -1365,39 +1768,112 @@ def interactive_select_locations_and_keywords():
 
 
 def interactive_customize_config(base_config=None):
-    """Walk through customization prompts for persisted defaults (no keywords/locations)."""
+    """Edit persisted defaults from a numbered menu (no keywords/locations)."""
     cfg = base_config or config_from_saved_settings()
-    print("\n--- Customize Lead Generation Defaults ---")
-    cfg.leadgen_type = _prompt_leadgen_type(cfg.leadgen_type)
-    if cfg.leadgen_type == "playwright":
-        cfg.playwright_max_pages = _prompt_int(
-            "Playwright max pages per search",
-            cfg.playwright_max_pages,
+    while True:
+        print("\n--- Settings (enter a number to change, Enter to save) ---")
+        items = [
+            ("1", "Leadgen type", normalize_leadgen_type(cfg.leadgen_type)),
+            ("2", "Playwright max pages", cfg.playwright_max_pages),
+            ("3", "Max results per search", cfg.playwright_max_results_per_search),
+            (
+                "4",
+                "Area expansion",
+                normalize_area_expansion(cfg.playwright_area_expansion),
+            ),
+            ("5", "Skip already searched", cfg.skip_searched),
+            ("6", "Search history path", cfg.search_history_path),
+            ("7", "Minimum score", cfg.min_score),
+            ("8", "Minimum reviews", cfg.min_reviews),
+            ("9", "Filter franchises", cfg.filter_franchises),
+            ("10", "Objective", cfg.objective),
+            ("11", "Require website", cfg.require_website),
+            ("12", "Lead enrichment", cfg.lead_enrichment),
+            ("13", "Output", cfg.output_mode),
+            ("14", "JSON output path", cfg.json_output),
+        ]
+        width = max(len(label) for _num, label, _val in items)
+        for num, label, value in items:
+            print(f" {num:>2}) {label:<{width}}  [{value}]")
+        raw = input("Change setting [Enter=save & return]: ").strip()
+        if not raw:
+            return cfg
+        if raw == "1":
+            cfg.leadgen_type = _prompt_leadgen_type(cfg.leadgen_type)
+        elif raw == "2":
+            cfg.playwright_max_pages = _prompt_int(
+                "Playwright max pages per search",
+                cfg.playwright_max_pages,
+            )
+        elif raw == "3":
+            cfg.playwright_max_results_per_search = _prompt_int(
+                "Playwright max results per search",
+                cfg.playwright_max_results_per_search,
+            )
+        elif raw == "4":
+            cfg.playwright_area_expansion = _prompt_area_expansion(
+                cfg.playwright_area_expansion
+            )
+        elif raw == "5":
+            cfg.skip_searched = _prompt_bool(
+                "Skip keyword/location searches already in history",
+                cfg.skip_searched,
+            )
+        elif raw == "6":
+            cfg.search_history_path = _prompt_text(
+                "Search history path",
+                cfg.search_history_path,
+            )
+        elif raw == "7":
+            cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
+        elif raw == "8":
+            cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
+        elif raw == "9":
+            cfg.filter_franchises = _prompt_bool(
+                "Filter out franchises/chains",
+                cfg.filter_franchises,
+            )
+        elif raw == "10":
+            cfg.objective = _prompt_objective(cfg.objective)
+        elif raw == "11":
+            cfg.require_website = _prompt_bool("Require website", cfg.require_website)
+        elif raw == "12":
+            cfg.lead_enrichment = _prompt_bool(
+                "Lead enrichment (find missing emails on Facebook)",
+                cfg.lead_enrichment,
+            )
+        elif raw == "13":
+            cfg.output_mode = _prompt_output_mode(cfg.output_mode)
+        elif raw == "14":
+            cfg.json_output = _prompt_text("JSON output path", cfg.json_output)
+        else:
+            print("Enter a setting number from the list, or press Enter to save.")
+
+
+def _print_volume_estimate(config):
+    stats = estimate_discovery_volume(config)
+    print("\n--- Volume estimate ---")
+    print(
+        f"  {stats['keywords']} keywords x {stats['locations']} cities"
+        + (
+            f" x {stats['areas_per_search']} map cells"
+            if stats["leadgen_type"] == "playwright"
+            else ""
         )
-        cfg.playwright_max_results_per_search = _prompt_int(
-            "Playwright max results per search",
-            cfg.playwright_max_results_per_search,
+        + f" = {stats['searches']} searches"
+    )
+    print(
+        f"  Typical unique businesses: {stats['unique_low']:,}-{stats['unique_high']:,}"
+    )
+    print(
+        "  After quality filters, expect hundreds of leads from a few cities, "
+        "or thousands from many keywords x many cities."
+    )
+    if stats["searches"] >= 200:
+        print(
+            "  Note: Playwright volume runs can take hours; skip-searched "
+            "lets you resume later."
         )
-    cfg.skip_searched = _prompt_bool(
-        "Skip keyword/location searches already in history",
-        cfg.skip_searched,
-    )
-    cfg.search_history_path = _prompt_text(
-        "Search history path",
-        cfg.search_history_path,
-    )
-    cfg.min_score = _prompt_int("Minimum score", cfg.min_score)
-    cfg.min_reviews = _prompt_int("Minimum review count", cfg.min_reviews)
-    cfg.filter_franchises = _prompt_bool("Filter out franchises/chains", cfg.filter_franchises)
-    cfg.objective = _prompt_objective(cfg.objective)
-    cfg.require_website = _prompt_bool("Require website", cfg.require_website)
-    cfg.lead_enrichment = _prompt_bool(
-        "Lead enrichment (find missing emails on Facebook)",
-        cfg.lead_enrichment,
-    )
-    cfg.output_mode = _prompt_output_mode(cfg.output_mode)
-    cfg.json_output = _prompt_text("JSON output path", cfg.json_output)
-    return cfg
 
 
 def _print_config_summary(config, include_run_scope=True):
@@ -1405,7 +1881,12 @@ def _print_config_summary(config, include_run_scope=True):
     print(f"  Leadgen type:      {normalize_leadgen_type(config.leadgen_type)}")
     if normalize_leadgen_type(config.leadgen_type) == "playwright":
         print(f"  Playwright pages:  {config.playwright_max_pages}")
-        print(f"  Playwright max:    {config.playwright_max_results_per_search} results/search")
+        print(
+            f"  Playwright max:    {config.playwright_max_results_per_search} results/search"
+        )
+        print(
+            f"  Area expansion:    {normalize_area_expansion(config.playwright_area_expansion)}"
+        )
     print(f"  Skip searched:     {config.skip_searched}")
     print(f"  Search history:    {config.search_history_path}")
     print(f"  Min score:         {config.min_score}")
@@ -1417,39 +1898,54 @@ def _print_config_summary(config, include_run_scope=True):
     print(f"  Output:            {config.output_mode}")
     print(f"  JSON path:         {config.json_output}")
     if include_run_scope:
-        print(f"  Keywords:          {', '.join(config.keywords)}")
+        print(f"  Keywords ({len(config.keywords)}): {', '.join(config.keywords)}")
         locs = ", ".join(f"{city}, {state}" for state, city, _ in config.locations)
-        print(f"  Locations:         {locs}")
+        print(f"  Locations ({len(config.locations)}): {locs}")
+        _print_volume_estimate(config)
     print()
 
 
 def interactive_run_config():
     """Load saved defaults, prompt keywords/locations, return config or None if cancelled."""
     cfg = config_from_saved_settings()
-    cfg.keywords, cfg.locations = interactive_select_locations_and_keywords()
-    _print_config_summary(cfg)
-    confirm = input("Run with these settings? [Y/n]: ").strip().lower()
-    if confirm in ("n", "no"):
-        return None
-    return cfg
+    while True:
+        cfg.keywords, cfg.locations = interactive_select_locations_and_keywords()
+        _print_config_summary(cfg)
+        confirm = input(
+            "Run with these settings? [Y/n/s=settings]: "
+        ).strip().lower()
+        if confirm in ("n", "no"):
+            return None
+        if confirm in ("s", "settings"):
+            cfg = interactive_customize_config(cfg)
+            save_settings(cfg)
+            continue
+        return cfg
 
 
 def interactive_main_menu():
     """Show startup menu and return a LeadgenConfig, or None to exit."""
     while True:
-        saved = load_saved_settings()
-        defaults_note = (
-            f"min score {saved.get('min_score', 80)}, "
-            f"output {saved.get('output_mode', 'json')}"
-            if saved
-            else "min score 80, save to JSON"
-        )
+        cfg_preview = config_from_saved_settings()
+        leadgen_type = normalize_leadgen_type(cfg_preview.leadgen_type)
         print("\n=== Lead Generation ===")
-        print(f"1) Run ({defaults_note}; choose keywords & locations)")
-        print("2) Customize settings (save defaults, do not run)")
-        print("3) Exit")
+        print(
+            f"  Current: {leadgen_type} | objective={cfg_preview.objective} | "
+            f"min score {cfg_preview.min_score} | output {cfg_preview.output_mode}"
+        )
+        if leadgen_type == "playwright":
+            print(
+                f"  Playwright: {cfg_preview.playwright_max_pages} pages, "
+                f"{cfg_preview.playwright_max_results_per_search} max/search, "
+                f"expansion={normalize_area_expansion(cfg_preview.playwright_area_expansion)}"
+            )
+        print()
+        print("1) Run (choose keywords & locations)")
+        print("2) Settings (save defaults, do not run)")
+        print("3) High-volume preset (Playwright, area expansion, no Facebook enrich)")
+        print("4) Exit")
         choice = input("Select [1]: ").strip() or "1"
-        if choice == "3":
+        if choice == "4":
             return None
         if choice == "2":
             cfg = interactive_customize_config()
@@ -1457,9 +1953,19 @@ def interactive_main_menu():
             _print_config_summary(cfg, include_run_scope=False)
             print(f"Defaults saved to {SETTINGS_PATH.name}. Returning to menu.")
             continue
+        if choice == "3":
+            cfg = apply_high_volume_preset(config_from_saved_settings())
+            save_settings(cfg)
+            print("\nApplied high-volume Playwright preset.")
+            _print_config_summary(cfg, include_run_scope=False)
+            go = input("Choose keywords & locations and run now? [Y/n]: ").strip().lower()
+            if go in ("n", "no"):
+                print(f"Defaults saved to {SETTINGS_PATH.name}. Returning to menu.")
+                continue
+            return interactive_run_config()
         if choice == "1":
             return interactive_run_config()
-        print("Invalid choice. Please select 1, 2, or 3.")
+        print("Invalid choice. Please select 1, 2, 3, or 4.")
 
 
 def parse_args():
@@ -1494,6 +2000,15 @@ def parse_args():
         help=(
             "Max businesses to collect per keyword/location in Playwright mode "
             f"(default {DEFAULT_PLAYWRIGHT_MAX_RESULTS_PER_SEARCH})"
+        ),
+    )
+    parser.add_argument(
+        "--playwright-area-expansion",
+        choices=list(VALID_AREA_EXPANSIONS),
+        default=None,
+        help=(
+            "Extra map cells around each city to break Maps' ~120 result cap: "
+            "off, light (~5 cells), or dense (~9 cells)"
         ),
     )
     parser.add_argument(
@@ -1603,6 +2118,11 @@ def parse_args():
         action="append",
         help="City name filter (repeatable); matches coords.json city names",
     )
+    parser.add_argument(
+        "--state",
+        action="append",
+        help="State code filter (repeatable); matches coords.json keys like NJ, PA",
+    )
     return parser.parse_args()
 
 
@@ -1612,6 +2132,7 @@ def _has_cli_overrides(args):
         args.leadgen_type is not None,
         args.playwright_max_pages is not None,
         args.playwright_max_results_per_search is not None,
+        args.playwright_area_expansion is not None,
         args.skip_searched is not None,
         args.search_history_path is not None,
         args.min_score is not None,
@@ -1626,6 +2147,7 @@ def _has_cli_overrides(args):
         args.json_path is not None,
         args.keywords is not None,
         args.city is not None,
+        args.state is not None,
     ])
 
 
@@ -1639,6 +2161,10 @@ def config_from_args(args):
     if args.playwright_max_results_per_search is not None:
         config.playwright_max_results_per_search = max(
             1, int(args.playwright_max_results_per_search)
+        )
+    if args.playwright_area_expansion is not None:
+        config.playwright_area_expansion = normalize_area_expansion(
+            args.playwright_area_expansion
         )
     if args.skip_searched is not None:
         config.skip_searched = bool(args.skip_searched)
@@ -1670,6 +2196,18 @@ def config_from_args(args):
         config.json_output = args.json_path
     if args.keywords is not None:
         config.keywords = args.keywords
+    locations = _default_locations()
+    if args.state is not None:
+        state_names = set()
+        for entry in args.state:
+            for part in entry.split(","):
+                part = part.strip().upper()
+                if part:
+                    state_names.add(part)
+        locations = [loc for loc in locations if loc[0].upper() in state_names]
+        if not locations:
+            logger.warning("No states matched --state filter; using all locations")
+            locations = _default_locations()
     if args.city is not None:
         city_names = set()
         for entry in args.city:
@@ -1678,13 +2216,15 @@ def config_from_args(args):
                 if part:
                     city_names.add(part.lower())
         filtered = [
-            loc for loc in _default_locations()
+            loc for loc in locations
             if loc[1].lower() in city_names
         ]
         if filtered:
-            config.locations = filtered
+            locations = filtered
         else:
-            logger.warning("No cities matched --city filter; using all locations")
+            logger.warning("No cities matched --city filter; using current location set")
+    if args.state is not None or args.city is not None:
+        config.locations = locations
     return config
 
 
@@ -1715,11 +2255,15 @@ def _print_playwright_mode_banner(config):
     print(
         f"Max results per search: {config.playwright_max_results_per_search}"
     )
+    print(
+        f"Area expansion: {normalize_area_expansion(config.playwright_area_expansion)}"
+    )
     print()
     logger.critical(
-        "Lead generation mode: Playwright (max_pages=%s, max_results_per_search=%s)",
+        "Lead generation mode: Playwright (max_pages=%s, max_results_per_search=%s, expansion=%s)",
         max_pages,
         config.playwright_max_results_per_search,
+        normalize_area_expansion(config.playwright_area_expansion),
     )
 
 
@@ -1915,6 +2459,7 @@ def gather_leads_playwright(
                 state,
                 leadgen_type="playwright",
                 playwright_max_pages=config.playwright_max_pages,
+                playwright_area_expansion=config.playwright_area_expansion,
                 skip_searched=config.skip_searched,
             )
             for prior in skipped:
@@ -1933,19 +2478,30 @@ def gather_leads_playwright(
             for keyword in pending:
                 try:
                     log_step(3, 2, "Maps search", f"{keyword} × {city}, {state}")
-                    listings = session.search_listings(
+                    listings = session.search_location(
                         keyword,
                         city,
                         state,
+                        coords=_coords,
                         max_pages=config.playwright_max_pages,
                         max_results=config.playwright_max_results_per_search,
+                        area_expansion=config.playwright_area_expansion,
                     )
+                    if session.google_blocked and not listings:
+                        logger.error(
+                            "[Playwright] Search blocked for %s / %s, %s; not recording history",
+                            keyword,
+                            city,
+                            state,
+                        )
+                        break
                     history.record_search(
                         leadgen_type="playwright",
                         keyword=keyword,
                         city=city,
                         state=state,
                         playwright_max_pages=config.playwright_max_pages,
+                        playwright_area_expansion=config.playwright_area_expansion,
                         businesses_found=len(listings),
                         status="completed",
                     )
@@ -1986,11 +2542,19 @@ def gather_leads_playwright(
 
         log_step(3, 4, "Open place panels", f"{len(unique_stubs)} listings")
         discovered = []
+        details_needed = 0
         for index, stub in enumerate(unique_stubs, 1):
             if session.google_blocked:
                 discovered.append(stub)
                 continue
-            if index == 1 or index % 10 == 0 or index == len(unique_stubs):
+            needs_detail = listing_needs_detail(stub, config)
+            if not needs_detail:
+                entry = dict(stub)
+                entry["source"] = stub.get("source") or "playwright"
+                discovered.append(entry)
+                continue
+            details_needed += 1
+            if details_needed == 1 or index % 10 == 0 or index == len(unique_stubs):
                 log_step(
                     3,
                     4,
@@ -2013,6 +2577,12 @@ def gather_leads_playwright(
             if not entry.get("place_id"):
                 entry["place_id"] = extract_place_id_from_url(entry.get("profile_url"))
             discovered.append(entry)
+        skipped_details = len(unique_stubs) - details_needed
+        if skipped_details:
+            logger.critical(
+                "[STEP 3.4] Skipped %d detail pages (card already had required fields)",
+                skipped_details,
+            )
 
         unique, _ = dedupe_businesses(discovered)
     finally:
