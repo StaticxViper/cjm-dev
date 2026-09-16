@@ -97,6 +97,16 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 | `test_score_cannot_override_objective` | High score does not satisfy a missing contact |
 | `test_legacy_flags_map_to_objective` / CLI tests | Old require flags normalize; `--objective` wins |
 
+### `TestSelectionHelpers` / `TestLeadgenTypeConfig` / `TestPlaywrightDiscoveryHelpers`
+
+| Test | What it checks |
+|------|----------------|
+| `test_parse_index_selection_ranges_and_none` | `1-3,5`, `all`, and `none` |
+| `test_cli_leadgen_type_playwright` | `--playwright-area-expansion` persists on the config |
+| `test_parse_card_fields_and_area_expansion` | Maps card phone/website/rating parse; light/dense grid sizes |
+| `test_listing_needs_detail_and_high_volume_preset` | Skip detail pages when the card is complete; volume estimate |
+| `test_cli_state_filter` | `--state` + `--city` narrows `coords.json` |
+
 ## Test file: `unittests/lead_automation/test_email_discovery.py`
 
 Imports `email_discovery` the same way. Playwright and HTTP are mocked; no live Google requests.

@@ -131,6 +131,13 @@ class TestSelectionHelpers(unittest.TestCase):
     def test_parse_index_selection_parses_commas(self):
         self.assertEqual(LEADGEN._parse_index_selection("1,3", 5), [0, 2])
 
+    def test_parse_index_selection_ranges_and_none(self):
+        self.assertEqual(LEADGEN._parse_index_selection("1-3,5", 5), [0, 1, 2, 4])
+        self.assertEqual(LEADGEN._parse_index_selection("4-2", 5), [1, 2, 3])
+        self.assertEqual(LEADGEN._parse_index_selection("all", 5), None)
+        self.assertEqual(LEADGEN._parse_index_selection("none", 5), [])
+        self.assertEqual(LEADGEN._parse_index_selection("1-99,abc", 3), [0, 1, 2])
+
     def test_parse_index_selection_ignores_invalid(self):
         self.assertEqual(LEADGEN._parse_index_selection("0,99,abc,2", 5), [1])
 
@@ -240,7 +247,7 @@ class TestSettingsPersistence(unittest.TestCase):
             with patch.object(LEADGEN, "SETTINGS_PATH", path), \
                     patch.object(LEADGEN, "interactive_customize_config", return_value=fake_cfg), \
                     patch.object(LEADGEN, "interactive_run_config") as mock_run, \
-                    patch("builtins.input", side_effect=["2", "3"]):
+                    patch("builtins.input", side_effect=["2", "4"]):
                 result = LEADGEN.interactive_main_menu()
             self.assertIsNone(result)
             mock_run.assert_not_called()
@@ -1032,24 +1039,28 @@ class TestLeadgenTypeConfig(unittest.TestCase):
     def test_default_is_api_manager(self):
         cfg = LEADGEN.LeadgenConfig()
         self.assertEqual(cfg.leadgen_type, "api_manager")
-        self.assertEqual(cfg.playwright_max_pages, 10)
-        self.assertEqual(cfg.playwright_max_results_per_search, 200)
+        self.assertEqual(cfg.playwright_max_pages, 20)
+        self.assertEqual(cfg.playwright_max_results_per_search, 400)
+        self.assertEqual(cfg.playwright_area_expansion, "off")
 
     def test_settings_round_trip_leadgen_type(self):
         cfg = LEADGEN.LeadgenConfig(
             leadgen_type="playwright",
             playwright_max_pages=7,
             playwright_max_results_per_search=50,
+            playwright_area_expansion="dense",
         )
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "leadgen_settings.json"
             payload = LEADGEN.save_settings(cfg, path=path)
             self.assertEqual(payload["leadgen_type"], "playwright")
             self.assertEqual(payload["playwright_max_pages"], 7)
+            self.assertEqual(payload["playwright_area_expansion"], "dense")
             rebuilt = LEADGEN.config_from_saved_settings(path=path)
             self.assertEqual(rebuilt.leadgen_type, "playwright")
             self.assertEqual(rebuilt.playwright_max_pages, 7)
             self.assertEqual(rebuilt.playwright_max_results_per_search, 50)
+            self.assertEqual(rebuilt.playwright_area_expansion, "dense")
 
     def test_legacy_settings_keep_api_manager_default(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1071,6 +1082,8 @@ class TestLeadgenTypeConfig(unittest.TestCase):
                 "5",
                 "--playwright-max-results-per-search",
                 "40",
+                "--playwright-area-expansion",
+                "light",
             ],
         ):
             args = LEADGEN.parse_args()
@@ -1080,6 +1093,7 @@ class TestLeadgenTypeConfig(unittest.TestCase):
         self.assertEqual(config.leadgen_type, "playwright")
         self.assertEqual(config.playwright_max_pages, 5)
         self.assertEqual(config.playwright_max_results_per_search, 40)
+        self.assertEqual(config.playwright_area_expansion, "light")
 
     def test_normalize_leadgen_type_rejects_unknown(self):
         self.assertEqual(LEADGEN.normalize_leadgen_type("nope"), "api_manager")
@@ -1158,6 +1172,90 @@ class TestPlaywrightDiscoveryHelpers(unittest.TestCase):
         self.assertEqual(rows[0]["source"], "playwright")
         self.assertEqual(rows[0]["business_name"], "Local Roofing")
 
+    def test_parse_card_fields_and_area_expansion(self):
+        from playwright_discovery import (
+            expansion_points,
+            parse_card_fields,
+            area_search_multiplier,
+        )
+
+        fields = parse_card_fields(
+            "Cherry Hill Plumbing\n4.7\nPlumber · 935 Cropwell Rd\n"
+            "Open · (856) 424-9670\nWebsite",
+            extra={
+                "website": "http://cherryhillplumbing.com/",
+                "ratingText": "4.7",
+                "reviewsText": "(51)",
+            },
+        )
+        self.assertEqual(fields["phone_google"], "(856) 424-9670")
+        self.assertEqual(fields["website"], "http://cherryhillplumbing.com/")
+        self.assertEqual(fields["rating"], 4.7)
+        self.assertEqual(fields["user_ratings_total"], 51)
+        self.assertEqual(fields["category"], "Plumber")
+        self.assertIn("935 Cropwell", fields["address"])
+
+        self.assertEqual(expansion_points("39.95,-75.16", "off"), [])
+        light = expansion_points("39.95,-75.16", "light")
+        self.assertEqual(len(light), 4)
+        dense = expansion_points((39.95, -75.16), "dense")
+        self.assertEqual(len(dense), 8)
+        self.assertEqual(area_search_multiplier("light"), 5)
+        self.assertEqual(area_search_multiplier("dense"), 9)
+
+    def test_listing_needs_detail_and_high_volume_preset(self):
+        card = {
+            "business_name": "Local Plumbing",
+            "phone_google": "(856) 555-0100",
+            "website": "https://local.example",
+            "rating": 4.6,
+        }
+        cfg = LEADGEN.LeadgenConfig(objective="phone", min_reviews=0)
+        self.assertFalse(LEADGEN.listing_needs_detail(card, cfg))
+        self.assertTrue(
+            LEADGEN.listing_needs_detail({"business_name": "No Phone"}, cfg)
+        )
+        cfg_reviews = LEADGEN.LeadgenConfig(objective="phone", min_reviews=5)
+        self.assertTrue(LEADGEN.listing_needs_detail(card, cfg_reviews))
+
+        preset = LEADGEN.apply_high_volume_preset(LEADGEN.LeadgenConfig())
+        self.assertEqual(preset.leadgen_type, "playwright")
+        self.assertEqual(preset.playwright_area_expansion, "light")
+        self.assertGreaterEqual(preset.playwright_max_pages, 20)
+        self.assertFalse(preset.lead_enrichment)
+        self.assertEqual(preset.min_reviews, 0)
+
+        volume = LEADGEN.estimate_discovery_volume(
+            LEADGEN.LeadgenConfig(
+                leadgen_type="playwright",
+                playwright_area_expansion="light",
+                keywords=["plumbing", "hvac"],
+                locations=[
+                    ("NJ", "Cherry Hill", "39.9,-75.1"),
+                    ("PA", "Philadelphia", "39.9,-75.1"),
+                ],
+            )
+        )
+        self.assertEqual(volume["searches"], 2 * 2 * 5)
+        self.assertGreaterEqual(volume["unique_high"], 100)
+
+    def test_keyword_groups_cover_catalog(self):
+        missing = [
+            kw
+            for kw in LEADGEN.KEYWORD_CATEGORIES
+            if LEADGEN.keyword_group_for(kw) == "other"
+            and kw not in LEADGEN.KEYWORD_GROUPS["other"]
+        ]
+        self.assertEqual(missing, [])
+
+    def test_cli_state_filter(self):
+        with patch.object(sys, "argv", ["leadgen.py", "--state", "NJ", "--city", "Cherry Hill"]):
+            args = LEADGEN.parse_args()
+        with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+            config = LEADGEN.config_from_args(args)
+        self.assertEqual(len(config.locations), 1)
+        self.assertEqual(config.locations[0][1], "Cherry Hill")
+
 
 @SKIP
 class TestSearchHistory(unittest.TestCase):
@@ -1201,6 +1299,29 @@ class TestSearchHistory(unittest.TestCase):
             self.assertEqual(data["details_calls"], 5)
             self.assertEqual(data["total_calls"], 7)
             self.assertEqual(data["runs"], 1)
+
+    def test_playwright_search_key_includes_expansion(self):
+        from search_history import make_search_key
+
+        key = make_search_key(
+            "playwright",
+            "plumbing",
+            "Cherry Hill",
+            "nj",
+            playwright_max_pages=20,
+            playwright_area_expansion="light",
+        )
+        self.assertEqual(
+            key, "playwright|plumbing|cherry hill|NJ|pages:20|expand:light"
+        )
+        off_key = make_search_key(
+            "playwright",
+            "plumbing",
+            "Cherry Hill",
+            "NJ",
+            playwright_max_pages=20,
+        )
+        self.assertEqual(off_key, "playwright|plumbing|cherry hill|NJ|pages:20")
 
     def test_cli_force_research(self):
         with patch.object(sys, "argv", ["leadgen.py", "--force-research"]):
