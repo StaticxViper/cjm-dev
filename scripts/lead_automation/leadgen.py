@@ -1370,18 +1370,25 @@ def send_to_dashboard(rows):
     )
 
 
-def enrich_missing_emails(rows):
-    """Fill in missing emails from Facebook Pages; returns the rows that gained one.
+def enrich_missing_emails(rows, leadgen_type=None):
+    """Fill in missing emails / research leads; returns rows the enricher processed.
 
-    leadenrich imports leadgen for dashboard ingest, so it is imported here
-    rather than at module level. Enrichment is best effort: a failure must not
-    cost the run its leads.
+    API Manager discovery uses Facebook/Apify (leadenrich.py). Playwright discovery
+    uses Google research (leadenrich_playwright.py). Both modules import leadgen
+    lazily for dashboard ingest, so they are imported here rather than at module
+    level. Enrichment is best effort: a failure must not cost the run its leads.
     """
-    from leadenrich import EnrichConfig, enrich_leads
-
-    log_stage(5, "Lead enrichment", f"{len(rows)} qualifying leads")
-    log_step(5, 1, "Hand off to Facebook enrichment")
+    provider = normalize_leadgen_type(leadgen_type or DEFAULT_LEADGEN_TYPE)
+    log_stage(5, "Lead enrichment", f"{len(rows)} qualifying leads ({provider})")
     try:
+        if provider == "playwright":
+            from leadenrich_playwright import EnrichConfig, enrich_leads
+
+            log_step(5, 1, "Hand off to Playwright Google enrichment")
+        else:
+            from leadenrich import EnrichConfig, enrich_leads
+
+            log_step(5, 1, "Hand off to Facebook enrichment")
         enriched = enrich_leads(rows, EnrichConfig())
     except Exception as e:
         logger.error("[STAGE 5] Lead enrichment failed: %s", e)
@@ -1389,7 +1396,7 @@ def enrich_missing_emails(rows):
 
     if enriched:
         logger.critical(
-            "[STEP 5.2] Enrichment found emails for %d leads",
+            "[STEP 5.2] Enrichment updated %d leads",
             len(enriched),
         )
     else:
@@ -1788,7 +1795,15 @@ def interactive_customize_config(base_config=None):
             ("9", "Filter franchises", cfg.filter_franchises),
             ("10", "Objective", cfg.objective),
             ("11", "Require website", cfg.require_website),
-            ("12", "Lead enrichment", cfg.lead_enrichment),
+            (
+                "12",
+                (
+                    "Lead enrichment (Google/Playwright)"
+                    if normalize_leadgen_type(cfg.leadgen_type) == "playwright"
+                    else "Lead enrichment (Facebook)"
+                ),
+                cfg.lead_enrichment,
+            ),
             ("13", "Output", cfg.output_mode),
             ("14", "JSON output path", cfg.json_output),
         ]
@@ -1838,10 +1853,12 @@ def interactive_customize_config(base_config=None):
         elif raw == "11":
             cfg.require_website = _prompt_bool("Require website", cfg.require_website)
         elif raw == "12":
-            cfg.lead_enrichment = _prompt_bool(
-                "Lead enrichment (find missing emails on Facebook)",
-                cfg.lead_enrichment,
+            enrich_prompt = (
+                "Lead enrichment (Google search + website/SEO research)"
+                if normalize_leadgen_type(cfg.leadgen_type) == "playwright"
+                else "Lead enrichment (find missing emails on Facebook)"
             )
+            cfg.lead_enrichment = _prompt_bool(enrich_prompt, cfg.lead_enrichment)
         elif raw == "13":
             cfg.output_mode = _prompt_output_mode(cfg.output_mode)
         elif raw == "14":
@@ -2098,13 +2115,13 @@ def parse_args():
         dest="lead_enrichment",
         action="store_true",
         default=None,
-        help="Look up missing emails on Facebook after scraping (default)",
+        help="Run post-scrape enrichment (Facebook in API mode, Google/Playwright in Playwright mode; default on)",
     )
     parser.add_argument(
         "--no-lead-enrichment",
         dest="lead_enrichment",
         action="store_false",
-        help="Skip Facebook email enrichment",
+        help="Skip post-scrape enrichment",
     )
     parser.add_argument(
         "--output",
@@ -2749,7 +2766,7 @@ def run_leadgen(config):
     )
 
     if config.lead_enrichment:
-        enriched = enrich_missing_emails(total_rows)
+        enriched = enrich_missing_emails(total_rows, leadgen_type=leadgen_type)
         if enriched and contacted_emails:
             kept = [row for row in total_rows if not _is_contacted(row, contacted_emails)]
             if len(kept) != len(total_rows):

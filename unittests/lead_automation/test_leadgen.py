@@ -305,7 +305,7 @@ class TestLeadEnrichmentSetting(unittest.TestCase):
         rows = [{"business_name": "A", "place_id": "pid1", "email": "", "lead_score": 90}]
         mock_enrich = MagicMock(return_value=[])
         mock_save = self._run_leadgen(self._run_config(lead_enrichment=True), rows, mock_enrich)
-        mock_enrich.assert_called_once_with(rows)
+        mock_enrich.assert_called_once_with(rows, leadgen_type="api_manager")
         mock_save.assert_called_once()
 
     def test_run_leadgen_skips_enrichment_when_disabled(self):
@@ -345,6 +345,45 @@ class TestLeadEnrichmentSetting(unittest.TestCase):
         fake_module.enrich_leads.side_effect = RuntimeError("actor down")
         with patch.dict(sys.modules, {"leadenrich": fake_module}):
             self.assertEqual(LEADGEN.enrich_missing_emails([{"email": ""}]), [])
+
+    def test_enrich_missing_emails_playwright_dispatches_to_playwright_module(self):
+        row = {"business_name": "A", "email": ""}
+        fake_module = MagicMock()
+        fake_module.enrich_leads.return_value = [row]
+        with patch.dict(sys.modules, {"leadenrich_playwright": fake_module}):
+            self.assertEqual(
+                LEADGEN.enrich_missing_emails([row], leadgen_type="playwright"),
+                [row],
+            )
+        fake_module.enrich_leads.assert_called_once()
+
+    def test_enrich_missing_emails_playwright_swallows_failure(self):
+        fake_module = MagicMock()
+        fake_module.enrich_leads.side_effect = RuntimeError("browser down")
+        with patch.dict(sys.modules, {"leadenrich_playwright": fake_module}):
+            self.assertEqual(
+                LEADGEN.enrich_missing_emails([{"email": ""}], leadgen_type="playwright"),
+                [],
+            )
+
+    def test_run_leadgen_playwright_passes_leadgen_type_to_enrichment(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "email": "", "lead_score": 90}]
+        mock_enrich = MagicMock(return_value=[])
+        with tempfile.TemporaryDirectory() as tmp:
+            config = self._run_config(lead_enrichment=True, leadgen_type="playwright")
+            config.search_history_path = str(Path(tmp) / "history.json")
+            with patch.object(LEADGEN, "CONTACTED_FILE", "no_contacted_file.txt"), \
+                    patch.object(LEADGEN, "load_existing_place_ids", return_value=set()), \
+                    patch.object(LEADGEN, "load_existing_identities", return_value=set()), \
+                    patch.object(
+                        LEADGEN,
+                        "gather_leads_playwright",
+                        return_value=(rows, {"qualified_leads": 1}),
+                    ), \
+                    patch.object(LEADGEN, "enrich_missing_emails", mock_enrich), \
+                    patch.object(LEADGEN, "save_results"):
+                LEADGEN.run_leadgen(config)
+        mock_enrich.assert_called_once_with(rows, leadgen_type="playwright")
 
 
 @SKIP

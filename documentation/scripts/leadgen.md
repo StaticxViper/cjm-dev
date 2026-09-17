@@ -14,10 +14,10 @@ The `email` objective (and `either`/`both` when email is still missing) uses [em
 
 - Python 3.12+
 - `requests`, `beautifulsoup4`, `python-dotenv`, `playwright`
-- `playwright install chromium` (needed for `--objective email` / Google discovery)
-- `GOOGLE_API_KEY` in repo-root `.env`
+- `playwright install chromium` (needed for `--objective email`, Playwright discovery, and Playwright enrichment)
+- `GOOGLE_API_KEY` in repo-root `.env` (API Manager discovery)
 - `LEAD_INGEST_KEY` in repo-root `.env` (required for dashboard output mode)
-- `APIFY_API_KEY` in repo-root `.env` (required while lead enrichment is on)
+- `APIFY_API_KEY` in repo-root `.env` (required for Facebook enrichment in API Manager mode)
 
 ## Configuration
 
@@ -125,7 +125,7 @@ The confirm screen estimates search count and typical unique-business yield so i
 | `--require-phone` / `--no-require-phone` | Legacy alias; combined with `--require-email` and normalized to `objective` |
 | `--require-website` / `--no-require-website` | Require website URL (default off) |
 | `--require-email` / `--no-require-email` | Legacy alias; combined with `--require-phone` and normalized to `objective` |
-| `--lead-enrichment` / `--no-lead-enrichment` | Look up missing emails on Facebook after scraping (default on) |
+| `--lead-enrichment` / `--no-lead-enrichment` | Post-scrape enrichment: Facebook in API mode, Google/Playwright in Playwright mode (default on) |
 | `--output {json,dashboard,both}` | Output destination |
 | `--json-path PATH` | JSON output path |
 | `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
@@ -142,7 +142,7 @@ CLI flags override values from `leadgen_settings.json`.
    - `api_manager` — for each selected location and pending keyword, call Google Places Nearby Search (with pagination), then Place Details.
    - `playwright` — for each pending keyword × location, open Google Maps in one shared Chromium browser, scroll/paginate up to `playwright_max_pages`, collect listings (phone/website/rating from the results cards), optionally search extra map cells when area expansion is on, then open place panels only when required fields are missing.
 4. **Qualify & analyze** — quality filters, website scrape, optional email discovery, scoring, objective gate.
-5. **Lead enrichment** (optional) — Facebook email lookup via [leadenrich](leadenrich.md).
+5. **Lead enrichment** (optional) — Facebook email lookup via [leadenrich](leadenrich.md) in API Manager mode, or Google/Playwright research via [leadenrich_playwright](leadenrich_playwright.md) in Playwright mode.
 6. **Output** — JSON and/or dashboard ingest.
 7. **Finalize** — append run summary to search history; update `leadgen_usage.json` when Places API calls were made.
 
@@ -155,7 +155,7 @@ flowchart LR
   pw --> norm[Normalized leads]
   api --> norm
   norm --> filters[Filters / score / objective]
-  filters --> enrich[leadenrich.py]
+  filters --> enrich[leadenrich.py or leadenrich_playwright.py]
   enrich --> jsonOut[leads_output.json]
   filters --> jsonOut
   filters --> supabase[Supabase leads-ingest-bulk]
@@ -220,19 +220,29 @@ Weights sum to 100. The final score is `round(raw / max_applicable * 100)`.
 
 ## Lead enrichment
 
-`lead_enrichment` (default **on**) runs [leadenrich](leadenrich.md) automatically at the end of a run, after scoring and filtering but before any output. Every qualifying lead that still has no email is looked up on Facebook and updated in place, so both the JSON file and the dashboard payload carry the enriched emails.
+`lead_enrichment` (default **on**) runs automatically at the end of a run, after scoring and filtering but before any output. Which enricher runs depends on `leadgen_type`:
+
+| `leadgen_type` | Enricher | What it does |
+|----------------|----------|--------------|
+| `api_manager` | [leadenrich](leadenrich.md) | Facebook Page search + scrape via Apify; fills missing emails |
+| `playwright` | [leadenrich_playwright](leadenrich_playwright.md) | Google search, site visit, Facebook/website discovery, SEO audit |
+
+Qualifying leads are updated in place, so both the JSON file and the dashboard payload carry any newly found emails. Playwright enrichment also writes `seo`, `research`, and `facebook_url` onto the JSON rows.
 
 | Where | How to set it |
 |-------|---------------|
-| Interactive | Menu option 2 → *Lead enrichment (find missing emails on Facebook)* |
+| Interactive | Menu option 2 → *Lead enrichment (Facebook)* or *Lead enrichment (Google/Playwright)* depending on type |
 | CLI | `--lead-enrichment` / `--no-lead-enrichment` |
 | Settings file | `"lead_enrichment": true` in `leadgen_settings.json` |
 
 Notes:
 
-- Enrichment needs `APIFY_API_KEY` and spends Apify credits per lead looked up. Turn it off with `--no-lead-enrichment` for cheap or exploratory runs, then enrich later in bulk with `python leadenrich.py`.
-- Enrichment is best effort: if the Apify actors fail, the error is logged and the run still saves its leads.
+- API Manager enrichment needs `APIFY_API_KEY` and spends Apify credits per lead. Playwright enrichment needs Chromium (`playwright install chromium`) and does not use Apify.
+- Turn it off with `--no-lead-enrichment` for cheap or exploratory runs, then enrich later in bulk with `python leadenrich.py` or `python leadenrich_playwright.py`.
+- The high-volume Playwright preset keeps enrichment off so large discovery runs do not hammer Google.
+- Enrichment is best effort: if Apify or the browser fails, the error is logged and the run still saves its leads.
 - A lead whose enriched email already appears in `contacted.txt` is dropped, matching the behavior for emails found during the website scrape.
+- Playwright enrichment can also pull existing Pipeline leads via `python leadenrich_playwright.py --from-crm`.
 
 ## Output modes
 
@@ -247,6 +257,7 @@ Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sampl
 ## Related scripts
 
 - [leadfilter.md](leadfilter.md) — duplicate filtering
-- [leadenrich.md](leadenrich.md) — fill in missing emails from Facebook Pages
+- [leadenrich.md](leadenrich.md) — fill in missing emails from Facebook Pages (API Manager mode)
+- [leadenrich_playwright.md](leadenrich_playwright.md) — Google/Playwright research and SEO audit (Playwright mode)
 - [lead_automation.md](lead_automation.md) — re-ingest existing CSV to Supabase
 - [testing/unittests.md](../testing/unittests.md) — unit tests for scoring and parsing
