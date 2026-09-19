@@ -1,0 +1,718 @@
+{
+  "mobile_notaries": {
+    "id": "mobile_notaries",
+    "display_name": "Mobile Notaries / Loan Signing Agents",
+    "category": "mobile-notary-leads",
+    "sort_order": 1,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "mobile notary",
+      "traveling notary",
+      "loan signing agent",
+      "mobile notary public",
+      "signing agent"
+    ],
+    "related_keywords": [
+      "mobile notary public near me",
+      "hospital notary",
+      "real estate closing notary"
+    ],
+    "negative_keywords": ["ups store", "fedex office", "bank of america", "chase bank", "the ups store"],
+    "high_value_service_keywords": [
+      "loan signing",
+      "signing agent",
+      "real estate closing",
+      "hospital notary",
+      "mobile notary"
+    ],
+    "lead_signals": [
+      {"id": "mobile", "keywords": ["mobile", "traveling"], "fields": ["name", "text", "service_area"]},
+      {"id": "loan_signing", "keywords": ["loan signing", "signing agent"], "fields": ["name", "text"]},
+      {"id": "multiple_counties", "keywords": ["counties", "county", "multi-county"], "fields": ["text", "service_area"]},
+      {"id": "hospital_notary", "keywords": ["hospital notary", "hospital"], "fields": ["name", "text"]},
+      {"id": "real_estate_closing", "keywords": ["real estate closing", "closing"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city", "county"],
+    "scoring_adjustments": {}
+  },
+  "professional_organizers": {
+    "id": "professional_organizers",
+    "display_name": "Professional Organizers / Senior Move Managers",
+    "category": "professional-organizer-leads",
+    "sort_order": 2,
+    "social_priority": true,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "professional organizer",
+      "senior move manager",
+      "home organizer",
+      "estate organizer"
+    ],
+    "related_keywords": [
+      "downsizing organizer",
+      "senior move management",
+      "decluttering service"
+    ],
+    "negative_keywords": ["container store", "ikea"],
+    "high_value_service_keywords": [
+      "senior move",
+      "downsizing",
+      "estate organization",
+      "move manager"
+    ],
+    "lead_signals": [
+      {"id": "before_after", "keywords": ["before and after", "before/after"], "fields": ["text"]},
+      {"id": "downsizing", "keywords": ["downsizing", "downsize"], "fields": ["name", "text"]},
+      {"id": "senior_move", "keywords": ["senior move", "move manager"], "fields": ["name", "text"]},
+      {"id": "estate_organization", "keywords": ["estate organization", "estate organizing"], "fields": ["name", "text"]},
+      {"id": "consultation", "keywords": ["consultation", "consult"], "fields": ["text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "specialty_dog_trainers": {
+    "id": "specialty_dog_trainers",
+    "display_name": "Specialty Dog Trainers",
+    "category": "dog-training-leads",
+    "sort_order": 3,
+    "social_priority": true,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "dog trainer",
+      "dog behaviorist",
+      "reactive dog trainer",
+      "separation anxiety dog trainer",
+      "puppy trainer",
+      "service dog trainer",
+      "board and train",
+      "canine behavior specialist"
+    ],
+    "related_keywords": [
+      "aggressive dog trainer",
+      "puppy training",
+      "private dog trainer"
+    ],
+    "negative_keywords": ["petco", "petsmart", "pet smart", "sit means sit", "bark busters"],
+    "high_value_service_keywords": [
+      "reactive",
+      "separation anxiety",
+      "service dog",
+      "board and train",
+      "behaviorist"
+    ],
+    "lead_signals": [
+      {"id": "reactivity", "keywords": ["reactive", "reactivity"], "fields": ["name", "text"]},
+      {"id": "separation_anxiety", "keywords": ["separation anxiety"], "fields": ["name", "text"]},
+      {"id": "puppy", "keywords": ["puppy"], "fields": ["name", "text"]},
+      {"id": "service_dog", "keywords": ["service dog"], "fields": ["name", "text"]},
+      {"id": "board_and_train", "keywords": ["board and train", "board & train"], "fields": ["name", "text"]},
+      {"id": "assessment", "keywords": ["assessment", "consultation", "eval"], "fields": ["text"]}
+    ],
+    "suggested_min_reviews": 20,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {
+      "review_count_band_min": 20
+    }
+  },
+  "premium_mobile_auto_detailers": {
+    "id": "premium_mobile_auto_detailers",
+    "display_name": "Premium Mobile Auto Detailers",
+    "category": "mobile-detailing-leads",
+    "sort_order": 4,
+    "social_priority": true,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "mobile auto detailing",
+      "ceramic coating",
+      "paint correction",
+      "mobile detailing",
+      "luxury car detailing",
+      "RV detailing",
+      "boat detailing",
+      "fleet detailing"
+    ],
+    "related_keywords": [
+      "mobile car detailing",
+      "ceramic coating mobile",
+      "paint correction mobile"
+    ],
+    "negative_keywords": ["detailxperts", "ziebart", "maaco", "mister car wash"],
+    "high_value_service_keywords": [
+      "ceramic coating",
+      "paint correction",
+      "luxury",
+      "rv detailing",
+      "boat detailing",
+      "fleet detailing"
+    ],
+    "lead_signals": [
+      {"id": "ceramic_coating", "keywords": ["ceramic coating"], "fields": ["name", "text"]},
+      {"id": "paint_correction", "keywords": ["paint correction"], "fields": ["name", "text"]},
+      {"id": "luxury", "keywords": ["luxury", "exotic"], "fields": ["name", "text"]},
+      {"id": "rv", "keywords": ["rv detailing", "rv"], "fields": ["name", "text"]},
+      {"id": "boat", "keywords": ["boat detailing", "boat"], "fields": ["name", "text"]},
+      {"id": "fleet", "keywords": ["fleet detailing", "fleet"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 50,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {
+      "review_count_band_min": 15
+    }
+  },
+  "estate_sale_companies": {
+    "id": "estate_sale_companies",
+    "display_name": "Estate Sale / Estate Liquidation Companies",
+    "category": "estate-sale-leads",
+    "sort_order": 5,
+    "social_priority": true,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "estate sale",
+      "estate liquidation",
+      "estate sale company",
+      "estate liquidator"
+    ],
+    "related_keywords": [
+      "downsizing estate sale",
+      "estate sale service"
+    ],
+    "negative_keywords": ["auction.com", "heritage auctions"],
+    "high_value_service_keywords": [
+      "estate sale",
+      "liquidation",
+      "downsizing",
+      "estatesales.net"
+    ],
+    "lead_signals": [
+      {"id": "estate_sale", "keywords": ["estate sale"], "fields": ["name", "text"]},
+      {"id": "liquidation", "keywords": ["liquidation", "liquidator"], "fields": ["name", "text"]},
+      {"id": "downsizing", "keywords": ["downsizing"], "fields": ["name", "text"]},
+      {"id": "upcoming_events", "keywords": ["upcoming sale", "upcoming event"], "fields": ["text"]},
+      {"id": "estatesales_net", "keywords": ["estatesales.net"], "fields": ["text", "website"]}
+    ],
+    "suggested_min_reviews": 20,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["multi_city", "county"],
+    "scoring_adjustments": {}
+  },
+  "court_medical_interpreters": {
+    "id": "court_medical_interpreters",
+    "display_name": "Court and Medical Interpreters",
+    "category": "interpreter-leads",
+    "sort_order": 6,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "court interpreter",
+      "medical interpreter",
+      "certified interpreter",
+      "legal interpreter"
+    ],
+    "related_keywords": [
+      "spanish court interpreter",
+      "hospital interpreter",
+      "on-site interpreter"
+    ],
+    "negative_keywords": ["language line", "propio", "cyraCom", "cyracom"],
+    "high_value_service_keywords": [
+      "court interpreter",
+      "medical interpreter",
+      "certified",
+      "legal interpreter"
+    ],
+    "lead_signals": [
+      {"id": "court", "keywords": ["court interpreter", "legal interpreter"], "fields": ["name", "text"]},
+      {"id": "medical", "keywords": ["medical interpreter", "hospital interpreter"], "fields": ["name", "text"]},
+      {"id": "certified", "keywords": ["certified", "certified interpreter"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "birth_postpartum_doulas": {
+    "id": "birth_postpartum_doulas",
+    "display_name": "Birth / Postpartum Doulas and Lactation Consultants",
+    "category": "doula-leads",
+    "sort_order": 7,
+    "social_priority": true,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "birth doula",
+      "postpartum doula",
+      "doula",
+      "labor doula",
+      "lactation consultant"
+    ],
+    "related_keywords": [
+      "postpartum support",
+      "birth support doula",
+      "IBCLC",
+      "lactation counselor"
+    ],
+    "negative_keywords": ["hospital birth center chain"],
+    "high_value_service_keywords": [
+      "birth doula",
+      "postpartum doula",
+      "overnight postpartum",
+      "lactation consultant"
+    ],
+    "lead_signals": [
+      {"id": "birth_doula", "keywords": ["birth doula", "labor doula"], "fields": ["name", "text"]},
+      {"id": "postpartum_doula", "keywords": ["postpartum doula", "postpartum"], "fields": ["name", "text"]},
+      {"id": "consultation", "keywords": ["consultation", "meet and greet"], "fields": ["text"]},
+      {"id": "lactation", "keywords": ["lactation consultant", "ibclc", "lactation counselor"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "private_speech_language_pathologists": {
+    "id": "private_speech_language_pathologists",
+    "display_name": "Private Speech-Language Pathologists (SLPs)",
+    "category": "speech-therapy-leads",
+    "sort_order": 8,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "private speech therapist",
+      "speech language pathologist",
+      "private SLP",
+      "pediatric speech therapist"
+    ],
+    "related_keywords": [
+      "speech therapy private practice",
+      "in home speech therapy"
+    ],
+    "negative_keywords": ["kaiser", "ivy rehab", "atlantis"],
+    "high_value_service_keywords": [
+      "private practice",
+      "in home",
+      "pediatric speech",
+      "feeding therapy"
+    ],
+    "lead_signals": [
+      {"id": "private_practice", "keywords": ["private", "private practice"], "fields": ["name", "text"]},
+      {"id": "pediatric", "keywords": ["pediatric", "child"], "fields": ["name", "text"]},
+      {"id": "in_home", "keywords": ["in home", "in-home", "mobile"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "pediatric_occupational_therapists": {
+    "id": "pediatric_occupational_therapists",
+    "display_name": "Pediatric Occupational Therapists / Feeding Therapists",
+    "category": "pediatric-ot-leads",
+    "sort_order": 9,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "pediatric occupational therapist",
+      "pediatric OT",
+      "feeding therapist",
+      "pediatric feeding therapy"
+    ],
+    "related_keywords": [
+      "sensory occupational therapy",
+      "pediatric occupational therapy clinic"
+    ],
+    "negative_keywords": ["ivy rehab", "kaiser"],
+    "high_value_service_keywords": [
+      "feeding therapy",
+      "sensory",
+      "pediatric occupational"
+    ],
+    "lead_signals": [
+      {"id": "feeding_therapy", "keywords": ["feeding therapist", "feeding therapy"], "fields": ["name", "text"]},
+      {"id": "pediatric_ot", "keywords": ["pediatric occupational", "pediatric ot"], "fields": ["name", "text"]},
+      {"id": "sensory", "keywords": ["sensory"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["multi_city"],
+    "scoring_adjustments": {}
+  },
+  "geriatric_care_managers": {
+    "id": "geriatric_care_managers",
+    "display_name": "Geriatric Care Managers / Aging-Life-Care Professionals",
+    "category": "geriatric-care-leads",
+    "sort_order": 10,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "geriatric care manager",
+      "aging life care",
+      "elder care manager",
+      "senior care manager"
+    ],
+    "related_keywords": [
+      "aging life care professional",
+      "care management elderly"
+    ],
+    "negative_keywords": ["visiting angels", "comfort keepers", "home instead", "brightstar"],
+    "high_value_service_keywords": [
+      "geriatric care manager",
+      "aging life care",
+      "care management"
+    ],
+    "lead_signals": [
+      {"id": "gcm", "keywords": ["geriatric care manager", "aging life care"], "fields": ["name", "text"]},
+      {"id": "elder_care", "keywords": ["elder care manager", "senior care manager"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city", "county"],
+    "scoring_adjustments": {}
+  },
+  "funeral_celebrants": {
+    "id": "funeral_celebrants",
+    "display_name": "Funeral Celebrants / End-of-Life Planners",
+    "category": "funeral-celebrant-leads",
+    "sort_order": 11,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "funeral celebrant",
+      "end of life planner",
+      "celebrant funeral",
+      "memorial celebrant"
+    ],
+    "related_keywords": [
+      "life celebration officiant",
+      "non religious funeral celebrant"
+    ],
+    "negative_keywords": ["dignity memorial", "service corporation international", "sci funeral"],
+    "high_value_service_keywords": [
+      "funeral celebrant",
+      "end of life",
+      "memorial celebrant"
+    ],
+    "lead_signals": [
+      {"id": "celebrant", "keywords": ["funeral celebrant", "memorial celebrant"], "fields": ["name", "text"]},
+      {"id": "end_of_life", "keywords": ["end of life", "end-of-life"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "specialized_wedding_officiants": {
+    "id": "specialized_wedding_officiants",
+    "display_name": "Specialized Wedding Officiants",
+    "category": "wedding-officiant-leads",
+    "sort_order": 12,
+    "social_priority": true,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "wedding officiant",
+      "marriage officiant",
+      "wedding celebrant",
+      "custom wedding officiant"
+    ],
+    "related_keywords": [
+      "non denominational officiant",
+      "elopement officiant"
+    ],
+    "negative_keywords": ["universal life church chapel chain"],
+    "high_value_service_keywords": [
+      "custom ceremony",
+      "elopement",
+      "interfaith",
+      "celebrant"
+    ],
+    "lead_signals": [
+      {"id": "custom_ceremony", "keywords": ["custom ceremony", "personalized ceremony"], "fields": ["text"]},
+      {"id": "elopement", "keywords": ["elopement"], "fields": ["name", "text"]},
+      {"id": "interfaith", "keywords": ["interfaith", "nondenominational", "non denominational"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "pet_funeral_aftercare": {
+    "id": "pet_funeral_aftercare",
+    "display_name": "Pet Funeral / In-Home Euthanasia / Pet Aftercare Providers",
+    "category": "pet-aftercare-leads",
+    "sort_order": 13,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "pet funeral",
+      "pet cremation",
+      "pet aftercare",
+      "in home pet euthanasia",
+      "pet cemetery"
+    ],
+    "related_keywords": [
+      "at home pet euthanasia",
+      "pet memorial service"
+    ],
+    "negative_keywords": ["banfield", "vca animal", "bluepearl"],
+    "high_value_service_keywords": [
+      "pet funeral",
+      "pet cremation",
+      "home aftercare"
+    ],
+    "lead_signals": [
+      {"id": "pet_funeral", "keywords": ["pet funeral", "pet memorial"], "fields": ["name", "text"]},
+      {"id": "pet_cremation", "keywords": ["pet cremation"], "fields": ["name", "text"]},
+      {"id": "aftercare", "keywords": ["pet aftercare", "aftercare"], "fields": ["name", "text"]},
+      {"id": "in_home_euthanasia", "keywords": ["in-home euthanasia", "in home euthanasia", "home euthanasia"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "equine_bodyworkers": {
+    "id": "equine_bodyworkers",
+    "display_name": "Equine Bodyworkers / Saddle Fitters / Equine Dental Technicians",
+    "category": "equine-specialist-leads",
+    "sort_order": 14,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "equine bodyworker",
+      "saddle fitter",
+      "equine dental technician",
+      "horse chiropractor",
+      "equine massage"
+    ],
+    "related_keywords": [
+      "equine dentist",
+      "saddle fitting",
+      "horse bodywork"
+    ],
+    "negative_keywords": ["banfield"],
+    "high_value_service_keywords": [
+      "saddle fitting",
+      "equine dental",
+      "equine bodywork"
+    ],
+    "lead_signals": [
+      {"id": "bodywork", "keywords": ["equine bodyworker", "horse bodywork", "equine massage"], "fields": ["name", "text"]},
+      {"id": "saddle_fitter", "keywords": ["saddle fitter", "saddle fitting"], "fields": ["name", "text"]},
+      {"id": "equine_dental", "keywords": ["equine dental", "horse dentist"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city", "county"],
+    "scoring_adjustments": {}
+  },
+  "pool_specialists": {
+    "id": "pool_specialists",
+    "display_name": "Pool Leak Detection / Pool Tile / Pool-Equipment Repair Specialists",
+    "category": "pool-specialist-leads",
+    "sort_order": 15,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "pool leak detection",
+      "pool tile repair",
+      "pool equipment repair",
+      "pool leak specialist"
+    ],
+    "related_keywords": [
+      "swimming pool leak",
+      "pool plaster repair",
+      "pool heater repair"
+    ],
+    "negative_keywords": ["leslie's", "leslies", "pool corporation"],
+    "high_value_service_keywords": [
+      "leak detection",
+      "pool tile",
+      "equipment specialist"
+    ],
+    "lead_signals": [
+      {"id": "leak_detection", "keywords": ["leak detection", "pool leak"], "fields": ["name", "text"]},
+      {"id": "pool_tile", "keywords": ["pool tile"], "fields": ["name", "text"]},
+      {"id": "pool_equipment", "keywords": ["pool equipment", "pool heater"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "premium_appliance_repair": {
+    "id": "premium_appliance_repair",
+    "display_name": "Premium / Commercial Appliance-Repair Specialists",
+    "category": "appliance-repair-leads",
+    "sort_order": 16,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "commercial appliance repair",
+      "premium appliance repair",
+      "subzero repair",
+      "wolf range repair",
+      "commercial kitchen appliance repair"
+    ],
+    "related_keywords": [
+      "built in refrigerator repair",
+      "restaurant appliance repair"
+    ],
+    "negative_keywords": ["sears home services", "best buy geek squad", "mr appliance"],
+    "high_value_service_keywords": [
+      "subzero",
+      "wolf",
+      "commercial appliance",
+      "restaurant"
+    ],
+    "lead_signals": [
+      {"id": "commercial", "keywords": ["commercial appliance", "restaurant appliance"], "fields": ["name", "text"]},
+      {"id": "premium_brand", "keywords": ["subzero", "sub-zero", "wolf", "thermador", "miele"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "commercial_hood_cleaning": {
+    "id": "commercial_hood_cleaning",
+    "display_name": "Commercial Kitchen Hood-Cleaning / Fire-Suppression Inspection Firms",
+    "category": "hood-cleaning-leads",
+    "sort_order": 17,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "hood cleaning",
+      "commercial kitchen hood cleaning",
+      "restaurant hood cleaning",
+      "fire suppression inspection",
+      "kitchen exhaust cleaning"
+    ],
+    "related_keywords": [
+      "ansul inspection",
+      "hood suppression inspection"
+    ],
+    "negative_keywords": ["servpro"],
+    "high_value_service_keywords": [
+      "fire suppression",
+      "hood cleaning",
+      "ansul"
+    ],
+    "lead_signals": [
+      {"id": "hood_cleaning", "keywords": ["hood cleaning", "exhaust cleaning"], "fields": ["name", "text"]},
+      {"id": "fire_suppression", "keywords": ["fire suppression", "ansul"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "radon_mold_specialists": {
+    "id": "radon_mold_specialists",
+    "display_name": "Radon Measurement / Mitigation Specialists / Mold-Assessment Consultants",
+    "category": "radon-mold-leads",
+    "sort_order": 18,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "radon mitigation",
+      "radon measurement",
+      "mold remediation",
+      "mold assessment",
+      "radon specialist",
+      "mold inspection"
+    ],
+    "related_keywords": [
+      "radon testing",
+      "mold assessment consultant",
+      "mold removal specialist"
+    ],
+    "negative_keywords": ["servpro", "servicemaster", "rainbow international"],
+    "high_value_service_keywords": [
+      "radon mitigation",
+      "mold remediation",
+      "certified mold"
+    ],
+    "lead_signals": [
+      {"id": "radon", "keywords": ["radon mitigation", "radon"], "fields": ["name", "text"]},
+      {"id": "mold", "keywords": ["mold remediation", "mold inspection", "mold assessment", "mold"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "multi_city"],
+    "scoring_adjustments": {}
+  },
+  "septic_well_drainage": {
+    "id": "septic_well_drainage",
+    "display_name": "Septic / Well-Pump / Drainage Specialists",
+    "category": "septic-well-leads",
+    "sort_order": 19,
+    "social_priority": false,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "septic service",
+      "well pump repair",
+      "drainage specialist",
+      "septic inspection"
+    ],
+    "related_keywords": [
+      "septic tank pumping",
+      "well drilling repair",
+      "french drain contractor"
+    ],
+    "negative_keywords": ["roto-rooter", "roto rooter", "mr. rooter", "mr rooter"],
+    "high_value_service_keywords": [
+      "septic",
+      "well pump",
+      "drainage"
+    ],
+    "lead_signals": [
+      {"id": "septic", "keywords": ["septic"], "fields": ["name", "text"]},
+      {"id": "well", "keywords": ["well pump", "well service"], "fields": ["name", "text"]},
+      {"id": "drainage", "keywords": ["drainage", "french drain"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 15,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["mobile", "county"],
+    "scoring_adjustments": {}
+  },
+  "specialty_music_teachers": {
+    "id": "specialty_music_teachers",
+    "display_name": "Specialty Music Teachers / Boutique Music Schools",
+    "category": "music-lesson-leads",
+    "sort_order": 20,
+    "social_priority": true,
+    "high_pri_lead": true,
+    "search_keywords": [
+      "private music teacher",
+      "boutique music school",
+      "in home piano lessons",
+      "private guitar teacher",
+      "voice teacher"
+    ],
+    "related_keywords": [
+      "private piano lessons",
+      "home music lessons",
+      "studio music lessons"
+    ],
+    "negative_keywords": ["school of rock", "guitar center lessons", "music and arts"],
+    "high_value_service_keywords": [
+      "private lessons",
+      "in home",
+      "boutique music school"
+    ],
+    "lead_signals": [
+      {"id": "private_lessons", "keywords": ["private lessons", "private teacher"], "fields": ["name", "text"]},
+      {"id": "in_home", "keywords": ["in home", "in-home", "mobile"], "fields": ["name", "text"]},
+      {"id": "boutique_school", "keywords": ["boutique music", "music studio"], "fields": ["name", "text"]}
+    ],
+    "suggested_min_reviews": 10,
+    "suggested_min_rating": 4.5,
+    "service_area_characteristics": ["multi_city"],
+    "scoring_adjustments": {}
+  }
+}

@@ -94,11 +94,13 @@ python leadgen.py --objective both
 2) Settings (save defaults, do not run)
 3) High-volume preset (Playwright, area expansion, no Facebook enrich)
 4) Exit
+5) Lead Search (micro-niche intent search)
 ```
 
 - **Option 1** — load `leadgen_settings.json` (or hardcoded defaults), prompt for keywords and locations with numbered submenus, show a volume estimate, then confirm (`Y` run, `n` cancel, `s` tweak settings).
 - **Option 2** — numbered settings menu (enter a number to change one value, Enter to save). Writes `leadgen_settings.json` and returns to the menu without running. Keywords and locations are never persisted.
 - **Option 3** — apply a high-volume Playwright preset (20 pages, 400 results/search, light area expansion, phone objective, min reviews 0, Facebook enrichment off) and optionally run.
+- **Option 5** — [Niche Lead Search](niche_search.md): pick a micro-niche, search multiple queries, score website-prospect intent, then review/filter/export. Does not replace option 1.
 
 **Keywords** — choose all, an industry group (home exterior, auto, professional, …), numbers/ranges (`1-8,12`), or a name search.
 
@@ -131,8 +133,17 @@ The confirm screen estimates search count and typical unique-business yield so i
 | `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
 | `--city "City Name"` | Filter to specific cities (repeatable) |
 | `--state NJ` | Filter to coords.json state codes (repeatable, comma-separated OK) |
+| `--niche ID` | Run [Niche Lead Search](niche_search.md) instead of the keyword job |
+| `--review-leads` | Open the niche results reviewer |
+| `--zip ZIP` | Extra ZIP locations for niche search (repeatable) |
+| `--radius INT` | Niche search radius in meters |
+| `--max-leads INT` | Cap ranked niche leads after scoring |
+| `--min-rating FLOAT` | Minimum Google rating for niche search |
+| `--website-requirement {any,none,weak_or_none,issue}` | Niche website filter |
+| `--exclude-strong-websites` | Drop niche leads with a strong current website |
+| `--extra-keywords ...` | Additional niche search queries |
 
-CLI flags override values from `leadgen_settings.json`.
+CLI flags override values from `leadgen_settings.json`. Niche jobs write `niche_leads_output.json` by default and add `high-pri-lead` only for niches marked `high_pri_lead` in `niches.json`.
 
 ## How it works
 

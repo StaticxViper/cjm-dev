@@ -1341,17 +1341,21 @@ def send_to_dashboard(rows):
     payload = []
     for row in rows:
         niche_key = row.get("niche_key")
-        category = KEYWORD_CATEGORIES.get(niche_key, niche_key)
+        category = row.get("category") or KEYWORD_CATEGORIES.get(niche_key, niche_key)
+        tags = [
+            "lead_automation",
+            "playwright" if (row.get("source") == "playwright") else "google-places-api",
+        ]
+        for extra in row.get("tags") or []:
+            if extra and extra not in tags:
+                tags.append(extra)
         payload.append({
             "business_name": row["business_name"],
             "address": row.get("address") or "",
             "phone": row.get("phone_google") or "",
             "email": extract_real_email(row.get("email") or ""),
             "category": category,
-            "tags": [
-                "lead_automation",
-                "playwright" if (row.get("source") == "playwright") else "google-places-api",
-            ],
+            "tags": tags,
             "score": int(row["lead_score"]),
         })
 
@@ -1961,7 +1965,12 @@ def interactive_main_menu():
         print("2) Settings (save defaults, do not run)")
         print("3) High-volume preset (Playwright, area expansion, no Facebook enrich)")
         print("4) Exit")
+        print("5) Lead Search (micro-niche intent search)")
         choice = input("Select [1]: ").strip() or "1"
+        if choice == "5":
+            from niche_search import interactive_niche_search
+            interactive_niche_search(cfg_preview)
+            continue
         if choice == "4":
             return None
         if choice == "2":
@@ -1982,7 +1991,7 @@ def interactive_main_menu():
             return interactive_run_config()
         if choice == "1":
             return interactive_run_config()
-        print("Invalid choice. Please select 1, 2, 3, or 4.")
+        print("Invalid choice. Please select 1, 2, 3, 4, or 5.")
 
 
 def parse_args():
@@ -2139,6 +2148,84 @@ def parse_args():
         "--state",
         action="append",
         help="State code filter (repeatable); matches coords.json keys like NJ, PA",
+    )
+    parser.add_argument(
+        "--niche",
+        help="Run Niche Lead Search for this niche id or display name",
+    )
+    parser.add_argument(
+        "--review-leads",
+        action="store_true",
+        help="Open the Niche Lead Search results reviewer (no new search)",
+    )
+    parser.add_argument(
+        "--zip",
+        action="append",
+        dest="zips",
+        help="ZIP code to include in a niche search (repeatable)",
+    )
+    parser.add_argument(
+        "--radius",
+        type=int,
+        help="Niche search radius in meters (default 50000)",
+    )
+    parser.add_argument(
+        "--max-leads",
+        type=int,
+        help="Cap ranked niche leads after scoring",
+    )
+    parser.add_argument(
+        "--min-rating",
+        type=float,
+        help="Minimum Google rating for niche search",
+    )
+    parser.add_argument(
+        "--exclude-strong-websites",
+        action="store_true",
+        default=None,
+        help="Drop niche leads with a strong current website",
+    )
+    parser.add_argument(
+        "--require-social",
+        action="store_true",
+        default=None,
+        help="Require a Facebook or Instagram URL on niche leads",
+    )
+    parser.add_argument(
+        "--require-no-website",
+        action="store_true",
+        default=None,
+        help="Keep only niche leads with no usable website",
+    )
+    parser.add_argument(
+        "--require-website-issue",
+        action="store_true",
+        default=None,
+        help="Keep only niche leads whose website quality is poor/critical",
+    )
+    parser.add_argument(
+        "--require-active-business",
+        dest="require_active_business",
+        action="store_true",
+        default=None,
+        help="Drop closed businesses in niche search (default on)",
+    )
+    parser.add_argument(
+        "--allow-inactive-business",
+        dest="require_active_business",
+        action="store_false",
+        help="Allow closed/unknown businesses in niche search",
+    )
+    parser.add_argument(
+        "--website-requirement",
+        choices=["any", "none", "weak_or_none", "issue"],
+        default=None,
+        help="Niche website filter: any, none, weak_or_none, or issue",
+    )
+    parser.add_argument(
+        "--extra-keywords",
+        nargs="+",
+        help="Additional niche search queries",
     )
     return parser.parse_args()
 
@@ -2819,6 +2906,59 @@ def run_leadgen(config):
 
 def main():
     args = parse_args()
+    if getattr(args, "review_leads", False):
+        from niche_results import review_leads
+        review_leads(json_path=args.json_path or "niche_leads_output.json")
+        return
+    if getattr(args, "niche", None):
+        from niche_search import (
+            config_from_leadgen,
+            expand_locations,
+            run_niche_search,
+        )
+        base = config_from_args(args)
+        locations = expand_locations(
+            states=args.state,
+            cities=args.city,
+            zips=getattr(args, "zips", None),
+            api_key=GOOGLE_API_KEY,
+        )
+        niche_config = config_from_leadgen(
+            base,
+            args.niche,
+            extra={
+                "locations": locations,
+                "extra_keywords": args.extra_keywords or [],
+                "search_radius": args.radius if args.radius is not None else base.search_radius,
+                "max_leads": args.max_leads or 0,
+                "min_reviews": args.min_reviews if args.min_reviews is not None else None,
+                "min_rating": args.min_rating or 0,
+                "min_score": args.min_score if args.min_score is not None else None,
+                "filter_franchises": (
+                    args.filter_franchises
+                    if args.filter_franchises is not None
+                    else base.filter_franchises
+                ),
+                "exclude_strong_websites": bool(args.exclude_strong_websites),
+                "require_phone": bool(args.require_phone),
+                "require_email": bool(args.require_email),
+                "require_social": bool(args.require_social),
+                "require_no_website": bool(args.require_no_website),
+                "require_website_issue": bool(args.require_website_issue),
+                "require_active_business": (
+                    True
+                    if args.require_active_business is None
+                    else bool(args.require_active_business)
+                ),
+                "website_requirement": args.website_requirement or (
+                    "weak_or_none" if args.exclude_strong_websites else "any"
+                ),
+                "json_output": args.json_path or "niche_leads_output.json",
+                "open_reviewer": False,
+            },
+        )
+        run_niche_search(niche_config)
+        return
     config = resolve_config(args)
     if config is None:
         print("Exiting.")

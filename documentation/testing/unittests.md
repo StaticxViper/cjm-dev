@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out).
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), [niche search](../scripts/niche_search.md) config, intent scoring, filters, and CSV export, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out).
 
 ## Prerequisites
 
@@ -23,6 +23,7 @@ python -m unittest unittests.lead_automation.test_leadgen
 python -m unittest unittests.lead_automation.test_email_discovery
 python -m unittest unittests.lead_automation.test_leadenrich
 python -m unittest unittests.lead_automation.test_leadenrich_playwright
+python -m unittest unittests.lead_automation.test_niche_search
 python -m unittest unittests.zillow_automation.test_property_listing_gen
 ```
 
@@ -155,6 +156,18 @@ Imports `leadenrich_playwright` the same way (CWD switched to `scripts/lead_auto
 | `TestRunEnrichment` | `--from-crm` key check, CRM save, dashboard receives newly emailed leads |
 | `TestCliConfig` | `--from-crm` flags map onto `EnrichConfig` |
 
+## Test file: `unittests/lead_automation/test_niche_search.py`
+
+Imports niche search modules the same way (CWD switched to `scripts/lead_automation/`). Google, website fetches, and email discovery are patched or fed HTML fixtures.
+
+| Test class | What it checks |
+|------------|----------------|
+| `TestNicheConfig` | Loads 20 niches, unique/stable query generation, display-name lookup, negative keywords |
+| `TestDedupAndFranchise` | Cross-query `place_id` dedupe; Petco/PetSmart franchise detection |
+| `TestWebsiteAndSocial` | Social URL ≠ website; broken site only after a failed request; quality bands; URL-only social is not active |
+| `TestIntentScoring` | Deterministic additive scores, negatives, breakdown, evidence-based outreach angle, seven fixtures |
+| `TestFiltersExportAndIngest` | Result presets, CSV columns, `high-pri-lead` dashboard tags, keyword ingest unchanged, search job filters franchises |
+
 ## Test file: `unittests/zillow_automation/test_property_listing_gen.py`
 
 Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_automation/`). Apify is patched out, so no run costs credits.
@@ -170,6 +183,7 @@ Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_aut
 ## Related documentation
 
 - [leadgen.md](../scripts/leadgen.md) — script under test
+- [niche_search.md](../scripts/niche_search.md) — script under test
 - [leadenrich.md](../scripts/leadenrich.md) — script under test
 - [leadenrich_playwright.md](../scripts/leadenrich_playwright.md) — script under test
 - [property_listing_gen.md](../scripts/property_listing_gen.md) — script under test

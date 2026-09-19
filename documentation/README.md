@@ -10,6 +10,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 |--------|-----|
 | Blog automation (Chikara Realms) | [scripts/blog_automation.md](scripts/blog_automation.md) |
 | Lead generation | [scripts/leadgen.md](scripts/leadgen.md) |
+| Niche lead search | [scripts/niche_search.md](scripts/niche_search.md) |
 | Lead enrichment (Facebook) | [scripts/leadenrich.md](scripts/leadenrich.md) |
 | Lead enrichment (Playwright / Google) | [scripts/leadenrich_playwright.md](scripts/leadenrich_playwright.md) |
 | Lead ingest | [scripts/lead_automation.md](scripts/lead_automation.md) |
