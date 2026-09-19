@@ -149,7 +149,8 @@ Use `--retry-all` to force another pass over every email-less lead — for examp
 
 ## Related scripts
 
-- [leadgen.md](leadgen.md) — produces the leads JSON this script enriches
+- [leadgen.md](leadgen.md) — produces the leads JSON this script enriches; uses this module in API Manager mode
+- [leadenrich_playwright.md](leadenrich_playwright.md) — Google/Playwright enrichment used in Playwright mode
 - [lead_automation.md](lead_automation.md) — re-ingest existing leads to Supabase
 - [api_manager.md](../helper_scripts/api_manager.md) — Apify actor runner and key resolution
 - [testing/unittests.md](../testing/unittests.md) — unit tests for URL, matching, and merge logic

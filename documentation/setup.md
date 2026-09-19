@@ -126,6 +126,7 @@ python helper_scripts/api_manager/api_manager.py
 ```bash
 python -m unittest unittests.lead_automation.test_leadgen
 python -m unittest unittests.lead_automation.test_email_discovery
+python -m unittest unittests.lead_automation.test_niche_search
 python -m unittest unittests.zillow_automation.test_property_listing_gen
 ```
 
