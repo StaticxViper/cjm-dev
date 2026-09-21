@@ -216,6 +216,18 @@ class TestDedupAndFranchise(unittest.TestCase):
         unique = MODULES["niche_search"].dedupe_discovered(entries)
         self.assertEqual(len(unique), 2)
 
+    def test_dedupe_flattens_playwright_unique_tuple(self):
+        nested = (
+            [
+                {"business_name": "ABC", "place_id": "ChIJ1"},
+                {"business_name": "ABC", "place_id": "ChIJ1"},
+                {"business_name": "XYZ", "place_id": "ChIJ2"},
+            ],
+            1,
+        )
+        unique = MODULES["niche_search"].dedupe_discovered(nested)
+        self.assertEqual({row["place_id"] for row in unique}, {"ChIJ1", "ChIJ2"})
+
     def test_franchise_detection(self):
         leadgen = MODULES["leadgen"]
         self.assertTrue(leadgen.is_franchise("Petco Dog Training", "https://local.example"))

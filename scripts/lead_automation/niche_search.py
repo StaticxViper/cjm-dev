@@ -198,11 +198,20 @@ def _base_row(entry, niche, location_label, source, search_term):
     return _hydrate_address(row, city=city, state=state)
 
 
+def _iter_business_dicts(entries):
+    """Yield business dicts, flattening accidental nested lists/tuples."""
+    for entry in entries or []:
+        if isinstance(entry, dict):
+            yield entry
+        elif isinstance(entry, (list, tuple)):
+            yield from _iter_business_dicts(entry)
+
+
 def dedupe_discovered(entries):
     """Dedupe across queries using the existing identity key order."""
     unique = []
     seen = set()
-    for entry in entries:
+    for entry in _iter_business_dicts(entries):
         key = business_dedupe_key(entry)
         if key is None:
             unique.append(entry)
@@ -426,7 +435,7 @@ def discover_playwright(queries, locations, config, history):
                     item["niche_key"] = keyword
                     item["search_term"] = keyword
                     discovered.append(item)
-        discovered = dedupe_businesses(discovered)
+        discovered, _duplicates = dedupe_businesses(discovered)
     finally:
         session.close()
     return discovered, raw_count
