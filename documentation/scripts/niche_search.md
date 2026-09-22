@@ -38,17 +38,18 @@ Default output: `niche_leads_output.json` (kept separate from `leads_output.json
 ## Pipeline
 
 1. Generate multiple queries from the niche (search + related + extras).
-2. Discover via Google Places or Playwright Maps (same `leadgen_type` as saved settings).
-3. Deduplicate across queries.
+2. Discover one city/state at a time via Google Places or Playwright Maps (same `leadgen_type` as saved settings). Playwright keeps one browser session across locations.
+3. Deduplicate across queries for that location (and against already saved identities).
 4. Stage 1: Places/Maps fields only.
-5. Stage 2: cheap website existence/status check.
-6. Stage 3: deep website analysis only for leads that pass cheap criteria.
+5. Stage 2: cheap website existence/status check. A bad page cannot abort the job.
+6. Stage 3: deep website analysis only for leads that pass cheap criteria. Malformed `href`s (including `http://[`) are skipped.
 7. Detect signals and compute additive `lead_score` + breakdown (`score_model: intent_v1`).
 8. Stage 4: social classification for promising leads. Active social requires a retrieved post date.
 9. Stage 5: email enrichment only at/above the configured score threshold (default 55).
-10. Rank, apply user filters, save, optional dashboard ingest, then the CLI reviewer.
+10. Rank, apply user filters, then **save JSON and/or upload to the dashboard before the next city starts**.
+11. Print per-location and running lead stats, then open the CLI reviewer.
 
-Progress is printed as Google results, unique businesses, websites analyzed, social profiles found, high-intent count, and score 55+.
+Progress is printed after each location as raw results, unique businesses, websites analyzed, social profiles found, qualified count, score 55+, high-intent, with/without website, emails, high-pri, saved, and uploaded. The same totals are repeated as a running summary so a crash later in the run does not hide earlier work.
 
 ## Scoring
 

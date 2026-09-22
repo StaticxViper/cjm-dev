@@ -385,6 +385,87 @@ class TestLeadEnrichmentSetting(unittest.TestCase):
                 LEADGEN.run_leadgen(config)
         mock_enrich.assert_called_once_with(rows, leadgen_type="playwright")
 
+    def test_gather_leads_playwright_persists_after_each_location(self):
+        class FakeSession:
+            google_blocked = False
+            stats = {"pages_processed": 2}
+
+            def search_location(self, keyword, city, state, **_kwargs):
+                return [{
+                    "business_name": f"{city} Biz",
+                    "place_id": f"pid-{city.replace(' ', '-')}",
+                    "website": "",
+                    "phone_google": "555-123-4567",
+                    "address": f"1 Main, {city}, {state}",
+                }]
+
+            def enrich_listing(self, stub):
+                return dict(stub)
+
+            def close(self):
+                pass
+
+        persisted = []
+
+        def fake_persist(rows, config, location_label=None, json_path=None):
+            persisted.append((location_label, [row.get("place_id") for row in rows]))
+            return len(rows), len(rows)
+
+        def fake_process(businesses, **_kwargs):
+            first = businesses[0]
+            return [{
+                "business_name": first["business_name"],
+                "place_id": first["place_id"],
+                "lead_score": 80,
+                "email": "",
+            }]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config = self._run_config(
+                lead_enrichment=False,
+                leadgen_type="playwright",
+                output_mode="both",
+                keywords=["notary"],
+                locations=[
+                    ("UT", "Salt Lake City", "40.7,-111.8"),
+                    ("NV", "Las Vegas", "36.1,-115.1"),
+                ],
+            )
+            config.search_history_path = str(Path(tmp) / "history.json")
+            config.json_output = str(Path(tmp) / "leads.json")
+            with patch.object(LEADGEN, "BusinessDiscoverySession", return_value=FakeSession()), \
+                    patch.object(LEADGEN, "process_businesses", side_effect=fake_process), \
+                    patch.object(LEADGEN, "persist_lead_batch", side_effect=fake_persist), \
+                    patch.object(LEADGEN, "listing_needs_detail", return_value=False):
+                rows, stats = LEADGEN.gather_leads_playwright(
+                    config,
+                    set(),
+                    set(),
+                    {"places_nearby": 0, "places_details": 0},
+                )
+
+        self.assertEqual(
+            [label for label, _ids in persisted],
+            ["Salt Lake City, UT", "Las Vegas, NV"],
+        )
+        self.assertTrue(stats["flushed_incrementally"])
+        self.assertEqual(stats["qualified_leads"], 2)
+        self.assertEqual(stats["saved"], 2)
+        self.assertEqual(stats["uploaded"], 2)
+        self.assertEqual(len(rows), 2)
+
+    def test_persist_lead_batch_saves_and_uploads(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "lead_score": 80}]
+        config = self._run_config(output_mode="both")
+        with patch.object(LEADGEN, "save_results") as mock_save, \
+                patch.object(LEADGEN, "send_to_dashboard", return_value=1) as mock_send:
+            saved, uploaded = LEADGEN.persist_lead_batch(
+                rows, config, location_label="Cherry Hill, NJ"
+            )
+        mock_save.assert_called_once()
+        mock_send.assert_called_once_with(rows)
+        self.assertEqual((saved, uploaded), (1, 1))
+
 
 @SKIP
 class TestQualityFilters(unittest.TestCase):
@@ -788,7 +869,8 @@ class TestSendToDashboard(unittest.TestCase):
             "niche_key": "landscaping",
             "lead_score": 85,
         }]
-        LEADGEN.send_to_dashboard(rows)
+        uploaded = LEADGEN.send_to_dashboard(rows)
+        self.assertEqual(uploaded, 1)
         mock_api.build_request.assert_called_once()
         call_kwargs = mock_api.build_request.call_args.kwargs
         self.assertEqual(call_kwargs["endpoint"], LEADGEN.DASHBOARD_BULK_ENDPOINT)

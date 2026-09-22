@@ -70,6 +70,8 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 | `test_enrich_missing_emails_*` | Returns enriched rows; an actor failure is logged, not raised |
 | `test_enrich_missing_emails_playwright_*` | Playwright mode dispatches to `leadenrich_playwright`; failures are swallowed |
 | `test_run_leadgen_playwright_passes_leadgen_type_to_enrichment` | Playwright discovery passes `leadgen_type="playwright"` into enrichment |
+| `test_gather_leads_playwright_persists_after_each_location` | Each city is saved/uploaded before the next search starts |
+| `test_persist_lead_batch_saves_and_uploads` | Location flush writes JSON and dashboard payload |
 
 ### `TestGetPlaces`
 
@@ -164,9 +166,9 @@ Imports niche search modules the same way (CWD switched to `scripts/lead_automat
 |------------|----------------|
 | `TestNicheConfig` | Loads 20 niches, unique/stable query generation, display-name lookup, negative keywords |
 | `TestDedupAndFranchise` | Cross-query `place_id` dedupe; Petco/PetSmart franchise detection |
-| `TestWebsiteAndSocial` | Social URL ≠ website; broken site only after a failed request; quality bands; URL-only social is not active |
+| `TestWebsiteAndSocial` | Social URL ≠ website; broken site only after a failed request; quality bands; malformed `http://[` hrefs are skipped; URL-only social is not active |
 | `TestIntentScoring` | Deterministic additive scores, negatives, breakdown, evidence-based outreach angle, seven fixtures |
-| `TestFiltersExportAndIngest` | Result presets, CSV columns, `high-pri-lead` dashboard tags, keyword ingest unchanged, search job filters franchises |
+| `TestFiltersExportAndIngest` | Result presets, CSV columns, `high-pri-lead` dashboard tags, keyword ingest unchanged, search job filters franchises, per-city save/upload + running lead stats |
 
 ## Test file: `unittests/zillow_automation/test_property_listing_gen.py`
 

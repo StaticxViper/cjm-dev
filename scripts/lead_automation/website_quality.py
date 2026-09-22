@@ -242,8 +242,17 @@ def _count_internal_links(soup, base_url):
     host = _host(base_url)
     pages = set()
     for anchor in soup.find_all("a", href=True):
-        href = urljoin(base_url, anchor.get("href") or "")
-        parsed = urlparse(href)
+        raw_href = anchor.get("href")
+        if isinstance(raw_href, (list, tuple)):
+            raw_href = raw_href[0] if raw_href else ""
+        raw_href = str(raw_href or "").strip()
+        if not raw_href or raw_href.lower().startswith(("#", "javascript:", "mailto:", "tel:", "data:")):
+            continue
+        try:
+            href = urljoin(base_url or "", raw_href)
+            parsed = urlparse(href)
+        except ValueError:
+            continue
         if _host(href) != host:
             continue
         path = parsed.path or "/"

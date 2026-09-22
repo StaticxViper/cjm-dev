@@ -285,6 +285,33 @@ class TestWebsiteAndSocial(unittest.TestCase):
         )
         self.assertGreaterEqual(poor["website_quality_score"], 41)
 
+    def test_count_internal_links_skips_malformed_hrefs(self):
+        quality = MODULES["website_quality"]
+        html = """
+        <html><body>
+        <a href="http://[">bad ipv6</a>
+        <a href="javascript:void(0)">js</a>
+        <a href="mailto:hi@example.com">mail</a>
+        <a href="/about">about</a>
+        <a href="/contact">contact</a>
+        </body></html>
+        """
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+        count = quality._count_internal_links(soup, "https://harbor-notary.example")
+        self.assertEqual(count, 2)
+        analysis = quality.analyze_website_quality(
+            "https://harbor-notary.example",
+            html=html,
+            cheap={
+                "url": "https://harbor-notary.example",
+                "https": True,
+                "reachable": True,
+                "http_status": 200,
+            },
+        )
+        self.assertEqual(analysis["page_count_estimate"], 2)
+
     def test_social_url_only_is_not_active(self):
         result = MODULES["social_activity"].classify_social_activity(
             {"instagram_url": "https://instagram.com/abcdogs"},
@@ -573,3 +600,99 @@ class TestFiltersExportAndIngest(unittest.TestCase):
         self.assertIn("high-pri-lead", rows[0]["tags"])
         self.assertEqual(rows[0]["score_model"], "intent_v1")
         self.assertGreaterEqual(stats["qualified_leads"], 1)
+
+    def test_run_niche_search_flushes_after_each_location(self):
+        search = MODULES["niche_search"]
+        niche = MODULES["niche_config"].get_niche("specialty_dog_trainers")
+
+        def discover(_queries, _locations, _config):
+            return [
+                {
+                    "business_name": "ABC Dog Training",
+                    "place_id": "ChIJ-abc",
+                    "address": "10 Main St, Cherry Hill, NJ 08002",
+                    "phone_google": "(856) 555-0101",
+                    "website": "",
+                    "rating": 4.9,
+                    "user_ratings_total": 46,
+                    "business_status": "OPERATIONAL",
+                    "search_term": "reactive dog trainer",
+                    "location_searched": "Cherry Hill, NJ",
+                    "source": "playwright",
+                },
+                {
+                    "business_name": "Valley K9",
+                    "place_id": "ChIJ-valley",
+                    "address": "20 State St, Philadelphia, PA 19103",
+                    "phone_google": "(215) 555-0199",
+                    "website": "",
+                    "rating": 4.8,
+                    "user_ratings_total": 33,
+                    "business_status": "OPERATIONAL",
+                    "search_term": "board and train",
+                    "location_searched": "Philadelphia, PA",
+                    "source": "playwright",
+                },
+            ], 2
+
+        saved = []
+        uploaded = []
+
+        def fake_save(rows, path):
+            saved.append([row["place_id"] for row in rows])
+
+        def fake_send(rows):
+            uploaded.append([row["place_id"] for row in rows])
+            return len(rows)
+
+        config = search.NicheSearchConfig(
+            niche_id="specialty_dog_trainers",
+            locations=[
+                ("NJ", "Cherry Hill", "39.9,-75.1"),
+                ("PA", "Philadelphia", "39.9,-75.1"),
+            ],
+            min_reviews=10,
+            min_rating=4.5,
+            min_score=55,
+            filter_franchises=True,
+            leadgen_type="playwright",
+            json_output=str(Path(tempfile.gettempdir()) / "niche_flush_leads.json"),
+            search_history_path=str(Path(tempfile.gettempdir()) / "niche_flush_history.json"),
+            output_mode="both",
+            open_reviewer=False,
+            skip_searched=False,
+        )
+        with patch.object(search, "cheap_website_check", return_value={
+            "url": "",
+            "no_website": True,
+            "website_broken": False,
+            "website_status": "none",
+            "reachable": False,
+        }), patch.object(search, "enrich_lead_with_email"), patch.object(
+            search, "discover_api_manager", side_effect=AssertionError("live Places API must stay mocked")
+        ), patch.object(
+            search, "discover_playwright", side_effect=AssertionError("live Playwright must stay mocked")
+        ), patch.object(
+            MODULES["leadgen"], "save_results", side_effect=fake_save
+        ), patch.object(
+            MODULES["leadgen"], "send_to_dashboard", side_effect=fake_send
+        ), patch.object(MODULES["leadgen"], "update_usage_stats"), patch(
+            "search_history.SearchHistory.save"
+        ), patch("search_history.SearchHistory.record_run"):
+            rows, stats = search.run_niche_search(
+                config,
+                niches={"specialty_dog_trainers": niche},
+                discover_fn=discover,
+            )
+        self.assertEqual(len(saved), 2)
+        self.assertEqual(len(uploaded), 2)
+        self.assertEqual(saved[0], ["ChIJ-abc"])
+        self.assertEqual(saved[1], ["ChIJ-valley"])
+        names = {row["business_name"] for row in rows}
+        self.assertEqual(names, {"ABC Dog Training", "Valley K9"})
+        self.assertEqual(stats["qualified_leads"], 2)
+        self.assertEqual(stats["locations_processed"], 2)
+        self.assertEqual(stats["saved"], 2)
+        self.assertEqual(stats["uploaded"], 2)
+        self.assertGreaterEqual(stats["without_website"], 1)
+        self.assertIn("high_pri", stats)

@@ -1349,7 +1349,7 @@ def send_to_dashboard(rows):
         for extra in row.get("tags") or []:
             if extra and extra not in tags:
                 tags.append(extra)
-        payload.append({
+        item = {
             "business_name": row["business_name"],
             "address": row.get("address") or "",
             "phone": row.get("phone_google") or "",
@@ -1357,11 +1357,20 @@ def send_to_dashboard(rows):
             "category": category,
             "tags": tags,
             "score": int(row["lead_score"]),
-        })
+        }
+        if row.get("website") not in (None, ""):
+            item["website"] = row.get("website")
+        if row.get("rating") not in (None, ""):
+            item["rating"] = row.get("rating")
+        if row.get("user_ratings_total") not in (None, ""):
+            item["user_ratings_total"] = row.get("user_ratings_total")
+        if row.get("niche"):
+            item["niche"] = row.get("niche")
+        payload.append(item)
 
     if not payload:
         logger.info("No leads to send to dashboard")
-        return
+        return 0
 
     logger.critical("Sending %d leads to dashboard (bulk ingest)", len(payload))
     api().build_request(
@@ -1371,6 +1380,77 @@ def send_to_dashboard(rows):
         api="Lead Ingest",
         method="POST",
         timeout=60.0,
+    )
+    return len(payload)
+
+
+def persist_lead_batch(rows, config, location_label=None, json_path=None):
+    """Save and/or upload one location batch. Returns (saved, uploaded)."""
+    saved = 0
+    uploaded = 0
+    if not rows:
+        return saved, uploaded
+    path = json_path or getattr(config, "json_output", None) or "leads_output.json"
+    mode = getattr(config, "output_mode", "json")
+    if mode in ("json", "both"):
+        save_results(rows, path)
+        saved = len(rows)
+        if location_label:
+            logger.critical("Saved %d leads after %s -> %s", saved, location_label, path)
+    if mode in ("dashboard", "both"):
+        uploaded = send_to_dashboard(rows) or 0
+        if location_label:
+            logger.critical("Uploaded %d leads after %s", uploaded, location_label)
+    return saved, uploaded
+
+
+def _lead_field_counts(rows):
+    with_email = 0
+    high_pri = 0
+    score_55 = 0
+    high_intent = 0
+    for row in rows or []:
+        email = str(row.get("email") or "")
+        if "@" in email:
+            with_email += 1
+        tags = row.get("tags") or []
+        if "high-pri-lead" in tags or row.get("high_pri_lead"):
+            high_pri += 1
+        try:
+            score = int(row.get("lead_score") or 0)
+        except (TypeError, ValueError):
+            score = 0
+        if score >= 55:
+            score_55 += 1
+        if score >= 70:
+            high_intent += 1
+    return {
+        "with_email": with_email,
+        "high_pri": high_pri,
+        "score_55_plus": score_55,
+        "high_intent_leads": high_intent,
+    }
+
+
+def print_lead_stats(stats, location_label=None, cumulative=False):
+    heading = "Lead stats (run)" if cumulative else "Lead stats"
+    if location_label:
+        heading = f"{heading} — {location_label}"
+    log_step(
+        4,
+        1,
+        heading,
+        (
+            f"raw {stats.get('google_results', stats.get('businesses_discovered', 0))} | "
+            f"unique {stats.get('unique_businesses', 0)} | "
+            f"qualified {stats.get('qualified_leads', 0)} | "
+            f"55+ {stats.get('score_55_plus', 0)} | "
+            f"high-intent {stats.get('high_intent_leads', 0)} | "
+            f"websites {stats.get('with_website', 0)}/{stats.get('without_website', 0)} | "
+            f"emails {stats.get('with_email', 0)} | "
+            f"high-pri {stats.get('high_pri', 0)} | "
+            f"saved {stats.get('saved', 0)} | uploaded {stats.get('uploaded', 0)}"
+        ),
     )
 
 
@@ -2385,6 +2465,12 @@ def _print_run_summary(stats):
     print(f"Businesses with websites: {stats.get('with_website', 0)}")
     print(f"Businesses without websites: {stats.get('without_website', 0)}")
     print(f"Qualified leads: {stats.get('qualified_leads', 0)}")
+    if stats.get("score_55_plus") is not None:
+        print(f"Score 55+: {stats.get('score_55_plus', 0)}")
+        print(f"High-intent leads: {stats.get('high_intent_leads', 0)}")
+        print(f"Leads with email: {stats.get('with_email', 0)}")
+        print(f"Saved this run: {stats.get('saved', 0)}")
+        print(f"Uploaded this run: {stats.get('uploaded', 0)}")
     print(f"API Manager calls used: {stats.get('api_manager_calls', 0)}")
     print()
     logger.critical(
@@ -2536,6 +2622,54 @@ def gather_leads_api_manager(
     return total_rows, stats
 
 
+def _playwright_collect_details(session, unique_stubs, config):
+    """Open place panels only when the Maps card is missing required fields."""
+    discovered = []
+    details_needed = 0
+    log_step(3, 4, "Open place panels", f"{len(unique_stubs)} listings")
+    for index, stub in enumerate(unique_stubs, 1):
+        if session.google_blocked:
+            discovered.append(stub)
+            continue
+        needs_detail = listing_needs_detail(stub, config)
+        if not needs_detail:
+            entry = dict(stub)
+            entry["source"] = stub.get("source") or "playwright"
+            discovered.append(entry)
+            continue
+        details_needed += 1
+        if details_needed == 1 or index % 10 == 0 or index == len(unique_stubs):
+            log_step(
+                3,
+                4,
+                "Detail progress",
+                f"{index}/{len(unique_stubs)} {stub.get('business_name')}",
+            )
+        try:
+            entry = session.enrich_listing(stub)
+        except Exception as exc:
+            logger.error(
+                "[Playwright] Enrich failed for %s: %s",
+                stub.get("business_name"),
+                exc,
+            )
+            entry = dict(stub)
+        entry["niche_key"] = stub.get("niche_key")
+        entry["search_term"] = stub.get("search_term") or stub.get("niche_key")
+        entry["location_searched"] = stub.get("location_searched")
+        entry["source"] = "playwright"
+        if not entry.get("place_id"):
+            entry["place_id"] = extract_place_id_from_url(entry.get("profile_url"))
+        discovered.append(entry)
+    skipped_details = len(unique_stubs) - details_needed
+    if skipped_details:
+        logger.critical(
+            "[STEP 3.4] Skipped %d detail pages (card already had required fields)",
+            skipped_details,
+        )
+    return discovered
+
+
 def gather_leads_playwright(
     config,
     contacted_emails,
@@ -2543,20 +2677,29 @@ def gather_leads_playwright(
     api_call_counter,
     history=None,
 ):
-    """Browser-based Google Maps discovery path (no Places API calls)."""
+    """Browser-based Google Maps discovery path (no Places API calls).
+
+    Each city/state is searched, qualified, saved, and uploaded before the next
+    location starts so a later crash does not discard earlier leads.
+    """
     history = history or SearchHistory(config.search_history_path)
-    stubs = []
     session = BusinessDiscoverySession()
     locations_searched = set()
     discovery_stats = {}
     duplicates_removed = 0
-    unique = []
     searches_performed = 0
     searches_skipped = 0
+    stubs_found = 0
+    unique_all = []
+    total_rows = []
+    seen_stub_keys = set()
+    saved_total = 0
+    uploaded_total = 0
 
     log_stage(3, "Discovery", "Playwright (Google Maps)")
     try:
         for state, city, _coords in config.locations:
+            loc = f"{city}, {state}"
             pending, skipped = history.pending_keywords_for_location(
                 config.keywords,
                 city,
@@ -2578,7 +2721,8 @@ def gather_leads_playwright(
             if not pending:
                 continue
 
-            locations_searched.add(f"{city}, {state}")
+            locations_searched.add(loc)
+            city_stubs = []
             for keyword in pending:
                 try:
                     log_step(3, 2, "Maps search", f"{keyword} × {city}, {state}")
@@ -2614,13 +2758,13 @@ def gather_leads_playwright(
                         entry = dict(stub)
                         entry["niche_key"] = keyword
                         entry["search_term"] = keyword
-                        entry["location_searched"] = f"{city}, {state}"
+                        entry["location_searched"] = loc
                         entry["source"] = "playwright"
                         if not entry.get("place_id"):
                             entry["place_id"] = extract_place_id_from_url(
                                 entry.get("profile_url")
                             )
-                        stubs.append(entry)
+                        city_stubs.append(entry)
                 except Exception as exc:
                     logger.error(
                         "[Playwright] Search failed for %s / %s, %s: %s",
@@ -2633,123 +2777,120 @@ def gather_leads_playwright(
                 if session.google_blocked:
                     logger.error("[Playwright] Stopping remaining searches after block page")
                     break
-            if session.google_blocked:
-                break
 
-        history.save()
-        unique_stubs, duplicates_removed = dedupe_businesses(stubs)
-        logger.critical(
-            "[STEP 3.3] After discovery dedupe: %d unique (removed %d)",
-            len(unique_stubs),
-            duplicates_removed,
-        )
-
-        log_step(3, 4, "Open place panels", f"{len(unique_stubs)} listings")
-        discovered = []
-        details_needed = 0
-        for index, stub in enumerate(unique_stubs, 1):
-            if session.google_blocked:
-                discovered.append(stub)
-                continue
-            needs_detail = listing_needs_detail(stub, config)
-            if not needs_detail:
-                entry = dict(stub)
-                entry["source"] = stub.get("source") or "playwright"
-                discovered.append(entry)
-                continue
-            details_needed += 1
-            if details_needed == 1 or index % 10 == 0 or index == len(unique_stubs):
-                log_step(
-                    3,
-                    4,
-                    "Detail progress",
-                    f"{index}/{len(unique_stubs)} {stub.get('business_name')}",
-                )
-            try:
-                entry = session.enrich_listing(stub)
-            except Exception as exc:
-                logger.error(
-                    "[Playwright] Enrich failed for %s: %s",
-                    stub.get("business_name"),
-                    exc,
-                )
-                entry = dict(stub)
-            entry["niche_key"] = stub.get("niche_key")
-            entry["search_term"] = stub.get("search_term") or stub.get("niche_key")
-            entry["location_searched"] = stub.get("location_searched")
-            entry["source"] = "playwright"
-            if not entry.get("place_id"):
-                entry["place_id"] = extract_place_id_from_url(entry.get("profile_url"))
-            discovered.append(entry)
-        skipped_details = len(unique_stubs) - details_needed
-        if skipped_details:
+            history.save()
+            stubs_found += len(city_stubs)
+            unique_stubs, loc_dupes = dedupe_businesses(city_stubs)
+            kept_stubs = []
+            for stub in unique_stubs:
+                key = business_dedupe_key(stub)
+                if key and key in seen_stub_keys:
+                    loc_dupes += 1
+                    continue
+                if key:
+                    seen_stub_keys.add(key)
+                kept_stubs.append(stub)
+            duplicates_removed += loc_dupes
             logger.critical(
-                "[STEP 3.4] Skipped %d detail pages (card already had required fields)",
-                skipped_details,
+                "[STEP 3.3] %s after discovery dedupe: %d unique (removed %d)",
+                loc,
+                len(kept_stubs),
+                loc_dupes,
             )
 
-        unique, _ = dedupe_businesses(discovered)
+            discovered = _playwright_collect_details(session, kept_stubs, config)
+            unique, more_dupes = dedupe_businesses(discovered)
+            duplicates_removed += more_dupes
+            unique_all.extend(unique)
+
+            try:
+                log_stage(4, "Qualify & analyze", f"{loc} ({len(unique)} unique businesses)")
+                rows = process_businesses(
+                    unique,
+                    api_key=None,
+                    existing_ids=set(),
+                    contacted_emails=contacted_emails,
+                    min_score=config.min_score,
+                    max_workers=config.max_workers,
+                    filter_franchises=config.filter_franchises,
+                    min_reviews=config.min_reviews,
+                    require_website=config.require_website,
+                    objective=config.objective,
+                    city=city,
+                    state=state,
+                    fetch_details=False,
+                    existing_identities=existing_identities,
+                    source="playwright",
+                    api_call_counter=api_call_counter,
+                )
+            except Exception as exc:
+                logger.error("[Playwright] Processing failed for %s: %s", loc, exc)
+                rows = []
+
+            saved, uploaded = persist_lead_batch(rows, config, location_label=loc)
+            saved_total += saved
+            uploaded_total += uploaded
+            total_rows.extend(rows)
+            loc_web = sum(1 for item in unique if (item.get("website") or "").strip())
+            loc_counts = _lead_field_counts(rows)
+            print_lead_stats(
+                {
+                    "google_results": len(city_stubs),
+                    "unique_businesses": len(unique),
+                    "qualified_leads": len(rows),
+                    "with_website": loc_web,
+                    "without_website": max(0, len(unique) - loc_web),
+                    "saved": saved,
+                    "uploaded": uploaded,
+                    **loc_counts,
+                },
+                location_label=loc,
+            )
+            print_lead_stats(
+                {
+                    "google_results": stubs_found,
+                    "unique_businesses": len(unique_all),
+                    "qualified_leads": len(total_rows),
+                    "with_website": sum(1 for item in unique_all if (item.get("website") or "").strip()),
+                    "without_website": max(
+                        0,
+                        len(unique_all)
+                        - sum(1 for item in unique_all if (item.get("website") or "").strip()),
+                    ),
+                    "saved": saved_total,
+                    "uploaded": uploaded_total,
+                    **_lead_field_counts(total_rows),
+                },
+                cumulative=True,
+            )
+            if session.google_blocked:
+                break
     finally:
         discovery_stats = dict(session.stats)
         session.close()
 
-    # Group by location so email discovery still gets city/state context.
-    by_location = {}
-    for entry in unique:
-        loc = entry.get("location_searched") or ""
-        by_location.setdefault(loc, []).append(entry)
-
-    total_rows = []
-    if unique:
-        log_stage(4, "Qualify & analyze", f"{len(unique)} unique businesses")
-    for loc, businesses in by_location.items():
-        city = state = None
-        if "," in loc:
-            city_part, state_part = loc.rsplit(",", 1)
-            city = city_part.strip()
-            state = state_part.strip()
-        try:
-            log_step(4, 1, "Process location batch", f"{loc} ({len(businesses)} businesses)")
-            rows = process_businesses(
-                businesses,
-                api_key=None,
-                existing_ids=set(),
-                contacted_emails=contacted_emails,
-                min_score=config.min_score,
-                max_workers=config.max_workers,
-                filter_franchises=config.filter_franchises,
-                min_reviews=config.min_reviews,
-                require_website=config.require_website,
-                objective=config.objective,
-                city=city,
-                state=state,
-                fetch_details=False,
-                existing_identities=existing_identities,
-                source="playwright",
-                api_call_counter=api_call_counter,
-            )
-            total_rows.extend(rows)
-        except Exception as exc:
-            logger.error("[Playwright] Processing failed for %s: %s", loc, exc)
-            continue
-
-    with_website = sum(1 for b in unique if (b.get("website") or "").strip())
+    with_website = sum(1 for item in unique_all if (item.get("website") or "").strip())
+    counts = _lead_field_counts(total_rows)
     stats = {
         "mode": "Playwright",
         "searches_performed": searches_performed,
         "searches_skipped": searches_skipped,
         "locations_searched": len(locations_searched),
         "pages_processed": discovery_stats.get("pages_processed", 0),
-        "businesses_discovered": len(stubs),
+        "businesses_discovered": stubs_found,
         "duplicates_removed": duplicates_removed,
-        "unique_businesses": len(unique),
+        "unique_businesses": len(unique_all),
         "with_website": with_website,
-        "without_website": max(0, len(unique) - with_website),
+        "without_website": max(0, len(unique_all) - with_website),
         "qualified_leads": len(total_rows),
+        "saved": saved_total,
+        "uploaded": uploaded_total,
+        "flushed_incrementally": True,
         "api_manager_calls": (
             api_call_counter.get("places_nearby", 0)
             + api_call_counter.get("places_details", 0)
         ),
+        **counts,
     }
     return total_rows, stats
 
@@ -2869,13 +3010,17 @@ def run_leadgen(config):
         log_stage(5, "Lead enrichment", "skipped by configuration")
 
     log_stage(6, "Output", config.output_mode)
-    if config.output_mode in ("json", "both"):
-        log_step(6, 1, "Save JSON", config.json_output)
-        save_results(total_rows, config.json_output)
-
-    if config.output_mode in ("dashboard", "both"):
-        log_step(6, 2, "Dashboard bulk ingest", f"{len(total_rows)} leads")
-        send_to_dashboard(total_rows)
+    flushed = bool(stats.get("flushed_incrementally"))
+    if flushed and not config.lead_enrichment:
+        log_step(6, 1, "Incremental output", "already saved/uploaded after each location")
+    else:
+        if config.output_mode in ("json", "both"):
+            log_step(6, 1, "Save JSON", config.json_output)
+            save_results(total_rows, config.json_output)
+            stats["saved"] = len(total_rows)
+        if config.output_mode in ("dashboard", "both"):
+            log_step(6, 2, "Dashboard bulk ingest", f"{len(total_rows)} leads")
+            stats["uploaded"] = send_to_dashboard(total_rows) or 0
 
     log_stage(7, "Finalize")
     history.record_run({

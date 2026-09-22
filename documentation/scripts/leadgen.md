@@ -151,10 +151,10 @@ CLI flags override values from `leadgen_settings.json`. Niche jobs write `niche_
 2. **Load prior state** — contacted emails, existing lead identities, and `leadgen_search_history.json`.
 3. **Discover businesses** (provider switch only; skips history hits when `skip_searched` is on):
    - `api_manager` — for each selected location and pending keyword, call Google Places Nearby Search (with pagination), then Place Details.
-   - `playwright` — for each pending keyword × location, open Google Maps in one shared Chromium browser, scroll/paginate up to `playwright_max_pages`, collect listings (phone/website/rating from the results cards), optionally search extra map cells when area expansion is on, then open place panels only when required fields are missing.
-4. **Qualify & analyze** — quality filters, website scrape, optional email discovery, scoring, objective gate.
+   - `playwright` — for each pending keyword × location, open Google Maps in one shared Chromium browser, scroll/paginate up to `playwright_max_pages`, collect listings (phone/website/rating from the results cards), optionally search extra map cells when area expansion is on, then open place panels only when required fields are missing. After each city/state is searched and qualified, leads are saved/uploaded immediately (not held until the end of the run).
+4. **Qualify & analyze** — quality filters, website scrape, optional email discovery, scoring, objective gate. Playwright does this per city, then prints location and running lead stats (unique, qualified, 55+, high-intent, website/email counts, saved, uploaded).
 5. **Lead enrichment** (optional) — Facebook email lookup via [leadenrich](leadenrich.md) in API Manager mode, or Google/Playwright research via [leadenrich_playwright](leadenrich_playwright.md) in Playwright mode.
-6. **Output** — JSON and/or dashboard ingest.
+6. **Output** — JSON and/or dashboard ingest. Playwright already flushed each city; a final write happens only when enrichment updated rows.
 7. **Finalize** — append run summary to search history; update `leadgen_usage.json` when Places API calls were made.
 
 Logs use `[STAGE n/7]` and `[STEP n.m]` markers (enrichment uses `[ENRICH STAGE]` / `[ENRICH STEP]`) so progress is visible at a glance.
@@ -262,6 +262,8 @@ Notes:
 | `json` | Append qualifying leads to `leads_output.json` |
 | `dashboard` | Bulk POST to `/leads-ingest-bulk` via `APIManager` |
 | `both` | JSON save and dashboard ingest |
+
+Playwright discovery writes each finished city/state immediately (`persist_lead_batch`). A later crash during another city does not lose the leads already qualified.
 
 Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sample.json).
 
