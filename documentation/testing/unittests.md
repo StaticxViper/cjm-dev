@@ -72,6 +72,8 @@ Imports `leadgen` by temporarily changing CWD to `scripts/lead_automation/` (mat
 | `test_run_leadgen_playwright_passes_leadgen_type_to_enrichment` | Playwright discovery passes `leadgen_type="playwright"` into enrichment |
 | `test_gather_leads_playwright_persists_after_each_location` | Each city is saved/uploaded before the next search starts |
 | `test_persist_lead_batch_saves_and_uploads` | Location flush writes JSON and dashboard payload |
+| `test_send_to_dashboard_connect_error_does_not_raise` | DNS/connect failures retry then return 0 instead of aborting the run |
+| `test_persist_lead_batch_keeps_json_when_upload_fails` | City JSON is kept when dashboard ingest raises |
 
 ### `TestGetPlaces`
 
@@ -122,7 +124,7 @@ Imports `email_discovery` the same way. Playwright and HTTP are mocked; no live 
 | `TestExtractEmails` | Plain text, mailto, duplicates, malformed text, false positives, JSON-LD |
 | `TestQueriesAndConfidence` | Location-aware queries; HIGH domain match; LOW/MEDIUM Gmail rules |
 | `TestGoogleParsingAndBlocks` | SERP HTML parse, CAPTCHA detection, official-site pick |
-| `TestEnrichmentFlow` | Skip when email exists, cache hit, CAPTCHA does not raise, accept/reject rules |
+| `TestEnrichmentFlow` | Skip when email exists, cache hit, CAPTCHA does not raise, accept/reject rules, Google search works inside an asyncio loop |
 
 ## Test file: `unittests/lead_automation/test_leadenrich.py`
 

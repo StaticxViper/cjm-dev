@@ -1373,15 +1373,34 @@ def send_to_dashboard(rows):
         return 0
 
     logger.critical("Sending %d leads to dashboard (bulk ingest)", len(payload))
-    api().build_request(
-        base_url=DASHBOARD_BASE_URL,
-        endpoint=DASHBOARD_BULK_ENDPOINT,
-        json_body=payload,
-        api="Lead Ingest",
-        method="POST",
-        timeout=60.0,
+    last_error = None
+    for attempt in range(1, 4):
+        try:
+            api().build_request(
+                base_url=DASHBOARD_BASE_URL,
+                endpoint=DASHBOARD_BULK_ENDPOINT,
+                json_body=payload,
+                api="Lead Ingest",
+                method="POST",
+                timeout=60.0,
+            )
+            return len(payload)
+        except Exception as exc:
+            last_error = exc
+            logger.error(
+                "Dashboard ingest attempt %d/3 failed (%d leads): %s",
+                attempt,
+                len(payload),
+                exc,
+            )
+            if attempt < 3:
+                time.sleep(1.5 * attempt)
+    logger.error(
+        "Dashboard ingest skipped after retries; %d leads remain in JSON: %s",
+        len(payload),
+        last_error,
     )
-    return len(payload)
+    return 0
 
 
 def persist_lead_batch(rows, config, location_label=None, json_path=None):
@@ -1398,9 +1417,24 @@ def persist_lead_batch(rows, config, location_label=None, json_path=None):
         if location_label:
             logger.critical("Saved %d leads after %s -> %s", saved, location_label, path)
     if mode in ("dashboard", "both"):
-        uploaded = send_to_dashboard(rows) or 0
+        try:
+            uploaded = send_to_dashboard(rows) or 0
+        except Exception as exc:
+            logger.error(
+                "Dashboard ingest failed after %s: %s",
+                location_label or "batch",
+                exc,
+            )
+            uploaded = 0
         if location_label:
-            logger.critical("Uploaded %d leads after %s", uploaded, location_label)
+            if uploaded:
+                logger.critical("Uploaded %d leads after %s", uploaded, location_label)
+            else:
+                logger.error(
+                    "Dashboard ingest missed after %s; JSON still has %d leads",
+                    location_label,
+                    saved,
+                )
     return saved, uploaded
 
 

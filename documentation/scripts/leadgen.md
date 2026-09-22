@@ -263,7 +263,7 @@ Notes:
 | `dashboard` | Bulk POST to `/leads-ingest-bulk` via `APIManager` |
 | `both` | JSON save and dashboard ingest |
 
-Playwright discovery writes each finished city/state immediately (`persist_lead_batch`). A later crash during another city does not lose the leads already qualified.
+Playwright discovery writes each finished city/state immediately (`persist_lead_batch`). A later crash during another city does not lose the leads already qualified. Dashboard ingest retries transient DNS/connect errors and then continues the run; JSON is kept even when the upload misses.
 
 Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sample.json).
 

@@ -9,6 +9,8 @@ Playwright is used only for Google result pages. Website fetches use requests
 """
 from html import unescape
 from urllib.parse import parse_qs, quote_plus, urljoin, urlparse
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 import json
 import random
 import re
@@ -681,8 +683,27 @@ def is_google_block_page(html, url=""):
     return any(marker in haystack for marker in CAPTCHA_MARKERS)
 
 
+def _asyncio_loop_running():
+    """True when Playwright Sync API cannot start on this thread."""
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
+
+
+def _start_sync_playwright():
+    from playwright.sync_api import sync_playwright
+    return sync_playwright().start()
+
+
 class EmailDiscoverySession:
-    """One Playwright browser per location batch, plus an in-run cache."""
+    """One Playwright browser per location batch, plus an in-run cache.
+
+    Maps discovery may already own a Playwright Sync event loop on the main
+    thread. Google email searches then run on a dedicated worker thread so
+    `sync_playwright().start()` does not raise.
+    """
 
     def __init__(self, delay=None):
         self.google_blocked = False
@@ -692,6 +713,7 @@ class EmailDiscoverySession:
         self._page = None
         self._searches_done = 0
         self._delay = delay
+        self._worker = None
 
     def __enter__(self):
         return self
@@ -700,7 +722,23 @@ class EmailDiscoverySession:
         self.close()
         return False
 
+    def _call_in_browser_thread(self, fn, *args, **kwargs):
+        if not _asyncio_loop_running():
+            return fn(*args, **kwargs)
+        if self._worker is None:
+            self._worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="email-pw")
+        return self._worker.submit(fn, *args, **kwargs).result(timeout=BROWSER_TIMEOUT * 4)
+
     def close(self):
+        try:
+            self._call_in_browser_thread(self._close_blocking)
+        except Exception as exc:
+            logger.error("[GOOGLE] Failed to close email browser: %s", exc)
+        if self._worker is not None:
+            self._worker.shutdown(wait=True)
+            self._worker = None
+
+    def _close_blocking(self):
         page, browser, playwright = self._page, self._browser, self._playwright
         self._page = None
         self._browser = None
@@ -718,18 +756,15 @@ class EmailDiscoverySession:
                 logger.error("[GOOGLE] Failed to close %s: %s", label, exc)
 
     def _ensure_browser(self):
+        return self._call_in_browser_thread(self._ensure_browser_blocking)
+
+    def _ensure_browser_blocking(self):
         if self.google_blocked:
             return None
         if self._page is not None:
             return self._page
         try:
-            from playwright.sync_api import sync_playwright
-        except Exception as exc:
-            logger.error("[GOOGLE] Playwright is not available: %s", exc)
-            self.google_blocked = True
-            return None
-        try:
-            self._playwright = sync_playwright().start()
+            self._playwright = _start_sync_playwright()
             self._browser = self._playwright.chromium.launch(headless=True)
             self._page = self._browser.new_page(
                 user_agent=FETCH_HEADERS["User-Agent"],
@@ -740,7 +775,7 @@ class EmailDiscoverySession:
         except Exception as exc:
             logger.error("[GOOGLE] Failed to start browser: %s", exc)
             self.google_blocked = True
-            self.close()
+            self._close_blocking()
             return None
 
     def _sleep_between_searches(self):
@@ -753,9 +788,12 @@ class EmailDiscoverySession:
 
     def search(self, query):
         """Return organic results for a Google query, or [] if blocked/failed."""
+        return self._call_in_browser_thread(self._search_blocking, query)
+
+    def _search_blocking(self, query):
         if self.google_blocked:
             return []
-        page = self._ensure_browser()
+        page = self._ensure_browser_blocking()
         if page is None:
             return []
         self._sleep_between_searches()

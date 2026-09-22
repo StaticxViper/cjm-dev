@@ -12,7 +12,7 @@ import time
 
 import requests
 
-from email_discovery import enrich_lead_with_email, parse_address_parts
+from email_discovery import EmailDiscoverySession, enrich_lead_with_email, parse_address_parts
 from intent_scoring import apply_competitor_gap, score_intent_lead
 from leadfilter import is_new_identity, load_existing_identities
 from niche_config import (
@@ -504,26 +504,31 @@ def staged_enrich(leads, niche, rules, config):
     log_stage(5, "Stage 4 social / Stage 5 email")
     stage4_floor = int(enrich.get("stage4_min_provisional_score") or 40)
     stage5_floor = int(enrich.get("stage5_min_intent_score") or 55)
-    for lead in leads:
-        promising = int(lead.get("lead_score") or 0) >= stage4_floor
-        if promising or niche.get("social_priority"):
-            classification = classify_social_activity(lead, posts=lead.get("social_posts"), rules=rules)
-            apply_social_fields(lead, classification)
-            if classification.get("facebook_url") or classification.get("instagram_url"):
-                social_found += 1
-            score_intent_lead(lead, niche, rules=rules)
-        if int(lead.get("lead_score") or 0) >= stage5_floor and not lead.get("email"):
-            try:
-                enrich_lead_with_email(
-                    lead,
-                    city=lead.get("city"),
-                    state=lead.get("state"),
-                )
-            except Exception:
-                pass
-            score_intent_lead(lead, niche, rules=rules)
-        lead["outreach_angle"] = generate_outreach_angle(lead, niche)
-        lead["last_enriched"] = _now_iso()
+    email_session = EmailDiscoverySession()
+    try:
+        for lead in leads:
+            promising = int(lead.get("lead_score") or 0) >= stage4_floor
+            if promising or niche.get("social_priority"):
+                classification = classify_social_activity(lead, posts=lead.get("social_posts"), rules=rules)
+                apply_social_fields(lead, classification)
+                if classification.get("facebook_url") or classification.get("instagram_url"):
+                    social_found += 1
+                score_intent_lead(lead, niche, rules=rules)
+            if int(lead.get("lead_score") or 0) >= stage5_floor and not lead.get("email"):
+                try:
+                    enrich_lead_with_email(
+                        lead,
+                        city=lead.get("city"),
+                        state=lead.get("state"),
+                        session=email_session,
+                    )
+                except Exception:
+                    pass
+                score_intent_lead(lead, niche, rules=rules)
+            lead["outreach_angle"] = generate_outreach_angle(lead, niche)
+            lead["last_enriched"] = _now_iso()
+    finally:
+        email_session.close()
 
     log_step(5, 1, "Websites analyzed", str(websites_analyzed))
     log_step(5, 2, "Social profiles found", str(social_found))

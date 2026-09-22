@@ -881,6 +881,36 @@ class TestSendToDashboard(unittest.TestCase):
         self.assertEqual(payload[0]["score"], 85)
         self.assertEqual(payload[0]["category"], "landscaping-leads")
 
+    @patch("leadgen.time.sleep", return_value=None)
+    @patch("helper_scripts.api_manager.APIManager")
+    def test_send_to_dashboard_connect_error_does_not_raise(self, mock_api_cls, _sleep):
+        mock_api = MagicMock()
+        mock_api.build_request.side_effect = ConnectionError("getaddrinfo failed")
+        mock_api_cls.return_value = mock_api
+        rows = [{
+            "business_name": "Test Biz",
+            "address": "123 Main St, Houston, TX 77001, USA",
+            "phone_google": "555-1234",
+            "email": "contact@test.com",
+            "niche_key": "landscaping",
+            "lead_score": 85,
+        }]
+        uploaded = LEADGEN.send_to_dashboard(rows)
+        self.assertEqual(uploaded, 0)
+        self.assertEqual(mock_api.build_request.call_count, 3)
+
+    def test_persist_lead_batch_keeps_json_when_upload_fails(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "lead_score": 80}]
+        config = LEADGEN.LeadgenConfig(output_mode="both", json_output="leads_output.json")
+        with patch.object(LEADGEN, "save_results") as mock_save, \
+                patch.object(LEADGEN, "send_to_dashboard", side_effect=ConnectionError("dns")):
+            saved, uploaded = LEADGEN.persist_lead_batch(
+                rows, config, location_label="Jacksonville, FL"
+            )
+        mock_save.assert_called_once()
+        self.assertEqual(saved, 1)
+        self.assertEqual(uploaded, 0)
+
 
 @SKIP
 class TestGetPlaces(unittest.TestCase):
