@@ -1,0 +1,107 @@
+{
+  "score_model": "intent_v1",
+  "high_pri_tag": "high-pri-lead",
+  "positive": {
+    "no_website": 25,
+    "website_broken": 25,
+    "website_mobile_problem": 15,
+    "no_conversion_path": 15,
+    "review_count_band": {
+      "min": 15,
+      "max": 100,
+      "points": 12
+    },
+    "high_rating": {
+      "min_rating": 4.5,
+      "min_reviews": 15,
+      "points": 8
+    },
+    "active_social": 10,
+    "high_value_service": 10,
+    "mobile_or_multi_area": 8,
+    "recent_business_activity": 8,
+    "competitors_better_websites": 8,
+    "ads_to_weak_landing": 20
+  },
+  "negative": {
+    "franchise": -25,
+    "strong_website": -30,
+    "recently_updated_website": -20,
+    "weak_demand": -15,
+    "commodity_service": -10
+  },
+  "website_quality_bands": {
+    "excellent": [0, 20],
+    "good": [21, 40],
+    "outdated": [41, 60],
+    "poor": [61, 80],
+    "critical": [81, 100]
+  },
+  "strong_website_max_quality": 20,
+  "exclude_strong_website_max_quality": 40,
+  "website_issue_min_quality": 60,
+  "active_social_days": 30,
+  "recent_website_update_months": 12,
+  "competitor_quality_gap": 20,
+  "enrichment": {
+    "stage2_min_reviews": 5,
+    "stage3_min_reviews": 8,
+    "stage3_min_rating": 4.0,
+    "stage3_exclude_franchise": true,
+    "stage4_min_provisional_score": 40,
+    "stage5_min_intent_score": 55
+  },
+  "result_presets": {
+    "highest_intent": {
+      "label": "Highest Intent",
+      "filters": {
+        "min_score": 70,
+        "min_reviews": 15,
+        "min_rating": 4.5,
+        "require_active_business": true,
+        "exclude_strong_websites": true
+      }
+    },
+    "no_website": {
+      "label": "No Website",
+      "filters": {
+        "no_website": true,
+        "min_reviews": 10,
+        "require_active_business": true
+      }
+    },
+    "broken_website": {
+      "label": "Broken Website",
+      "filters": {
+        "has_website": true,
+        "min_website_quality": 60
+      }
+    },
+    "social_first": {
+      "label": "Social-First",
+      "filters": {
+        "active_social": true,
+        "weak_or_no_website": true,
+        "min_reviews": 10
+      }
+    },
+    "high_value": {
+      "label": "High Value",
+      "filters": {
+        "high_value_specialty": true,
+        "min_reviews": 15,
+        "min_rating": 4.5,
+        "weak_or_no_website": true
+      }
+    },
+    "easy_outreach": {
+      "label": "Easy Outreach",
+      "filters": {
+        "require_phone": true,
+        "require_email": true,
+        "min_reviews": 15,
+        "min_score": 55
+      }
+    }
+  }
+}

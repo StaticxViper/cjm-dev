@@ -31,6 +31,7 @@ def make_search_key(
     state,
     search_radius=None,
     playwright_max_pages=None,
+    playwright_area_expansion=None,
 ):
     """Stable identity for one discovery unit of work."""
     leadgen_type = (leadgen_type or "api_manager").strip().lower()
@@ -39,7 +40,10 @@ def make_search_key(
     state = (state or "").strip().upper()
     parts = [leadgen_type, keyword, city, state]
     if leadgen_type == "playwright":
-        parts.append(f"pages:{int(playwright_max_pages or 10)}")
+        parts.append(f"pages:{int(playwright_max_pages or 20)}")
+        expand = (playwright_area_expansion or "off").strip().lower()
+        if expand and expand not in ("off", "none"):
+            parts.append(f"expand:{expand}")
     else:
         parts.append(f"radius:{int(search_radius or 50000)}")
     return "|".join(parts)
@@ -107,6 +111,7 @@ class SearchHistory:
         state,
         search_radius=None,
         playwright_max_pages=None,
+        playwright_area_expansion=None,
         businesses_found=0,
         status="completed",
         extra=None,
@@ -118,6 +123,7 @@ class SearchHistory:
             state,
             search_radius=search_radius,
             playwright_max_pages=playwright_max_pages,
+            playwright_area_expansion=playwright_area_expansion,
         )
         entry = {
             "key": key,
@@ -127,6 +133,7 @@ class SearchHistory:
             "state": state,
             "search_radius": search_radius,
             "playwright_max_pages": playwright_max_pages,
+            "playwright_area_expansion": playwright_area_expansion,
             "businesses_found": int(businesses_found or 0),
             "status": status,
             "completed_at": _iso_now(),
@@ -156,6 +163,7 @@ class SearchHistory:
         leadgen_type,
         search_radius=None,
         playwright_max_pages=None,
+        playwright_area_expansion=None,
         skip_searched=True,
     ):
         """Return (to_run, skipped_entries) for one location."""
@@ -169,6 +177,7 @@ class SearchHistory:
                 state,
                 search_radius=search_radius,
                 playwright_max_pages=playwright_max_pages,
+                playwright_area_expansion=playwright_area_expansion,
             )
             prior = self.get(key)
             if skip_searched and prior:

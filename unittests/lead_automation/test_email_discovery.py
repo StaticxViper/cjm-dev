@@ -4,6 +4,7 @@ Unit tests for scripts/lead_automation/email_discovery.py
 Run from repo root:
     python -m unittest unittests.lead_automation.test_email_discovery
 """
+import asyncio
 import importlib
 import os
 import sys
@@ -276,6 +277,32 @@ class TestEnrichmentFlow(unittest.TestCase):
         ):
             DISCOVERY.enrich_lead_with_email(lead, city="Philadelphia", state="PA", session=session)
         self.assertFalse(lead.get("has_email"))
+
+    def test_search_works_inside_running_asyncio_loop(self):
+        session = DISCOVERY.EmailDiscoverySession(delay=0)
+        fake_page = MagicMock()
+        fake_page.goto.return_value = None
+        fake_page.url = "https://www.google.com/search?q=test"
+        fake_page.content.return_value = "<html><body>results</body></html>"
+        fake_browser = MagicMock()
+        fake_browser.new_page.return_value = fake_page
+        fake_pw = MagicMock()
+        fake_pw.chromium.launch.return_value = fake_browser
+
+        async def _go():
+            with patch.object(DISCOVERY, "_start_sync_playwright", return_value=fake_pw), \
+                    patch.object(
+                        DISCOVERY,
+                        "parse_google_results",
+                        return_value=[{"title": "Joe", "url": "https://joes.com", "snippet": ""}],
+                    ), \
+                    patch.object(DISCOVERY, "is_google_block_page", return_value=False):
+                return session.search("joes plumbing maple shade")
+
+        results = asyncio.run(_go())
+        session.close()
+        self.assertEqual(results[0]["url"], "https://joes.com")
+        fake_pw.chromium.launch.assert_called()
 
 
 if __name__ == "__main__":

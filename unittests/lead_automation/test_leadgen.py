@@ -131,6 +131,13 @@ class TestSelectionHelpers(unittest.TestCase):
     def test_parse_index_selection_parses_commas(self):
         self.assertEqual(LEADGEN._parse_index_selection("1,3", 5), [0, 2])
 
+    def test_parse_index_selection_ranges_and_none(self):
+        self.assertEqual(LEADGEN._parse_index_selection("1-3,5", 5), [0, 1, 2, 4])
+        self.assertEqual(LEADGEN._parse_index_selection("4-2", 5), [1, 2, 3])
+        self.assertEqual(LEADGEN._parse_index_selection("all", 5), None)
+        self.assertEqual(LEADGEN._parse_index_selection("none", 5), [])
+        self.assertEqual(LEADGEN._parse_index_selection("1-99,abc", 3), [0, 1, 2])
+
     def test_parse_index_selection_ignores_invalid(self):
         self.assertEqual(LEADGEN._parse_index_selection("0,99,abc,2", 5), [1])
 
@@ -240,7 +247,7 @@ class TestSettingsPersistence(unittest.TestCase):
             with patch.object(LEADGEN, "SETTINGS_PATH", path), \
                     patch.object(LEADGEN, "interactive_customize_config", return_value=fake_cfg), \
                     patch.object(LEADGEN, "interactive_run_config") as mock_run, \
-                    patch("builtins.input", side_effect=["2", "3"]):
+                    patch("builtins.input", side_effect=["2", "4"]):
                 result = LEADGEN.interactive_main_menu()
             self.assertIsNone(result)
             mock_run.assert_not_called()
@@ -298,7 +305,7 @@ class TestLeadEnrichmentSetting(unittest.TestCase):
         rows = [{"business_name": "A", "place_id": "pid1", "email": "", "lead_score": 90}]
         mock_enrich = MagicMock(return_value=[])
         mock_save = self._run_leadgen(self._run_config(lead_enrichment=True), rows, mock_enrich)
-        mock_enrich.assert_called_once_with(rows)
+        mock_enrich.assert_called_once_with(rows, leadgen_type="api_manager")
         mock_save.assert_called_once()
 
     def test_run_leadgen_skips_enrichment_when_disabled(self):
@@ -338,6 +345,126 @@ class TestLeadEnrichmentSetting(unittest.TestCase):
         fake_module.enrich_leads.side_effect = RuntimeError("actor down")
         with patch.dict(sys.modules, {"leadenrich": fake_module}):
             self.assertEqual(LEADGEN.enrich_missing_emails([{"email": ""}]), [])
+
+    def test_enrich_missing_emails_playwright_dispatches_to_playwright_module(self):
+        row = {"business_name": "A", "email": ""}
+        fake_module = MagicMock()
+        fake_module.enrich_leads.return_value = [row]
+        with patch.dict(sys.modules, {"leadenrich_playwright": fake_module}):
+            self.assertEqual(
+                LEADGEN.enrich_missing_emails([row], leadgen_type="playwright"),
+                [row],
+            )
+        fake_module.enrich_leads.assert_called_once()
+
+    def test_enrich_missing_emails_playwright_swallows_failure(self):
+        fake_module = MagicMock()
+        fake_module.enrich_leads.side_effect = RuntimeError("browser down")
+        with patch.dict(sys.modules, {"leadenrich_playwright": fake_module}):
+            self.assertEqual(
+                LEADGEN.enrich_missing_emails([{"email": ""}], leadgen_type="playwright"),
+                [],
+            )
+
+    def test_run_leadgen_playwright_passes_leadgen_type_to_enrichment(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "email": "", "lead_score": 90}]
+        mock_enrich = MagicMock(return_value=[])
+        with tempfile.TemporaryDirectory() as tmp:
+            config = self._run_config(lead_enrichment=True, leadgen_type="playwright")
+            config.search_history_path = str(Path(tmp) / "history.json")
+            with patch.object(LEADGEN, "CONTACTED_FILE", "no_contacted_file.txt"), \
+                    patch.object(LEADGEN, "load_existing_place_ids", return_value=set()), \
+                    patch.object(LEADGEN, "load_existing_identities", return_value=set()), \
+                    patch.object(
+                        LEADGEN,
+                        "gather_leads_playwright",
+                        return_value=(rows, {"qualified_leads": 1}),
+                    ), \
+                    patch.object(LEADGEN, "enrich_missing_emails", mock_enrich), \
+                    patch.object(LEADGEN, "save_results"):
+                LEADGEN.run_leadgen(config)
+        mock_enrich.assert_called_once_with(rows, leadgen_type="playwright")
+
+    def test_gather_leads_playwright_persists_after_each_location(self):
+        class FakeSession:
+            google_blocked = False
+            stats = {"pages_processed": 2}
+
+            def search_location(self, keyword, city, state, **_kwargs):
+                return [{
+                    "business_name": f"{city} Biz",
+                    "place_id": f"pid-{city.replace(' ', '-')}",
+                    "website": "",
+                    "phone_google": "555-123-4567",
+                    "address": f"1 Main, {city}, {state}",
+                }]
+
+            def enrich_listing(self, stub):
+                return dict(stub)
+
+            def close(self):
+                pass
+
+        persisted = []
+
+        def fake_persist(rows, config, location_label=None, json_path=None):
+            persisted.append((location_label, [row.get("place_id") for row in rows]))
+            return len(rows), len(rows)
+
+        def fake_process(businesses, **_kwargs):
+            first = businesses[0]
+            return [{
+                "business_name": first["business_name"],
+                "place_id": first["place_id"],
+                "lead_score": 80,
+                "email": "",
+            }]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config = self._run_config(
+                lead_enrichment=False,
+                leadgen_type="playwright",
+                output_mode="both",
+                keywords=["notary"],
+                locations=[
+                    ("UT", "Salt Lake City", "40.7,-111.8"),
+                    ("NV", "Las Vegas", "36.1,-115.1"),
+                ],
+            )
+            config.search_history_path = str(Path(tmp) / "history.json")
+            config.json_output = str(Path(tmp) / "leads.json")
+            with patch.object(LEADGEN, "BusinessDiscoverySession", return_value=FakeSession()), \
+                    patch.object(LEADGEN, "process_businesses", side_effect=fake_process), \
+                    patch.object(LEADGEN, "persist_lead_batch", side_effect=fake_persist), \
+                    patch.object(LEADGEN, "listing_needs_detail", return_value=False):
+                rows, stats = LEADGEN.gather_leads_playwright(
+                    config,
+                    set(),
+                    set(),
+                    {"places_nearby": 0, "places_details": 0},
+                )
+
+        self.assertEqual(
+            [label for label, _ids in persisted],
+            ["Salt Lake City, UT", "Las Vegas, NV"],
+        )
+        self.assertTrue(stats["flushed_incrementally"])
+        self.assertEqual(stats["qualified_leads"], 2)
+        self.assertEqual(stats["saved"], 2)
+        self.assertEqual(stats["uploaded"], 2)
+        self.assertEqual(len(rows), 2)
+
+    def test_persist_lead_batch_saves_and_uploads(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "lead_score": 80}]
+        config = self._run_config(output_mode="both")
+        with patch.object(LEADGEN, "save_results") as mock_save, \
+                patch.object(LEADGEN, "send_to_dashboard", return_value=1) as mock_send:
+            saved, uploaded = LEADGEN.persist_lead_batch(
+                rows, config, location_label="Cherry Hill, NJ"
+            )
+        mock_save.assert_called_once()
+        mock_send.assert_called_once_with(rows)
+        self.assertEqual((saved, uploaded), (1, 1))
 
 
 @SKIP
@@ -742,7 +869,8 @@ class TestSendToDashboard(unittest.TestCase):
             "niche_key": "landscaping",
             "lead_score": 85,
         }]
-        LEADGEN.send_to_dashboard(rows)
+        uploaded = LEADGEN.send_to_dashboard(rows)
+        self.assertEqual(uploaded, 1)
         mock_api.build_request.assert_called_once()
         call_kwargs = mock_api.build_request.call_args.kwargs
         self.assertEqual(call_kwargs["endpoint"], LEADGEN.DASHBOARD_BULK_ENDPOINT)
@@ -752,6 +880,36 @@ class TestSendToDashboard(unittest.TestCase):
         self.assertEqual(payload[0]["address"], "123 Main St, Houston, TX 77001, USA")
         self.assertEqual(payload[0]["score"], 85)
         self.assertEqual(payload[0]["category"], "landscaping-leads")
+
+    @patch("leadgen.time.sleep", return_value=None)
+    @patch("helper_scripts.api_manager.APIManager")
+    def test_send_to_dashboard_connect_error_does_not_raise(self, mock_api_cls, _sleep):
+        mock_api = MagicMock()
+        mock_api.build_request.side_effect = ConnectionError("getaddrinfo failed")
+        mock_api_cls.return_value = mock_api
+        rows = [{
+            "business_name": "Test Biz",
+            "address": "123 Main St, Houston, TX 77001, USA",
+            "phone_google": "555-1234",
+            "email": "contact@test.com",
+            "niche_key": "landscaping",
+            "lead_score": 85,
+        }]
+        uploaded = LEADGEN.send_to_dashboard(rows)
+        self.assertEqual(uploaded, 0)
+        self.assertEqual(mock_api.build_request.call_count, 3)
+
+    def test_persist_lead_batch_keeps_json_when_upload_fails(self):
+        rows = [{"business_name": "A", "place_id": "pid1", "lead_score": 80}]
+        config = LEADGEN.LeadgenConfig(output_mode="both", json_output="leads_output.json")
+        with patch.object(LEADGEN, "save_results") as mock_save, \
+                patch.object(LEADGEN, "send_to_dashboard", side_effect=ConnectionError("dns")):
+            saved, uploaded = LEADGEN.persist_lead_batch(
+                rows, config, location_label="Jacksonville, FL"
+            )
+        mock_save.assert_called_once()
+        self.assertEqual(saved, 1)
+        self.assertEqual(uploaded, 0)
 
 
 @SKIP
@@ -1032,24 +1190,28 @@ class TestLeadgenTypeConfig(unittest.TestCase):
     def test_default_is_api_manager(self):
         cfg = LEADGEN.LeadgenConfig()
         self.assertEqual(cfg.leadgen_type, "api_manager")
-        self.assertEqual(cfg.playwright_max_pages, 10)
-        self.assertEqual(cfg.playwright_max_results_per_search, 200)
+        self.assertEqual(cfg.playwright_max_pages, 20)
+        self.assertEqual(cfg.playwright_max_results_per_search, 400)
+        self.assertEqual(cfg.playwright_area_expansion, "off")
 
     def test_settings_round_trip_leadgen_type(self):
         cfg = LEADGEN.LeadgenConfig(
             leadgen_type="playwright",
             playwright_max_pages=7,
             playwright_max_results_per_search=50,
+            playwright_area_expansion="dense",
         )
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "leadgen_settings.json"
             payload = LEADGEN.save_settings(cfg, path=path)
             self.assertEqual(payload["leadgen_type"], "playwright")
             self.assertEqual(payload["playwright_max_pages"], 7)
+            self.assertEqual(payload["playwright_area_expansion"], "dense")
             rebuilt = LEADGEN.config_from_saved_settings(path=path)
             self.assertEqual(rebuilt.leadgen_type, "playwright")
             self.assertEqual(rebuilt.playwright_max_pages, 7)
             self.assertEqual(rebuilt.playwright_max_results_per_search, 50)
+            self.assertEqual(rebuilt.playwright_area_expansion, "dense")
 
     def test_legacy_settings_keep_api_manager_default(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1071,6 +1233,8 @@ class TestLeadgenTypeConfig(unittest.TestCase):
                 "5",
                 "--playwright-max-results-per-search",
                 "40",
+                "--playwright-area-expansion",
+                "light",
             ],
         ):
             args = LEADGEN.parse_args()
@@ -1080,6 +1244,7 @@ class TestLeadgenTypeConfig(unittest.TestCase):
         self.assertEqual(config.leadgen_type, "playwright")
         self.assertEqual(config.playwright_max_pages, 5)
         self.assertEqual(config.playwright_max_results_per_search, 40)
+        self.assertEqual(config.playwright_area_expansion, "light")
 
     def test_normalize_leadgen_type_rejects_unknown(self):
         self.assertEqual(LEADGEN.normalize_leadgen_type("nope"), "api_manager")
@@ -1158,6 +1323,90 @@ class TestPlaywrightDiscoveryHelpers(unittest.TestCase):
         self.assertEqual(rows[0]["source"], "playwright")
         self.assertEqual(rows[0]["business_name"], "Local Roofing")
 
+    def test_parse_card_fields_and_area_expansion(self):
+        from playwright_discovery import (
+            expansion_points,
+            parse_card_fields,
+            area_search_multiplier,
+        )
+
+        fields = parse_card_fields(
+            "Cherry Hill Plumbing\n4.7\nPlumber · 935 Cropwell Rd\n"
+            "Open · (856) 424-9670\nWebsite",
+            extra={
+                "website": "http://cherryhillplumbing.com/",
+                "ratingText": "4.7",
+                "reviewsText": "(51)",
+            },
+        )
+        self.assertEqual(fields["phone_google"], "(856) 424-9670")
+        self.assertEqual(fields["website"], "http://cherryhillplumbing.com/")
+        self.assertEqual(fields["rating"], 4.7)
+        self.assertEqual(fields["user_ratings_total"], 51)
+        self.assertEqual(fields["category"], "Plumber")
+        self.assertIn("935 Cropwell", fields["address"])
+
+        self.assertEqual(expansion_points("39.95,-75.16", "off"), [])
+        light = expansion_points("39.95,-75.16", "light")
+        self.assertEqual(len(light), 4)
+        dense = expansion_points((39.95, -75.16), "dense")
+        self.assertEqual(len(dense), 8)
+        self.assertEqual(area_search_multiplier("light"), 5)
+        self.assertEqual(area_search_multiplier("dense"), 9)
+
+    def test_listing_needs_detail_and_high_volume_preset(self):
+        card = {
+            "business_name": "Local Plumbing",
+            "phone_google": "(856) 555-0100",
+            "website": "https://local.example",
+            "rating": 4.6,
+        }
+        cfg = LEADGEN.LeadgenConfig(objective="phone", min_reviews=0)
+        self.assertFalse(LEADGEN.listing_needs_detail(card, cfg))
+        self.assertTrue(
+            LEADGEN.listing_needs_detail({"business_name": "No Phone"}, cfg)
+        )
+        cfg_reviews = LEADGEN.LeadgenConfig(objective="phone", min_reviews=5)
+        self.assertTrue(LEADGEN.listing_needs_detail(card, cfg_reviews))
+
+        preset = LEADGEN.apply_high_volume_preset(LEADGEN.LeadgenConfig())
+        self.assertEqual(preset.leadgen_type, "playwright")
+        self.assertEqual(preset.playwright_area_expansion, "light")
+        self.assertGreaterEqual(preset.playwright_max_pages, 20)
+        self.assertFalse(preset.lead_enrichment)
+        self.assertEqual(preset.min_reviews, 0)
+
+        volume = LEADGEN.estimate_discovery_volume(
+            LEADGEN.LeadgenConfig(
+                leadgen_type="playwright",
+                playwright_area_expansion="light",
+                keywords=["plumbing", "hvac"],
+                locations=[
+                    ("NJ", "Cherry Hill", "39.9,-75.1"),
+                    ("PA", "Philadelphia", "39.9,-75.1"),
+                ],
+            )
+        )
+        self.assertEqual(volume["searches"], 2 * 2 * 5)
+        self.assertGreaterEqual(volume["unique_high"], 100)
+
+    def test_keyword_groups_cover_catalog(self):
+        missing = [
+            kw
+            for kw in LEADGEN.KEYWORD_CATEGORIES
+            if LEADGEN.keyword_group_for(kw) == "other"
+            and kw not in LEADGEN.KEYWORD_GROUPS["other"]
+        ]
+        self.assertEqual(missing, [])
+
+    def test_cli_state_filter(self):
+        with patch.object(sys, "argv", ["leadgen.py", "--state", "NJ", "--city", "Cherry Hill"]):
+            args = LEADGEN.parse_args()
+        with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+            config = LEADGEN.config_from_args(args)
+        self.assertEqual(len(config.locations), 1)
+        self.assertEqual(config.locations[0][1], "Cherry Hill")
+
 
 @SKIP
 class TestSearchHistory(unittest.TestCase):
@@ -1201,6 +1450,29 @@ class TestSearchHistory(unittest.TestCase):
             self.assertEqual(data["details_calls"], 5)
             self.assertEqual(data["total_calls"], 7)
             self.assertEqual(data["runs"], 1)
+
+    def test_playwright_search_key_includes_expansion(self):
+        from search_history import make_search_key
+
+        key = make_search_key(
+            "playwright",
+            "plumbing",
+            "Cherry Hill",
+            "nj",
+            playwright_max_pages=20,
+            playwright_area_expansion="light",
+        )
+        self.assertEqual(
+            key, "playwright|plumbing|cherry hill|NJ|pages:20|expand:light"
+        )
+        off_key = make_search_key(
+            "playwright",
+            "plumbing",
+            "Cherry Hill",
+            "NJ",
+            playwright_max_pages=20,
+        )
+        self.assertEqual(off_key, "playwright|plumbing|cherry hill|NJ|pages:20")
 
     def test_cli_force_research(self):
         with patch.object(sys, "argv", ["leadgen.py", "--force-research"]):
