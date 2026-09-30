@@ -17,7 +17,13 @@ from utils.constants import ALL_JOBS_COLUMNS, QUALIFIED_COLUMNS, SEARCH_HISTORY_
 from utils.csv_utils import append_csv_row, load_job_index, read_csv_rows, upsert_csv_row
 from utils.geo import detect_remote_status, matches_target_geography
 from utils.jobs import RawJob, utc_now_iso, utc_today
-from utils.normalization import join_list, normalize_url
+from utils.normalization import (
+    join_list,
+    normalize_company,
+    normalize_location,
+    normalize_title,
+    normalize_url,
+)
 
 logger = logging.getLogger("opp-finder")
 
@@ -66,6 +72,7 @@ def _merge_jobs(existing: RawJob | dict, incoming: RawJob) -> dict[str, Any]:
 def dedupe_jobs(jobs: list[RawJob]) -> list[dict[str, Any]]:
     merged: dict[str, dict[str, Any]] = {}
     url_index: dict[str, str] = {}
+    soft_index: dict[str, str] = {}
     for job in jobs:
         job.ensure_defaults()
         fp = job.fingerprint()
@@ -74,6 +81,18 @@ def dedupe_jobs(jobs: list[RawJob]) -> list[dict[str, Any]]:
             fp = url_index[norm_url]
         elif norm_url:
             url_index[norm_url] = fp
+        # Soft key catches same CL posting under different view hashes / empty company.
+        soft = "|".join(
+            [
+                normalize_company(job.company_name),
+                normalize_title(job.job_title),
+                normalize_location(job.location),
+            ]
+        )
+        if soft.strip("|") and soft in soft_index:
+            fp = soft_index[soft]
+        elif soft.strip("|"):
+            soft_index[soft] = fp
         if fp in merged:
             merged[fp] = _merge_jobs(merged[fp], job)
         else:
@@ -105,10 +124,13 @@ def passes_qualification(job: dict[str, Any], config: dict[str, Any]) -> bool:
     auto = int(job.get("automation_score") or 0)
     opp = int(job.get("opportunity_score") or 0)
     tasks = str(job.get("workflow_tasks") or "").strip()
-    if auto < min_auto or opp < min_opp:
+    if not tasks or auto < min_auto:
         return False
-    # Strategic gate: must answer what they pay someone to do
-    return bool(tasks)
+    # Strong automation evidence can still qualify when contactability is thin
+    # (e.g. anonymous Craigslist posts) so leads are not lost pre-contact.
+    if opp >= min_opp:
+        return True
+    return auto >= max(min_auto, 70)
 
 
 def stage2_enrich(job: dict[str, Any], config: dict[str, Any], browser: BrowserSession | None) -> dict[str, Any]:
@@ -215,11 +237,19 @@ def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int
 
         raw_jobs: list[RawJob] = []
         scrapers = enabled_scrapers(config)
-        # Small verification runs: prefer Google discovery to avoid long multi-source hangs.
+        # Small runs: start with Google, then fall back to other enabled sources if empty.
         if max_total <= 10:
-            scrapers = [s for s in scrapers if getattr(s, "name", "") == "google"] or scrapers[:1]
+            by_name = {getattr(s, "name", ""): s for s in scrapers}
+            ordered = []
+            for name in ("google", "craigslist", "indeed", "ziprecruiter", "company_sites", "staffing"):
+                if name in by_name:
+                    ordered.append(by_name[name])
+            scrapers = ordered or scrapers
         for scraper in scrapers:
             if len(raw_jobs) >= max_total:
+                break
+            # For tiny runs, stop after the first source that yields jobs.
+            if max_total <= 10 and raw_jobs:
                 break
             try:
                 found = scraper.search(ctx) or []

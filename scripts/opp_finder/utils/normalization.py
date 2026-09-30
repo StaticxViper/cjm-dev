@@ -58,6 +58,28 @@ def normalize_url(url: str | None) -> str:
     if not raw:
         return ""
     parsed = urlparse(raw)
+    host = parsed.netloc.lower()
+    path = parsed.path or "/"
+
+    # Craigslist serves the same posting under multiple view-hash URLs; collapse by post id.
+    if "craigslist.org" in host:
+        post_id = ""
+        qs = parse_qs(parsed.query, keep_blank_values=False)
+        if qs.get("postingID"):
+            post_id = qs["postingID"][0]
+        if not post_id:
+            match = re.search(r"/(\d+)\.html$", path)
+            if match:
+                post_id = match.group(1)
+        if not post_id:
+            # Newer /view/d/.../<hash> pages often include numeric post id only in body;
+            # keep path stem as a weaker key.
+            match = re.search(r"/view/d/[^/]+/([^/?#]+)", path)
+            if match:
+                post_id = match.group(1)
+        if post_id:
+            return f"https://craigslist.org/post/{post_id}"
+
     query = parse_qs(parsed.query, keep_blank_values=False)
     drop_keys = {
         "utm_source",
@@ -78,8 +100,8 @@ def normalize_url(url: str | None) -> str:
             kept.append(f"{key}={value}")
     clean = parsed._replace(
         scheme=(parsed.scheme or "https").lower(),
-        netloc=parsed.netloc.lower(),
-        path=parsed.path.rstrip("/") or "/",
+        netloc=host,
+        path=path.rstrip("/") or "/",
         params="",
         query="&".join(kept),
         fragment="",

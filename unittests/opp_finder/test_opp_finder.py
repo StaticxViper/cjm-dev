@@ -55,6 +55,10 @@ class GeoTests(unittest.TestCase):
     def test_remote_detection(self):
         self.assertEqual(detect_remote_status("Remote, US", ""), "remote")
         self.assertEqual(detect_remote_status("Hybrid - Cherry Hill, NJ", ""), "hybrid")
+        self.assertEqual(
+            detect_remote_status("Cherry Hill, NJ", "This is not a remote position."),
+            "on-site",
+        )
 
     def test_south_jersey_match(self):
         self.assertTrue(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from urllib.parse import quote_plus, urljoin
 
 from bs4 import BeautifulSoup
@@ -57,6 +58,9 @@ class CraigslistScraper:
                 continue
             url = urljoin(base_url, href)
             title = clean_text(node.get_text())
+            # Prefer titles from result title nodes; skip junk/nav links.
+            if len(title) < 8 or "craigslist" in title.lower():
+                continue
             norm = normalize_url(url)
             if not title or norm in seen:
                 continue
@@ -64,8 +68,16 @@ class CraigslistScraper:
             parent = node.find_parent("li")
             location = ""
             if parent:
-                loc_el = parent.select_one(".location, .meta")
-                location = clean_text(loc_el.get_text()) if loc_el else ""
+                loc_el = parent.select_one(".location, .meta, .nearby")
+                if loc_el:
+                    candidate = clean_text(loc_el.get_text())
+                    if 2 < len(candidate) < 80:
+                        location = candidate
+            if not location:
+                loc_match = re.search(r"\(([^)]+)\)\s*$", title)
+                if loc_match:
+                    location = clean_text(loc_match.group(1))
+                    title = clean_text(re.sub(r"\s*\([^)]+\)\s*$", "", title))
             cards.append({"title": title, "url": url, "location": location or "South Jersey, NJ"})
         return cards
 

@@ -94,7 +94,8 @@ class BrowserSession:
 
     def mark_blocked(self, source: str, reason: str = "CAPTCHA or block page") -> None:
         self.blocked_sources.add(source)
-        logger.warning("[BLOCKED] %s — %s. Skipping source.", source, reason)
+        # INFO so progress is visible with the repo logger's default console levels
+        logger.info("[BLOCKED] %s — %s. Skipping source.", source, reason)
 
     def is_blocked(self, source: str) -> bool:
         return source in self.blocked_sources

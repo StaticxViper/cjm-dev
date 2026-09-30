@@ -93,7 +93,7 @@ Combined into explainable `opportunity_score`. Language stays tentative (“pote
 
 ## Known limitations
 
-- Google, Indeed, and ZipRecruiter frequently present CAPTCHAs / bot blocks. The tool logs `[BLOCKED]` and continues with other sources — it does not bypass protections.
+- Google, Indeed, and ZipRecruiter frequently present CAPTCHAs / bot blocks (especially from datacenter IPs). The tool logs `[BLOCKED]` and continues with other sources such as Craigslist — it does not bypass protections.
 - Workflow and automation scores are heuristic (keyword/signal based), not guarantees.
 - Company contact coverage depends on publicly crawlable websites.
 - Detail extraction quality varies by host HTML structure.

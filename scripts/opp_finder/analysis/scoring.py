@@ -144,8 +144,9 @@ def score_automation(job: dict[str, Any]) -> dict[str, Any]:
         implementation_fit -= 10 * min(3, len(negatives))
     implementation_fit = max(0, min(100, implementation_fit))
 
-    # Contactability filled later during enrichment; use provisional value.
-    contactability = int(job.get("contactability_score") or 30)
+    # Contactability filled later during enrichment; provisional mid value
+    # avoids burying strong workflow leads before company research runs.
+    contactability = int(job.get("contactability_score") or 50)
 
     opportunity_score = int(
         round(

@@ -137,8 +137,18 @@ def extract_job_fields_from_html(html: str, url: str = "") -> dict[str, str]:
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
 
+    host = urlparse(url or "").netloc.lower()
+    is_craigslist = "craigslist.org" in host
+
     title = ""
-    for sel in ("h1", "h1.jobsearch-JobInfoHeader-title", "[data-testid='jobsearch-JobInfoHeader-title']"):
+    for sel in (
+        "#titletextonly",
+        "span#titletextonly",
+        "h1.postingtitle",
+        "h1",
+        "h1.jobsearch-JobInfoHeader-title",
+        "[data-testid='jobsearch-JobInfoHeader-title']",
+    ):
         el = soup.select_one(sel)
         if el and clean_text(el.get_text()):
             title = clean_text(el.get_text())
@@ -146,9 +156,12 @@ def extract_job_fields_from_html(html: str, url: str = "") -> dict[str, str]:
     if not title and soup.title:
         title = clean_text(soup.title.get_text().split("|")[0].split("-")[0])
 
-    text = clean_text(soup.get_text(" ", strip=True))
-    # Cap extremely long pages for storage/analysis.
-    body = text[:12000]
+    # Prefer main posting body when available (Craigslist #postingbody).
+    body_el = soup.select_one("#postingbody, .jobsearch-JobComponent-description, [class*='description']")
+    if body_el:
+        body = clean_text(body_el.get_text(" ", strip=True))[:12000]
+    else:
+        body = clean_text(soup.get_text(" ", strip=True))[:12000]
 
     responsibilities = ""
     requirements = ""
@@ -168,7 +181,18 @@ def extract_job_fields_from_html(html: str, url: str = "") -> dict[str, str]:
             else:
                 requirements = chunk
 
+    salary = ""
     salary_match = SALARY_RE.search(body)
+    if salary_match:
+        salary = clean_text(salary_match.group(0))
+    else:
+        comp = re.search(
+            r"compensation:\s*([^\n<]+)",
+            clean_text(soup.get_text("\n", strip=True)),
+            re.I,
+        )
+        if comp:
+            salary = clean_text(comp.group(1))
     employment_match = EMPLOYMENT_RE.search(body)
 
     company = ""
@@ -183,18 +207,44 @@ def extract_job_fields_from_html(html: str, url: str = "") -> dict[str, str]:
         if el and clean_text(el.get_text()):
             company = clean_text(el.get_text())
             break
+    if not company and is_craigslist:
+        # Sometimes company appears near the title block as plain text.
+        poster = soup.select_one(".postingtitletext, .house, header.postingtitle")
+        poster_text = clean_text(poster.get_text(" ", strip=True)) if poster else ""
+        # Look for Inc/LLC style names in attrs/body start
+        company_match = re.search(
+            r"\b([A-Z][A-Za-z0-9&.' ]{2,60}\s(?:Inc|LLC|L\.L\.C|Corp|Corporation|Ltd)\.?)\b",
+            clean_text(soup.get_text(" ", strip=True))[:1500],
+        )
+        if company_match:
+            company = clean_text(company_match.group(1))
+        elif poster_text and len(poster_text) < 80:
+            company = ""
 
     location = ""
     for sel in (
+        ".postingtitletext small",
+        "span.mapaddress",
         "[data-testid='job-location']",
         ".jobsearch-JobInfoHeader-subtitle div",
         ".location",
-        "[class*='location']",
     ):
         el = soup.select_one(sel)
         if el and clean_text(el.get_text()):
-            location = clean_text(el.get_text())
-            break
+            candidate = clean_text(el.get_text())
+            if 2 < len(candidate) < 120:
+                location = candidate
+                break
+    if not location and is_craigslist:
+        # Title often ends with "(Cherry Hill)"
+        loc_match = re.search(r"\(([^)]+)\)\s*$", title)
+        if loc_match:
+            location = clean_text(loc_match.group(1))
+            title = clean_text(re.sub(r"\s*\([^)]+\)\s*$", "", title))
+        elif re.search(r"\bnj\b|south jersey", body, re.I):
+            location = "South Jersey, NJ"
+    if len(location) > 120:
+        location = location[:120]
 
     return {
         "job_title": title,
@@ -203,7 +253,7 @@ def extract_job_fields_from_html(html: str, url: str = "") -> dict[str, str]:
         "responsibilities": responsibilities,
         "requirements": requirements,
         "location": location,
-        "salary": clean_text(salary_match.group(0)) if salary_match else "",
+        "salary": salary,
         "employment_type": clean_text(employment_match.group(0)) if employment_match else "",
         "source_url": url,
     }

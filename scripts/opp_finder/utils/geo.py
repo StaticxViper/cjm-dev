@@ -37,6 +37,13 @@ def _haystack(*parts: str | None) -> str:
 def detect_remote_status(location: str | None, description: str | None = None) -> str:
     """Return remote | hybrid | on-site | unknown."""
     text = _haystack(location, description)
+    # Explicit negations should not count as remote.
+    if re.search(r"\b(not|no)\s+(a\s+)?remote\b|\bnon[-\s]?remote\b|\bin[-\s]?office only\b", text):
+        if any(re.search(p, text) for p in HYBRID_PATTERNS):
+            return "hybrid"
+        if any(re.search(p, text) for p in ONSITE_PATTERNS) or re.search(r"\bnj\b|new jersey", text):
+            return "on-site"
+        return "on-site"
     if any(re.search(p, text) for p in REMOTE_PATTERNS):
         if any(re.search(p, text) for p in HYBRID_PATTERNS):
             return "hybrid"

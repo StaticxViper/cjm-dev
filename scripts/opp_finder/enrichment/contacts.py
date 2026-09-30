@@ -192,7 +192,7 @@ def enrich_company_and_contacts(
         "contact_source_url": "",
         "contact_verified": False,
         "contact_confidence": "unverified",
-        "contactability_score": 20,
+        "contactability_score": 35,
     }
     if not website:
         return result
