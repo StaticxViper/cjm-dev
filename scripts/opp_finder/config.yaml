@@ -1,0 +1,198 @@
+# Job Automation Opportunity Finder — configuration
+
+location:
+  state: "NJ"
+  counties:
+    - Camden
+    - Burlington
+    - Gloucester
+    - Atlantic
+    - Cape May
+    - Cumberland
+    - Salem
+    - Mercer
+    - Ocean
+    - Monmouth
+  # Nearby South/Central NJ place names used for geographic matching
+  place_hints:
+    - "South Jersey"
+    - "Southern New Jersey"
+    - "Cherry Hill"
+    - "Camden"
+    - "Mount Laurel"
+    - "Marlton"
+    - "Voorhees"
+    - "Haddonfield"
+    - "Collingswood"
+    - "Pennsauken"
+    - "Berlin"
+    - "Winslow"
+    - "Glassboro"
+    - "Washington Township"
+    - "Deptford"
+    - "Woodbury"
+    - "Sewell"
+    - "Mantua"
+    - "Vineland"
+    - "Millville"
+    - "Bridgeton"
+    - "Atlantic City"
+    - "Egg Harbor"
+    - "Galloway"
+    - "Mays Landing"
+    - "Cape May"
+    - "Wildwood"
+    - "Ocean City"
+    - "Trenton"
+    - "Hamilton"
+    - "Princeton"
+    - "Lawrenceville"
+    - "Ewing"
+    - "Toms River"
+    - "Brick"
+    - "Lakewood"
+    - "Jackson"
+    - "Freehold"
+    - "Middletown"
+    - "Red Bank"
+    - "Long Branch"
+    - "Asbury Park"
+    - "Burlington"
+    - "Moorestown"
+    - "Willingboro"
+    - "Cinnaminson"
+    - "Delran"
+    - "Maple Shade"
+    - "Evesham"
+    - "Medford"
+    - "Salem"
+    - "Pennsville"
+    - "Carneys Point"
+
+include_remote: true
+
+keywords:
+  data_research:
+    - "data entry"
+    - "data processing"
+    - "data specialist"
+    - "research assistant"
+    - "research specialist"
+    - "web research"
+    - "internet research"
+    - "records specialist"
+    - "information specialist"
+  administrative:
+    - "administrative assistant"
+    - "office assistant"
+    - "operations assistant"
+    - "operations coordinator"
+    - "administrative coordinator"
+    - "office coordinator"
+    - "virtual assistant"
+    - "business assistant"
+  real_estate:
+    - "real estate assistant"
+    - "property research"
+    - "property management assistant"
+    - "property assistant"
+    - "listing coordinator"
+    - "transaction coordinator"
+    - "real estate data entry"
+  ecommerce:
+    - "ecommerce assistant"
+    - "product listing"
+    - "listing specialist"
+    - "catalog specialist"
+    - "product data entry"
+    - "marketplace assistant"
+    - "inventory specialist"
+    - "ecommerce coordinator"
+  qa_testing:
+    - "QA tester"
+    - "software tester"
+    - "manual QA"
+    - "website tester"
+    - "QA analyst"
+    - "quality assurance"
+    - "test analyst"
+  marketing:
+    - "marketing assistant"
+    - "website assistant"
+    - "website coordinator"
+    - "content coordinator"
+    - "SEO assistant"
+    - "digital marketing assistant"
+  repetitive:
+    - "document processing"
+    - "invoice processing"
+    - "report generation"
+    - "CRM data entry"
+    - "lead research"
+    - "lead generation"
+    - "scheduling coordinator"
+    - "compliance data entry"
+    - "claims processing"
+    - "order processing"
+    - "dispatch assistant"
+    - "monitoring"
+    - "data verification"
+
+sources:
+  google:
+    enabled: true
+  indeed:
+    enabled: true
+  ziprecruiter:
+    enabled: true
+  craigslist:
+    enabled: true
+  company_sites:
+    enabled: true
+  staffing:
+    enabled: true
+
+search:
+  max_results_per_keyword: 25
+  max_total_jobs: 250
+  max_company_research: 100
+  max_qualified_contacts: 50
+  # Location phrases combined with keywords for Google discovery
+  location_phrases:
+    - "South Jersey"
+    - "Camden County NJ"
+    - "Burlington County NJ"
+    - "Gloucester County NJ"
+    - "Atlantic County NJ"
+    - "Cape May County NJ"
+    - "Cumberland County NJ"
+    - "Salem County NJ"
+    - "Mercer County NJ"
+    - "Ocean County NJ"
+    - "Monmouth County NJ"
+    - "New Jersey remote"
+  query_templates:
+    - '"{keyword}" "{location}" hiring'
+    - '"{keyword}" "{location}" job'
+    - 'CAREERS "{keyword}" "{location}"'
+    - 'JOB "{keyword}" "{location}"'
+
+qualification:
+  minimum_automation_score: 55
+  minimum_opportunity_score: 60
+
+browser:
+  headless: true
+  timeout_seconds: 30
+  navigation_retries: 1
+  delay_min_seconds: 2.5
+  delay_max_seconds: 6.0
+  screenshot_on_error: false
+
+output:
+  all_jobs: "output/all_jobs.csv"
+  qualified: "output/qualified_opportunities.csv"
+  search_history: "output/search_history.csv"
+
+outreach:
+  sender_name: "CJ"

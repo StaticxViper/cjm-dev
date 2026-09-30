@@ -1,0 +1,143 @@
+"""Shared constants and CSV column definitions for opp_finder."""
+
+from __future__ import annotations
+
+ALL_JOBS_COLUMNS = [
+    "job_id",
+    "job_title",
+    "company_name",
+    "location",
+    "remote_status",
+    "employment_type",
+    "salary",
+    "posting_date",
+    "source",
+    "source_url",
+    "application_url",
+    "company_website",
+    "job_description",
+    "responsibilities",
+    "requirements",
+    "workflow_tasks",
+    "workflow_evidence",
+    "automation_score",
+    "business_value_score",
+    "contactability_score",
+    "urgency_score",
+    "implementation_fit_score",
+    "opportunity_score",
+    "automation_percentage_estimate",
+    "automation_reasoning",
+    "automation_opportunity",
+    "possible_technology",
+    "business_value",
+    "qualification_reason",
+    "outreach_status",
+    "date_found",
+    "first_seen",
+    "last_seen",
+    "sources_found",
+    "notes",
+]
+
+QUALIFIED_COLUMNS = [
+    "job_title",
+    "company_name",
+    "company_industry",
+    "job_description",
+    "responsibilities",
+    "requirements",
+    "workflow_tasks",
+    "workflow_evidence",
+    "location",
+    "remote_status",
+    "employment_type",
+    "salary",
+    "posting_date",
+    "source",
+    "source_url",
+    "application_url",
+    "company_website",
+    "company_phone",
+    "company_email",
+    "recommended_contact_name",
+    "recommended_contact_role",
+    "contact_email",
+    "contact_phone",
+    "contact_source_url",
+    "contact_verified",
+    "contact_confidence",
+    "automation_score",
+    "business_value_score",
+    "contactability_score",
+    "urgency_score",
+    "implementation_fit_score",
+    "opportunity_score",
+    "automation_percentage_estimate",
+    "automation_reasoning",
+    "automation_opportunity",
+    "possible_technology",
+    "business_value",
+    "qualification_reason",
+    "demo_concept",
+    "outreach_subject",
+    "outreach_message",
+    "outreach_status",
+    "date_found",
+    "date_contacted",
+    "follow_up_date",
+    "notes",
+]
+
+SEARCH_HISTORY_COLUMNS = [
+    "run_id",
+    "timestamp",
+    "source",
+    "query",
+    "results_count",
+    "status",
+    "notes",
+]
+
+OUTREACH_STATUSES = (
+    "research",
+    "qualified",
+    "ready_to_contact",
+    "contacted",
+    "replied",
+    "interested",
+    "demo_requested",
+    "proposal",
+    "won",
+    "lost",
+    "not_a_fit",
+)
+
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/122.0.0.0 Safari/537.36"
+)
+
+FETCH_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+BLOCK_MARKERS = (
+    "unusual traffic",
+    "detected unusual traffic",
+    "our systems have detected",
+    "enable javascript",
+    "recaptcha",
+    "/sorry/",
+    "google.com/sorry",
+    "cf-challenge",
+    "attention required",
+    "access denied",
+    "captcha",
+    "verify you are a human",
+    "are you a robot",
+    "blocked",
+)

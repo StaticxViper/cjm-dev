@@ -8,3 +8,4 @@ apify-client>=2.5,<4
 openai
 perplexityai
 playwright
+PyYAML
