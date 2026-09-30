@@ -18,3 +18,6 @@ Outputs:
 - `output/all_jobs.csv`
 - `output/qualified_opportunities.csv`
 - `output/search_history.csv`
+
+API-callable GitHub Action: [`.github/workflows/opp_finder.yml`](../../.github/workflows/opp_finder.yml)  
+(see the “GitHub Action” section in [`scripts/opp_finder/README.md`](../../scripts/opp_finder/README.md)).

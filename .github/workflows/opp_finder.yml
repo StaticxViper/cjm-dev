@@ -1,0 +1,192 @@
+name: Opp Finder Search
+
+# Callable via GitHub API:
+#   workflow_dispatch  -> POST /repos/{owner}/{repo}/actions/workflows/opp_finder.yml/dispatches
+#   repository_dispatch -> POST /repos/{owner}/{repo}/dispatches  (event_type: opp-finder-search)
+#
+# After the run completes, download the `opp-finder-results` artifact (CSVs + api_results.json)
+# or read job outputs: all_jobs_count, qualified_count, results_json.
+
+on:
+  workflow_dispatch:
+    inputs:
+      keyword:
+        description: Optional single search keyword (empty = use config keywords)
+        required: false
+        type: string
+        default: ""
+      limit:
+        description: Max jobs to collect
+        required: false
+        type: string
+        default: "25"
+      mode:
+        description: Search mode
+        required: false
+        type: choice
+        options:
+          - south-nj
+          - remote
+          - south-nj-remote
+        default: south-nj
+      refresh:
+        description: Reprocess jobs already present in CSV
+        required: false
+        type: boolean
+        default: false
+  repository_dispatch:
+    types: [opp-finder-search]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      all_jobs_count: ${{ steps.export.outputs.all_jobs_count }}
+      qualified_count: ${{ steps.export.outputs.qualified_count }}
+      truncated: ${{ steps.export.outputs.truncated }}
+      results_json: ${{ steps.export.outputs.results_json }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements/requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Resolve inputs
+        id: inputs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WD_KEYWORD: ${{ github.event.inputs.keyword }}
+          WD_LIMIT: ${{ github.event.inputs.limit }}
+          WD_MODE: ${{ github.event.inputs.mode }}
+          WD_REFRESH: ${{ github.event.inputs.refresh }}
+          RD_CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          python <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          event = os.environ.get("EVENT_NAME", "")
+          if event == "repository_dispatch":
+              payload = json.loads(os.environ.get("RD_CLIENT_PAYLOAD") or "{}")
+              keyword = str(payload.get("keyword") or "")
+              limit = str(payload.get("limit") or "25")
+              mode = str(payload.get("mode") or "south-nj")
+              refresh = str(payload.get("refresh") or "false").lower() in {"1", "true", "yes"}
+          else:
+              keyword = os.environ.get("WD_KEYWORD") or ""
+              limit = os.environ.get("WD_LIMIT") or "25"
+              mode = os.environ.get("WD_MODE") or "south-nj"
+              refresh = (os.environ.get("WD_REFRESH") or "false").lower() in {"1", "true", "yes"}
+
+          if mode not in {"south-nj", "remote", "south-nj-remote"}:
+              mode = "south-nj"
+          try:
+              limit_n = max(1, min(250, int(limit)))
+          except ValueError:
+              limit_n = 25
+
+          out = Path(os.environ["GITHUB_OUTPUT"])
+          with out.open("a", encoding="utf-8") as handle:
+              handle.write(f"keyword={keyword}\n")
+              handle.write(f"limit={limit_n}\n")
+              handle.write(f"mode={mode}\n")
+              handle.write(f"refresh={'true' if refresh else 'false'}\n")
+          print(f"mode={mode} limit={limit_n} keyword={keyword!r} refresh={refresh}")
+          PY
+
+      - name: Run opp_finder search
+        working-directory: scripts/opp_finder
+        run: |
+          set -euo pipefail
+          ARGS=(search --headless --limit "${{ steps.inputs.outputs.limit }}")
+          MODE="${{ steps.inputs.outputs.mode }}"
+          if [[ "$MODE" == "remote" ]]; then
+            ARGS+=(--remote)
+          elif [[ "$MODE" == "south-nj-remote" ]]; then
+            ARGS+=(--south-nj --remote)
+          else
+            ARGS+=(--south-nj)
+          fi
+          KEYWORD="${{ steps.inputs.outputs.keyword }}"
+          if [[ -n "$KEYWORD" ]]; then
+            ARGS+=(--keyword "$KEYWORD")
+          fi
+          if [[ "${{ steps.inputs.outputs.refresh }}" == "true" ]]; then
+            ARGS+=(--refresh)
+          fi
+          echo "Running: python main.py ${ARGS[*]}"
+          python main.py "${ARGS[@]}"
+
+      - name: Export CSV info for API
+        id: export
+        working-directory: scripts/opp_finder
+        run: python export_api_results.py --github-output
+
+      - name: Write job summary
+        if: always()
+        working-directory: scripts/opp_finder
+        run: |
+          python <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          results_path = Path("output/api_results.json")
+          summary_lines = ["## Opp Finder results", ""]
+          if results_path.exists():
+              payload = json.loads(results_path.read_text(encoding="utf-8"))
+              summary = payload.get("summary") or {}
+              summary_lines.extend(
+                  [
+                      f"- **all_jobs_count:** {summary.get('all_jobs_count', 0)}",
+                      f"- **qualified_count:** {summary.get('qualified_count', 0)}",
+                      "",
+                      "Download the `opp-finder-results` artifact for CSVs and full `api_results.json`.",
+                      "",
+                      "### Top qualified",
+                      "",
+                  ]
+              )
+              for row in (payload.get("qualified_opportunities") or [])[:10]:
+                  title = row.get("job_title") or "(untitled)"
+                  company = row.get("company_name") or "?"
+                  score = row.get("opportunity_score") or "?"
+                  summary_lines.append(f"- {title} @ {company} (score {score})")
+          else:
+              summary_lines.append("No `api_results.json` produced.")
+
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(
+              "\n".join(summary_lines) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload CSV + JSON artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opp-finder-results
+          path: |
+            scripts/opp_finder/output/all_jobs.csv
+            scripts/opp_finder/output/qualified_opportunities.csv
+            scripts/opp_finder/output/search_history.csv
+            scripts/opp_finder/output/api_results.json
+          if-no-files-found: warn
+          retention-days: 14

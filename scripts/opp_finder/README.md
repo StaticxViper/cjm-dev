@@ -91,6 +91,76 @@ Component scores (0–100):
 
 Combined into explainable `opportunity_score`. Language stays tentative (“potentially automatable”). Contacts are marked `verified_public` only when found on a public page; emails are never guessed.
 
+## GitHub Action (API-callable)
+
+Workflow: [`.github/workflows/opp_finder.yml`](../../.github/workflows/opp_finder.yml)
+
+Triggers:
+
+- `workflow_dispatch` (Actions UI or REST API)
+- `repository_dispatch` with `event_type: opp-finder-search`
+
+Outputs:
+
+- Job outputs: `all_jobs_count`, `qualified_count`, `truncated`, `results_json` (CSV-derived JSON)
+- Artifact `opp-finder-results`: `all_jobs.csv`, `qualified_opportunities.csv`, `search_history.csv`, `api_results.json`
+
+### Trigger via API (`workflow_dispatch`)
+
+```bash
+curl -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/OWNER/REPO/actions/workflows/opp_finder.yml/dispatches \
+  -d '{
+    "ref": "main",
+    "inputs": {
+      "keyword": "data entry",
+      "limit": "25",
+      "mode": "south-nj",
+      "refresh": "false"
+    }
+  }'
+```
+
+### Trigger via API (`repository_dispatch`)
+
+```bash
+curl -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/OWNER/REPO/dispatches \
+  -d '{
+    "event_type": "opp-finder-search",
+    "client_payload": {
+      "keyword": "property research",
+      "limit": 25,
+      "mode": "south-nj",
+      "refresh": false
+    }
+  }'
+```
+
+### Fetch CSV info after the run
+
+1. Find the run id:
+   ```bash
+   gh run list --workflow=opp_finder.yml --limit 1
+   ```
+2. Download the artifact (full CSVs + JSON):
+   ```bash
+   gh run download <RUN_ID> --name opp-finder-results
+   ```
+3. Or read job outputs (`results_json`) from the completed run in the Actions UI / `gh run view <RUN_ID>`.
+
+Locally build the same API payload from existing CSVs:
+
+```bash
+cd scripts/opp_finder
+python export_api_results.py
+# writes output/api_results.json
+```
+
 ## Known limitations
 
 - Google, Indeed, and ZipRecruiter frequently present CAPTCHAs / bot blocks (especially from datacenter IPs). The tool logs `[BLOCKED]` and continues with other sources such as Craigslist — it does not bypass protections.
