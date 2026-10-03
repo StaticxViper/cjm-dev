@@ -49,22 +49,13 @@ class GoogleScraper:
             '"{keyword}" "{location}" hiring',
             '"{keyword}" "{location}" job',
         ]
-        # Prefer broad South Jersey / remote phrases first; expand counties as budget allows.
-        preferred = ["South Jersey", "Camden County NJ", "Burlington County NJ", "Gloucester County NJ"]
-        phrases: list[str] = []
-        for phrase in preferred + list(ctx.location_phrases):
-            if phrase not in phrases:
-                phrases.append(phrase)
-        if ctx.remote_only or ctx.include_remote:
-            for extra in ("New Jersey remote", "United States remote"):
-                if extra not in phrases:
-                    phrases.append(extra)
-        if ctx.south_nj_only and "South Jersey" not in phrases:
-            phrases.insert(0, "South Jersey")
+        # location_phrases are already ordered (remote-first when prioritize_remote).
+        phrases = list(ctx.location_phrases)
+        if not phrases:
+            phrases = ["Remote United States", "South Jersey"]
 
         # Query budget scales with max_total_jobs so --limit stays practical.
         max_queries = max(6, min(80, int(ctx.max_total_jobs) * 2))
-        # Use the primary hiring template first, then diversify.
         ordered_templates = list(templates)
         queries: list[str] = []
         seen: set[str] = set()
@@ -131,7 +122,6 @@ class GoogleScraper:
         if match:
             job_title = clean_text(match.group("title"))
             company = clean_text(match.group("company"))
-            # Strip trailing noise like "Indeed.com"
             company = re.sub(r"\s*[-|].*$", "", company).strip()
 
         host = urlparse(url).netloc.lower()
@@ -144,7 +134,6 @@ class GoogleScraper:
             source = "craigslist"
 
         detail: dict[str, str] = {}
-        # Fetch detail page for richer text when not already blocked.
         if not browser.is_blocked(source):
             final_url, html = browser.goto(url, source=source)
             if html:
@@ -177,7 +166,7 @@ class GoogleScraper:
     @staticmethod
     def _location_from_snippet(snippet: str) -> str:
         match = re.search(
-            r"\b([A-Z][a-zA-Z .]+,\s*NJ(?:\s+\d{5})?)\b",
+            r"\b([A-Z][a-zA-Z .]+,\s*(?:NJ|PA|DE|NY)(?:\s+\d{5})?)\b",
             snippet or "",
         )
         if match:

@@ -23,9 +23,14 @@ class IndeedScraper:
             return []
 
         jobs: list[RawJob] = []
-        locations = ["South Jersey, NJ", "New Jersey"] if not ctx.remote_only else ["United States"]
-        if ctx.include_remote and "Remote" not in locations:
-            locations.append("Remote")
+        # Use ordered multi-location phrases (remote-first when configured).
+        locations = list(ctx.location_phrases[:8]) if ctx.location_phrases else []
+        if ctx.remote_only:
+            locations = [p for p in locations if "remote" in p.lower() or "work from home" in p.lower()]
+            if not locations:
+                locations = ["Remote"]
+        elif not locations:
+            locations = ["Remote", "South Jersey, NJ", "Philadelphia, PA", "Wilmington, DE"]
         # Cap keyword fan-out for MVP pacing
         keywords = ctx.keywords[: max(3, min(12, int(ctx.max_total_jobs)))]
 

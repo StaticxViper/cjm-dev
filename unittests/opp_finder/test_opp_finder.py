@@ -15,20 +15,48 @@ sys.path.insert(0, str(OPP_DIR))
 from analysis.outreach import generate_outreach  # noqa: E402
 from analysis.scoring import score_automation  # noqa: E402
 from analysis.workflow import extract_workflow  # noqa: E402
-from pipeline import dedupe_jobs, passes_qualification, stage1_analyze  # noqa: E402
+from pipeline import (  # noqa: E402
+    _sort_jobs_for_processing,
+    dedupe_jobs,
+    passes_qualification,
+    stage1_analyze,
+)
+from utils.config import build_location_phrases, configured_locations, load_config  # noqa: E402
 from utils.constants import ALL_JOBS_COLUMNS, QUALIFIED_COLUMNS  # noqa: E402
 from utils.csv_utils import read_csv_rows, upsert_csv_row  # noqa: E402
-from utils.geo import detect_remote_status, matches_target_geography  # noqa: E402
+from utils.geo import (  # noqa: E402
+    detect_remote_status,
+    matches_target_geography,
+    remote_priority_rank,
+)
 from utils.jobs import RawJob  # noqa: E402
 from utils.normalization import job_fingerprint, normalize_company, normalize_url  # noqa: E402
 
 
 CONFIG = {
     "include_remote": True,
-    "location": {
-        "state": "NJ",
-        "counties": ["Camden", "Burlington", "Gloucester"],
-        "place_hints": ["Cherry Hill", "South Jersey"],
+    "prioritize_remote": True,
+    "locations": [
+        {
+            "name": "south_jersey",
+            "states": ["NJ"],
+            "counties": ["Camden", "Burlington", "Gloucester"],
+            "place_hints": ["Cherry Hill", "South Jersey"],
+            "search_phrases": ["South Jersey", "Camden County NJ"],
+            "enabled": True,
+        },
+        {
+            "name": "philadelphia_metro",
+            "states": ["PA"],
+            "counties": ["Philadelphia", "Montgomery"],
+            "place_hints": ["Philadelphia", "King of Prussia"],
+            "search_phrases": ["Philadelphia PA"],
+            "enabled": True,
+        },
+    ],
+    "search": {
+        "remote_phrases": ["Remote United States", "Remote US"],
+        "location_phrases": [],
     },
     "qualification": {
         "minimum_automation_score": 55,
@@ -65,6 +93,11 @@ class GeoTests(unittest.TestCase):
             matches_target_geography("Cherry Hill, NJ", "office assistant", CONFIG)
         )
 
+    def test_philadelphia_match(self):
+        self.assertTrue(
+            matches_target_geography("Philadelphia, PA", "data entry on-site", CONFIG)
+        )
+
     def test_out_of_state_onsite_rejected(self):
         self.assertFalse(
             matches_target_geography("Austin, TX", "on-site data entry", CONFIG)
@@ -74,6 +107,37 @@ class GeoTests(unittest.TestCase):
         self.assertTrue(
             matches_target_geography("Remote", "fully remote data entry US", CONFIG)
         )
+
+    def test_remote_priority_rank_order(self):
+        self.assertLess(remote_priority_rank("remote"), remote_priority_rank("hybrid"))
+        self.assertLess(remote_priority_rank("hybrid"), remote_priority_rank("on-site"))
+
+
+class MultiLocationConfigTests(unittest.TestCase):
+    def test_real_config_has_multiple_regions(self):
+        cfg = load_config(OPP_DIR / "config.yaml")
+        regions = configured_locations(cfg)
+        names = {r["name"] for r in regions}
+        self.assertIn("south_jersey", names)
+        self.assertIn("philadelphia_metro", names)
+        self.assertTrue(cfg.get("prioritize_remote", False))
+
+    def test_remote_phrases_come_first(self):
+        phrases = build_location_phrases(CONFIG, prioritize_remote=True, include_remote=True)
+        self.assertTrue(phrases)
+        self.assertIn("remote", phrases[0].lower())
+        # Local phrases still present later
+        self.assertTrue(any("south jersey" in p.lower() for p in phrases))
+        self.assertTrue(any("philadelphia" in p.lower() for p in phrases))
+
+    def test_sort_jobs_remote_first(self):
+        jobs = [
+            {"job_title": "A", "remote_status": "on-site", "opportunity_score": "90"},
+            {"job_title": "B", "remote_status": "remote", "opportunity_score": "70"},
+            {"job_title": "C", "remote_status": "hybrid", "opportunity_score": "80"},
+        ]
+        ordered = _sort_jobs_for_processing(jobs, prioritize_remote=True)
+        self.assertEqual([j["job_title"] for j in ordered], ["B", "C", "A"])
 
 
 class WorkflowScoringTests(unittest.TestCase):
@@ -98,6 +162,7 @@ class WorkflowScoringTests(unittest.TestCase):
                 "verify records, and generate recurring reports."
             ),
             "location": "Remote",
+            "remote_status": "remote",
             "workflow_tasks": (
                 "Research information online | Enter data into systems or spreadsheets | "
                 "Update CRM records | Generate recurring reports"
@@ -110,6 +175,22 @@ class WorkflowScoringTests(unittest.TestCase):
             {"0–20%", "20–40%", "40–60%", "60–80%", "80%+"},
         )
         self.assertIn("Python", analysis["possible_technology"])
+
+    def test_remote_gets_opportunity_boost(self):
+        base = {
+            "job_title": "Data Entry Specialist",
+            "job_description": "Repetitive data entry into spreadsheets and CRM systems.",
+            "workflow_tasks": "Enter data into systems or spreadsheets | Update CRM records",
+            "location": "Cherry Hill, NJ",
+            "remote_status": "on-site",
+        }
+        remote = dict(base)
+        remote["location"] = "Remote"
+        remote["remote_status"] = "remote"
+        remote["job_description"] = base["job_description"] + " Fully remote US."
+        onsite_score = score_automation(base)["opportunity_score"]
+        remote_score = score_automation(remote)["opportunity_score"]
+        self.assertGreaterEqual(remote_score, onsite_score)
 
     def test_physical_job_scores_low(self):
         job = {

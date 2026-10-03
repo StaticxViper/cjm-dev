@@ -12,10 +12,16 @@ from analysis.workflow import extract_workflow
 from enrichment.contacts import enrich_company_and_contacts
 from scrapers import SearchContext, enabled_scrapers
 from utils.browser import BrowserSession
-from utils.config import flatten_keywords, resolve_path
+from utils.config import (
+    build_location_phrases,
+    configured_locations,
+    flatten_keywords,
+    prioritize_remote_enabled,
+    resolve_path,
+)
 from utils.constants import ALL_JOBS_COLUMNS, QUALIFIED_COLUMNS, SEARCH_HISTORY_COLUMNS
 from utils.csv_utils import append_csv_row, load_job_index, read_csv_rows, upsert_csv_row
-from utils.geo import detect_remote_status, matches_target_geography
+from utils.geo import detect_remote_status, matches_target_geography, remote_priority_rank
 from utils.jobs import RawJob, utc_now_iso, utc_today
 from utils.normalization import (
     join_list,
@@ -177,6 +183,28 @@ def _print_job_progress(job: dict[str, Any]) -> None:
         logger.info("%s", job.get("automation_opportunity"))
 
 
+def _sort_jobs_for_processing(
+    jobs: list[dict[str, Any]],
+    *,
+    prioritize_remote: bool,
+) -> list[dict[str, Any]]:
+    """Order jobs so remote roles are researched/exported first when enabled."""
+
+    def sort_key(job: dict[str, Any]) -> tuple[int, int, str]:
+        status = str(job.get("remote_status") or detect_remote_status(
+            job.get("location"),
+            job.get("job_description"),
+        ))
+        try:
+            opp = -int(float(job.get("opportunity_score") or 0))
+        except ValueError:
+            opp = 0
+        remote_rank = remote_priority_rank(status) if prioritize_remote else 0
+        return (remote_rank, opp, str(job.get("job_title") or ""))
+
+    return sorted(jobs, key=sort_key)
+
+
 def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int]:
     """Execute a full search run. options from CLI."""
     search_cfg = config.get("search") or {}
@@ -189,15 +217,45 @@ def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int
     if options.get("keyword"):
         keywords = [options["keyword"]]
 
-    location_phrases = list(search_cfg.get("location_phrases") or ["South Jersey"])
     include_remote = bool(config.get("include_remote", True))
     if options.get("remote_only"):
         include_remote = True
-    if options.get("south_nj_only") and options.get("remote_only") is not True:
-        # south-nj mode still allows remote unless user asked otherwise
-        pass
     if options.get("no_remote"):
         include_remote = False
+
+    prioritize_remote = prioritize_remote_enabled(config, options)
+    region_names = list(options.get("region_names") or [])
+    if options.get("south_nj_only") and not region_names:
+        region_names = ["south_jersey"]
+
+    location_phrases = build_location_phrases(
+        config,
+        prioritize_remote=prioritize_remote and not options.get("remote_only"),
+        include_remote=include_remote,
+        region_names=region_names or None,
+    )
+    if options.get("remote_only"):
+        # Keep only remote-oriented phrases for discovery.
+        location_phrases = [
+            p for p in location_phrases
+            if "remote" in p.lower() or "work from home" in p.lower()
+        ] or build_location_phrases(
+            config,
+            prioritize_remote=True,
+            include_remote=True,
+            region_names=[],
+        )[:5]
+
+    enabled_regions = configured_locations(config)
+    if region_names:
+        wanted = {n.lower() for n in region_names}
+        enabled_regions = [r for r in enabled_regions if r["name"].lower() in wanted]
+    logger.info(
+        "Locations=%s prioritize_remote=%s phrases=%d",
+        ",".join(r["name"] for r in enabled_regions) or "all",
+        prioritize_remote,
+        len(location_phrases),
+    )
 
     browser_cfg = dict(config.get("browser") or {})
     if options.get("headless") is not None:
@@ -219,6 +277,7 @@ def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int
         "saved_all": 0,
         "qualified": 0,
         "skipped_existing": 0,
+        "remote_kept": 0,
     }
 
     with BrowserSession(browser_cfg) as browser:
@@ -227,8 +286,10 @@ def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int
             keywords=keywords,
             location_phrases=location_phrases,
             include_remote=include_remote,
+            prioritize_remote=prioritize_remote,
             south_nj_only=bool(options.get("south_nj_only")),
             remote_only=bool(options.get("remote_only")),
+            region_names=[r["name"] for r in enabled_regions],
             max_results_per_keyword=max_per_kw,
             max_total_jobs=max_total,
             browser=browser,
@@ -290,35 +351,36 @@ def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int
         deduped = dedupe_jobs(raw_jobs)
         stats["after_dedupe"] = len(deduped)
 
+        # Attach remote_status early, filter geo, then prioritize remote for deep work.
+        geo_jobs: list[dict[str, Any]] = []
+        for job in deduped:
+            allow_remote = include_remote
+            rs = detect_remote_status(job.get("location"), job.get("job_description"))
+            job["remote_status"] = rs or job.get("remote_status") or "unknown"
+            if options.get("remote_only"):
+                if rs != "remote":
+                    continue
+            elif not matches_target_geography(
+                job.get("location"),
+                job.get("job_description"),
+                {**config, "include_remote": include_remote},
+                allow_remote=include_remote,
+            ):
+                continue
+            if rs == "remote":
+                stats["remote_kept"] += 1
+            geo_jobs.append(job)
+
+        stats["geo_kept"] = len(geo_jobs)
+        ordered_jobs = _sort_jobs_for_processing(
+            geo_jobs,
+            prioritize_remote=prioritize_remote,
+        )
+
         company_research_count = 0
         qualified_contact_count = 0
 
-        for job in deduped:
-            # Geographic / remote filter
-            allow_remote = include_remote
-            if options.get("remote_only"):
-                rs = detect_remote_status(job.get("location"), job.get("job_description"))
-                if rs != "remote":
-                    continue
-            elif options.get("south_nj_only") and not options.get("remote_only"):
-                # Keep south NJ locals + remotes (if include_remote)
-                if not matches_target_geography(
-                    job.get("location"),
-                    job.get("job_description"),
-                    {**config, "include_remote": include_remote},
-                    allow_remote=include_remote,
-                ):
-                    continue
-            else:
-                if not matches_target_geography(
-                    job.get("location"),
-                    job.get("job_description"),
-                    {**config, "include_remote": include_remote},
-                    allow_remote=include_remote,
-                ):
-                    continue
-
-            stats["geo_kept"] += 1
+        for job in ordered_jobs:
             job_id = str(job.get("job_id") or "")
             if job_id and job_id in existing_index and not refresh:
                 stats["skipped_existing"] += 1
@@ -364,7 +426,6 @@ def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int
                 logger.info("[OUTREACH]")
                 logger.info("Draft generated.")
 
-            # Persist updated all_jobs row with richer fields where columns overlap
             upsert_csv_row(all_path, deep, ALL_JOBS_COLUMNS, ["job_id"])
 
             if passes_qualification(deep, config):
@@ -376,10 +437,11 @@ def run_search(config: dict[str, Any], options: dict[str, Any]) -> dict[str, int
                 logger.info("[SAVED] %s", qual_path.name)
 
     logger.info(
-        "Run complete. discovered=%d deduped=%d geo_kept=%d saved=%d qualified=%d skipped_existing=%d",
+        "Run complete. discovered=%d deduped=%d geo_kept=%d remote_kept=%d saved=%d qualified=%d skipped_existing=%d",
         stats["discovered"],
         stats["after_dedupe"],
         stats["geo_kept"],
+        stats["remote_kept"],
         stats["saved_all"],
         stats["qualified"],
         stats["skipped_existing"],

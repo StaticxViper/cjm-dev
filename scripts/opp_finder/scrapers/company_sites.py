@@ -24,12 +24,20 @@ class CompanySitesScraper:
             return []
 
         jobs: list[RawJob] = []
-        # Limited discovery queries for career pages in-region
+        # Limited discovery queries for career pages across configured phrases.
         sample_keywords = ctx.keywords[: min(5, len(ctx.keywords))]
+        place_bits = [
+            p for p in (ctx.location_phrases or [])
+            if "remote" not in p.lower()
+        ][:4] or ["South Jersey", "Philadelphia PA"]
+        place_clause = " OR ".join(f'"{p}"' for p in place_bits)
         for keyword in sample_keywords:
             if len(ctx.collected) + len(jobs) >= ctx.max_total_jobs:
                 break
-            query = f'CAREERS "{keyword}" "South Jersey" OR "Camden County NJ"'
+            if ctx.prioritize_remote or ctx.include_remote:
+                query = f'CAREERS "{keyword}" (remote OR {place_clause})'
+            else:
+                query = f'CAREERS "{keyword}" ({place_clause})'
             logger.info("[SEARCH] Company sites — %s", query)
             _url, html = browser.google_search(query, num=8)
             if browser.is_blocked("google"):
@@ -69,7 +77,7 @@ class CompanySitesScraper:
                 job_title=text[:160],
                 company_name=host_name,
                 job_description=text,
-                location="South Jersey, NJ",
+                location="",
                 source=self.name,
                 source_url=normalize_url(href) or href,
                 application_url=href,

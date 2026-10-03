@@ -15,8 +15,10 @@ class SearchContext:
     keywords: list[str]
     location_phrases: list[str]
     include_remote: bool = True
+    prioritize_remote: bool = True
     south_nj_only: bool = False
     remote_only: bool = False
+    region_names: list[str] = field(default_factory=list)
     max_results_per_keyword: int = 25
     max_total_jobs: int = 250
     browser: BrowserSession | None = None

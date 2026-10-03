@@ -21,14 +21,20 @@ on:
         type: string
         default: "25"
       mode:
-        description: Search mode
+        description: Search mode (multi-location prioritizes remote across all configured regions)
         required: false
         type: choice
         options:
-          - south-nj
+          - multi-location
           - remote
+          - south-nj
           - south-nj-remote
-        default: south-nj
+        default: multi-location
+      locations:
+        description: Optional comma-separated region names (south_jersey,philadelphia_metro,delaware,north_jersey)
+        required: false
+        type: string
+        default: ""
       refresh:
         description: Reprocess jobs already present in CSV
         required: false
@@ -74,6 +80,7 @@ jobs:
           WD_KEYWORD: ${{ github.event.inputs.keyword }}
           WD_LIMIT: ${{ github.event.inputs.limit }}
           WD_MODE: ${{ github.event.inputs.mode }}
+          WD_LOCATIONS: ${{ github.event.inputs.locations }}
           WD_REFRESH: ${{ github.event.inputs.refresh }}
           RD_CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: |
@@ -87,16 +94,18 @@ jobs:
               payload = json.loads(os.environ.get("RD_CLIENT_PAYLOAD") or "{}")
               keyword = str(payload.get("keyword") or "")
               limit = str(payload.get("limit") or "25")
-              mode = str(payload.get("mode") or "south-nj")
+              mode = str(payload.get("mode") or "multi-location")
+              locations = str(payload.get("locations") or "")
               refresh = str(payload.get("refresh") or "false").lower() in {"1", "true", "yes"}
           else:
               keyword = os.environ.get("WD_KEYWORD") or ""
               limit = os.environ.get("WD_LIMIT") or "25"
-              mode = os.environ.get("WD_MODE") or "south-nj"
+              mode = os.environ.get("WD_MODE") or "multi-location"
+              locations = os.environ.get("WD_LOCATIONS") or ""
               refresh = (os.environ.get("WD_REFRESH") or "false").lower() in {"1", "true", "yes"}
 
-          if mode not in {"south-nj", "remote", "south-nj-remote"}:
-              mode = "south-nj"
+          if mode not in {"multi-location", "south-nj", "remote", "south-nj-remote"}:
+              mode = "multi-location"
           try:
               limit_n = max(1, min(250, int(limit)))
           except ValueError:
@@ -107,22 +116,28 @@ jobs:
               handle.write(f"keyword={keyword}\n")
               handle.write(f"limit={limit_n}\n")
               handle.write(f"mode={mode}\n")
+              handle.write(f"locations={locations}\n")
               handle.write(f"refresh={'true' if refresh else 'false'}\n")
-          print(f"mode={mode} limit={limit_n} keyword={keyword!r} refresh={refresh}")
+          print(f"mode={mode} locations={locations!r} limit={limit_n} keyword={keyword!r} refresh={refresh}")
           PY
 
       - name: Run opp_finder search
         working-directory: scripts/opp_finder
         run: |
           set -euo pipefail
-          ARGS=(search --headless --limit "${{ steps.inputs.outputs.limit }}")
+          ARGS=(search --headless --limit "${{ steps.inputs.outputs.limit }}" --prioritize-remote)
           MODE="${{ steps.inputs.outputs.mode }}"
+          LOCATIONS="${{ steps.inputs.outputs.locations }}"
           if [[ "$MODE" == "remote" ]]; then
             ARGS+=(--remote)
           elif [[ "$MODE" == "south-nj-remote" ]]; then
             ARGS+=(--south-nj --remote)
-          else
+          elif [[ "$MODE" == "south-nj" ]]; then
             ARGS+=(--south-nj)
+          fi
+          # multi-location is the default (all enabled regions + remote-first)
+          if [[ -n "$LOCATIONS" ]]; then
+            ARGS+=(--locations "$LOCATIONS")
           fi
           KEYWORD="${{ steps.inputs.outputs.keyword }}"
           if [[ -n "$KEYWORD" ]]; then

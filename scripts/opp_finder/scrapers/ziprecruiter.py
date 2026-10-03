@@ -23,9 +23,13 @@ class ZipRecruiterScraper:
             return []
 
         jobs: list[RawJob] = []
-        locations = ["South Jersey, NJ"] if not ctx.remote_only else ["Remote"]
-        if ctx.include_remote and "Remote" not in locations:
-            locations.append("Remote")
+        locations = list(ctx.location_phrases[:6]) if ctx.location_phrases else []
+        if ctx.remote_only:
+            locations = [p for p in locations if "remote" in p.lower() or "work from home" in p.lower()]
+            if not locations:
+                locations = ["Remote"]
+        elif not locations:
+            locations = ["Remote", "South Jersey, NJ", "Philadelphia, PA"]
         keywords = ctx.keywords[: max(3, min(10, int(ctx.max_total_jobs)))]
 
         for keyword in keywords:

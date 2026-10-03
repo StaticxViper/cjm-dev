@@ -142,6 +142,15 @@ def score_automation(job: dict[str, Any]) -> dict[str, Any]:
         implementation_fit += 10
     if negatives:
         implementation_fit -= 10 * min(3, len(negatives))
+    # Remote roles are usually a better fit for browser/Python automation delivery.
+    remote_status = str(job.get("remote_status") or "").lower()
+    if remote_status == "remote" or re.search(r"\b(fully remote|work from home|wfh)\b", text):
+        implementation_fit += 12
+        business_value_score = min(100, business_value_score + 5)
+        if "remote digital role" not in positives:
+            positives.append("remote digital role")
+    elif remote_status == "hybrid":
+        implementation_fit += 4
     implementation_fit = max(0, min(100, implementation_fit))
 
     # Contactability filled later during enrichment; provisional mid value
@@ -157,6 +166,9 @@ def score_automation(job: dict[str, Any]) -> dict[str, Any]:
             + implementation_fit * 0.15
         )
     )
+    # Soft ranking boost so equally strong remote leads surface first.
+    if remote_status == "remote":
+        opportunity_score += 3
     opportunity_score = max(0, min(100, opportunity_score))
 
     if score >= 70 and task_list:

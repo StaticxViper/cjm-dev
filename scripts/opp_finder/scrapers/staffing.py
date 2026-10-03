@@ -23,11 +23,17 @@ class StaffingScraper:
             return []
 
         jobs: list[RawJob] = []
+        local = [
+            p for p in (ctx.location_phrases or [])
+            if "remote" not in p.lower()
+        ][:3] or ["South Jersey", "Philadelphia PA"]
         queries = [
-            'staffing agency jobs "South Jersey" OR "Camden County NJ"',
-            'temporary staffing "data entry" "New Jersey"',
-            'staffing "administrative assistant" "South Jersey" hiring',
+            f'staffing agency jobs "{local[0]}"' + (f' OR "{local[1]}"' if len(local) > 1 else ""),
+            'temporary staffing "data entry" remote United States',
+            f'staffing "administrative assistant" "{local[0]}" hiring',
         ]
+        if ctx.prioritize_remote or ctx.include_remote:
+            queries.insert(0, 'staffing "data entry" OR "virtual assistant" remote United States hiring')
         for query in queries:
             if len(ctx.collected) + len(jobs) >= ctx.max_total_jobs:
                 break

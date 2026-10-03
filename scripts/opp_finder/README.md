@@ -1,6 +1,8 @@
 # Job Automation Opportunity Finder
 
-CLI research tool that finds South New Jersey and remote U.S. job listings where employers appear to be hiring for repetitive digital/administrative workflows that could potentially be improved with software automation.
+CLI research tool that finds **multi-location** (South Jersey, Philly metro, Delaware, North Jersey) and **remote U.S.** job listings where employers appear to be hiring for repetitive digital/administrative workflows that could potentially be improved with software automation.
+
+By default it **prioritizes remote roles** in both search order and lead ranking.
 
 This tool does **not** send outreach, bypass CAPTCHAs, or fabricate contacts. It writes CSV files you can import elsewhere.
 
@@ -30,8 +32,8 @@ Optional (repo logger upload only):
 
 Edit [`config.yaml`](config.yaml):
 
-- Target NJ counties / place hints
-- `include_remote`
+- `locations` regions (enable/disable South Jersey, Philly metro, Delaware, North Jersey, etc.)
+- `prioritize_remote` / `include_remote`
 - Keyword groups
 - Source enable/disable
 - Search limits and qualification thresholds
@@ -44,10 +46,13 @@ Run from `scripts/opp_finder/`:
 
 ```bash
 cd scripts/opp_finder
-python main.py search --south-nj --limit 100
+# Default: all enabled locations, remote-first
+python main.py search --limit 100
+python main.py search --locations south_jersey,philadelphia_metro,delaware --limit 100
 python main.py search --remote --limit 50
+python main.py search --south-nj --limit 50
 python main.py search --keyword "property research" --limit 25
-python main.py search --south-nj --remote --limit 100 --headless
+python main.py search --no-prioritize-remote --limit 50
 python main.py search --refresh --verbose
 ```
 
@@ -55,8 +60,11 @@ Flags:
 
 | Flag | Meaning |
 |------|---------|
-| `--south-nj` | Prioritize South/Central NJ geography (default when no geo flag is given) |
-| `--remote` | Focus on remote U.S. roles |
+| *(default)* | All enabled `locations` in config + remote included, remote prioritized |
+| `--locations a,b` | Restrict to named regions from `config.yaml` |
+| `--south-nj` | Limit local targeting to the `south_jersey` region |
+| `--remote` | Remote U.S. roles only |
+| `--prioritize-remote` / `--no-prioritize-remote` | Force remote-first on/off |
 | `--keyword` | Use one keyword instead of the full configured list |
 | `--limit` | Cap total jobs collected |
 | `--headless` / `--headed` | Browser mode override |

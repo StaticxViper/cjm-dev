@@ -1,75 +1,147 @@
 # Job Automation Opportunity Finder — configuration
 
-location:
-  state: "NJ"
-  counties:
-    - Camden
-    - Burlington
-    - Gloucester
-    - Atlantic
-    - Cape May
-    - Cumberland
-    - Salem
-    - Mercer
-    - Ocean
-    - Monmouth
-  # Nearby South/Central NJ place names used for geographic matching
-  place_hints:
-    - "South Jersey"
-    - "Southern New Jersey"
-    - "Cherry Hill"
-    - "Camden"
-    - "Mount Laurel"
-    - "Marlton"
-    - "Voorhees"
-    - "Haddonfield"
-    - "Collingswood"
-    - "Pennsauken"
-    - "Berlin"
-    - "Winslow"
-    - "Glassboro"
-    - "Washington Township"
-    - "Deptford"
-    - "Woodbury"
-    - "Sewell"
-    - "Mantua"
-    - "Vineland"
-    - "Millville"
-    - "Bridgeton"
-    - "Atlantic City"
-    - "Egg Harbor"
-    - "Galloway"
-    - "Mays Landing"
-    - "Cape May"
-    - "Wildwood"
-    - "Ocean City"
-    - "Trenton"
-    - "Hamilton"
-    - "Princeton"
-    - "Lawrenceville"
-    - "Ewing"
-    - "Toms River"
-    - "Brick"
-    - "Lakewood"
-    - "Jackson"
-    - "Freehold"
-    - "Middletown"
-    - "Red Bank"
-    - "Long Branch"
-    - "Asbury Park"
-    - "Burlington"
-    - "Moorestown"
-    - "Willingboro"
-    - "Cinnaminson"
-    - "Delran"
-    - "Maple Shade"
-    - "Evesham"
-    - "Medford"
-    - "Salem"
-    - "Pennsville"
-    - "Carneys Point"
-
+# Prefer remote U.S. roles when discovering and ranking opportunities.
+prioritize_remote: true
 include_remote: true
+
+# Multiple geographic regions. Hybrid/on-site jobs must match one of these.
+# Remote U.S. jobs are always eligible when include_remote is true.
+locations:
+  - name: south_jersey
+    enabled: true
+    states: [NJ]
+    counties:
+      - Camden
+      - Burlington
+      - Gloucester
+      - Atlantic
+      - Cape May
+      - Cumberland
+      - Salem
+      - Mercer
+      - Ocean
+      - Monmouth
+    place_hints:
+      - South Jersey
+      - Southern New Jersey
+      - Cherry Hill
+      - Camden
+      - Mount Laurel
+      - Marlton
+      - Voorhees
+      - Haddonfield
+      - Collingswood
+      - Pennsauken
+      - Glassboro
+      - Deptford
+      - Woodbury
+      - Sewell
+      - Vineland
+      - Millville
+      - Atlantic City
+      - Egg Harbor
+      - Cape May
+      - Ocean City
+      - Trenton
+      - Princeton
+      - Toms River
+      - Brick
+      - Freehold
+      - Red Bank
+      - Moorestown
+      - Willingboro
+      - Evesham
+      - Medford
+    search_phrases:
+      - South Jersey
+      - Camden County NJ
+      - Burlington County NJ
+      - Gloucester County NJ
+      - Atlantic County NJ
+      - Cape May County NJ
+      - Cumberland County NJ
+      - Salem County NJ
+      - Mercer County NJ
+      - Ocean County NJ
+      - Monmouth County NJ
+
+  - name: philadelphia_metro
+    enabled: true
+    states: [PA, NJ]
+    counties:
+      - Philadelphia
+      - Delaware
+      - Bucks
+      - Montgomery
+      - Chester
+    place_hints:
+      - Philadelphia
+      - Philly
+      - King of Prussia
+      - Exton
+      - Media
+      - Doylestown
+      - Norristown
+      - Conshohocken
+      - Bala Cynwyd
+      - Upper Darby
+    search_phrases:
+      - Philadelphia PA
+      - Philadelphia Metro
+      - Bucks County PA
+      - Montgomery County PA
+      - Delaware County PA
+      - Chester County PA
+
+  - name: delaware
+    enabled: true
+    states: [DE]
+    counties:
+      - New Castle
+      - Kent
+      - Sussex
+    place_hints:
+      - Wilmington
+      - Newark DE
+      - Dover
+      - Middletown DE
+      - Bear DE
+    search_phrases:
+      - Wilmington DE
+      - New Castle County DE
+      - Delaware jobs
+
+  - name: north_jersey
+    enabled: true
+    states: [NJ]
+    counties:
+      - Bergen
+      - Essex
+      - Hudson
+      - Passaic
+      - Union
+      - Morris
+      - Somerset
+      - Middlesex
+    place_hints:
+      - North Jersey
+      - Northern New Jersey
+      - Newark
+      - Jersey City
+      - Hoboken
+      - Paterson
+      - Edison
+      - New Brunswick
+      - Morristown
+      - Paramus
+      - Hackensack
+    search_phrases:
+      - North Jersey
+      - Bergen County NJ
+      - Essex County NJ
+      - Hudson County NJ
+      - Middlesex County NJ
+      - Morris County NJ
 
 keywords:
   data_research:
@@ -157,20 +229,17 @@ search:
   max_total_jobs: 250
   max_company_research: 100
   max_qualified_contacts: 50
-  # Location phrases combined with keywords for Google discovery
-  location_phrases:
-    - "South Jersey"
-    - "Camden County NJ"
-    - "Burlington County NJ"
-    - "Gloucester County NJ"
-    - "Atlantic County NJ"
-    - "Cape May County NJ"
-    - "Cumberland County NJ"
-    - "Salem County NJ"
-    - "Mercer County NJ"
-    - "Ocean County NJ"
-    - "Monmouth County NJ"
+  # Remote phrases are searched first when prioritize_remote is true.
+  remote_phrases:
+    - "Remote United States"
+    - "Remote US"
+    - "Work from home United States"
+    - "Fully remote US"
+    - "United States remote"
     - "New Jersey remote"
+    - "Philadelphia remote"
+  # Optional extra local phrases (regions also contribute search_phrases).
+  location_phrases: []
   query_templates:
     - '"{keyword}" "{location}" hiring'
     - '"{keyword}" "{location}" job'
