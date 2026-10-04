@@ -9,6 +9,7 @@ Google Places APIs. Must not import leadgen.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus, urlparse, unquote
 import hashlib
 import random
@@ -50,6 +51,22 @@ END_OF_LIST_MARKERS = (
     "you've reached the end of the list",
     "you have reached the end of the list",
 )
+_RELATIVE_AGE_RE = re.compile(
+    r"(?i)\b(?:edited\s+)?(a|an|\d+)\s+"
+    r"(hour|hours|day|days|week|weeks|month|months|year|years)\s+ago\b"
+)
+_REVIEW_UNIT_DAYS = {
+    "hour": 1 / 24,
+    "hours": 1 / 24,
+    "day": 1,
+    "days": 1,
+    "week": 7,
+    "weeks": 7,
+    "month": 30,
+    "months": 30,
+    "year": 365,
+    "years": 365,
+}
 VALID_AREA_EXPANSIONS = ("off", "light", "dense")
 AREA_EXPANSION_EXTRA_POINTS = {
     "off": 0,
@@ -156,6 +173,91 @@ def _parse_rating_block(text):
     return rating, reviews
 
 
+def parse_business_status(text):
+    """Map a Maps hours/status label to a Places-style business_status.
+
+    "Closed" next to opening hours is still an operating business. Only
+    permanently and temporarily closed listings match the quality-filter
+    reject set.
+    """
+    if not text:
+        return None
+    lowered = " ".join(str(text).lower().split())
+    if "permanently closed" in lowered:
+        return "CLOSED_PERMANENTLY"
+    if "temporarily closed" in lowered:
+        return "CLOSED_TEMPORARILY"
+    if re.search(r"\b(open|opens|closes|closing|closed)\b", lowered):
+        return "OPERATIONAL"
+    return None
+
+
+def status_from_card_text(card_text):
+    """Read business_status from feed-card lines. Closed-down wins over Open."""
+    found = None
+    for line in (card_text or "").splitlines():
+        status = parse_business_status(line)
+        if status in ("CLOSED_PERMANENTLY", "CLOSED_TEMPORARILY"):
+            return status
+        if status and found is None:
+            found = status
+    return found
+
+
+def review_timestamp_from_text(text, now=None):
+    """Return a unix timestamp from an ISO date or a Maps relative age."""
+    if not text:
+        return None
+    raw = str(text).strip()
+    if "ago" not in raw.lower():
+        iso = re.search(r"(\d{4})-(\d{2})-(\d{2})", raw)
+        if iso:
+            try:
+                moment = datetime(
+                    int(iso.group(1)),
+                    int(iso.group(2)),
+                    int(iso.group(3)),
+                    tzinfo=timezone.utc,
+                )
+                return int(moment.timestamp())
+            except ValueError:
+                return None
+    match = _RELATIVE_AGE_RE.search(raw)
+    if not match:
+        return None
+    count_raw, unit = match.group(1), match.group(2).lower()
+    count = 1 if count_raw.lower() in ("a", "an") else int(count_raw)
+    days = count * _REVIEW_UNIT_DAYS[unit]
+    moment = (now or datetime.now(timezone.utc)) - timedelta(days=days)
+    return int(moment.timestamp())
+
+
+def parse_maps_reviews(items, now=None):
+    """Normalize place-panel review snippets to {text, time} dicts."""
+    reviews = []
+    for item in items or []:
+        if isinstance(item, str):
+            text, when = item, ""
+        elif isinstance(item, dict):
+            text = item.get("text") or ""
+            when = item.get("when") or item.get("datetime") or ""
+        else:
+            continue
+        text = str(text).strip()
+        timestamp = review_timestamp_from_text(when, now=now)
+        if timestamp is None and not when:
+            timestamp = review_timestamp_from_text(text, now=now)
+        if not text and timestamp is None:
+            continue
+        review = {}
+        if text:
+            review["text"] = text
+        if timestamp is not None:
+            review["time"] = timestamp
+        reviews.append(review)
+    return reviews
+
+
 def parse_latlng(coords):
     """Parse coords.json 'lat,lng' (or a 2-tuple) into floats."""
     if coords is None:
@@ -251,11 +353,18 @@ def parse_card_fields(card_text, extra=None):
         if right and "address" not in fields:
             fields["address"] = right
         break
+    status = status_from_card_text(text)
+    if status:
+        fields["business_status"] = status
     return fields
 
 
 def business_dedupe_key(entry):
-    """Stable multi-field identity for aggressive deduplication."""
+    """Stable multi-field identity for aggressive deduplication.
+
+    Name alone is not an identity. Two different businesses can share a name
+    when place id, profile URL, phone, and address are all missing.
+    """
     place_id = (entry.get("place_id") or "").strip()
     if place_id:
         return ("place_id", place_id.lower())
@@ -276,8 +385,6 @@ def business_dedupe_key(entry):
     if name and address:
         return ("name_address", name, address)
 
-    if name:
-        return ("name", name)
     return None
 
 
@@ -416,13 +523,20 @@ class BusinessDiscoverySession:
                 if (!name) continue;
                 seen.add(href);
                 let website = '';
+                const domainLabel = /^([a-z0-9-]+\\.)+[a-z]{2,}(\\/.*)?$/i;
                 for (const link of node.querySelectorAll('a[href]')) {
                   const h = link.href || '';
                   const label = (
                     link.getAttribute('aria-label') || link.innerText || ''
-                  ).toLowerCase();
+                  ).trim().toLowerCase();
                   if (!h || h.includes('google.') || h.includes('/maps/')) continue;
-                  if (label.includes('website') || label.includes('visit')) {
+                  // Maps sometimes labels the chip "Website" / "Visit" and
+                  // sometimes with the bare domain (example.com).
+                  if (
+                    label.includes('website')
+                    || label.includes('visit')
+                    || domainLabel.test(label)
+                  ) {
                     website = h;
                     break;
                   }
@@ -722,7 +836,7 @@ class BusinessDiscoverySession:
         return collected
 
     def enrich_listing(self, listing):
-        """Open a Maps place page and fill phone/website/address/rating fields."""
+        """Open a Maps place page and fill phone, website, status, and reviews."""
         if self.google_blocked:
             return dict(listing)
         page = self._ensure_browser()
@@ -763,6 +877,31 @@ class BusinessDiscoverySession:
                   if (rating) out.rating_block = rating.innerText;
                   const cat = document.querySelector('button[jsaction*=\"category\"], button[jsaction*=\"pane.rating.category\"]');
                   if (cat) out.category = (cat.innerText || '').trim();
+                  const hours = document.querySelector('[data-item-id="oh"]');
+                  if (hours) {
+                    out.status_text = hours.getAttribute('aria-label') || hours.innerText || '';
+                  }
+                  if (!out.status_text) {
+                    const main = document.querySelector('div[role="main"]') || document.body;
+                    const blob = ((main && main.innerText) || '').slice(0, 2500);
+                    const closed = blob.match(/permanently closed|temporarily closed/i);
+                    if (closed) out.status_text = closed[0];
+                  }
+                  const reviews = [];
+                  const nodes = document.querySelectorAll('[data-review-id], div.jftiEf');
+                  for (const node of nodes) {
+                    if (reviews.length >= 8) break;
+                    const textEl = node.querySelector('.wiI7pd, span[data-expandable-section]');
+                    const whenEl = node.querySelector('.rsqaWe, span.xRkPPb, time');
+                    let text = textEl ? (textEl.innerText || '') : '';
+                    let when = '';
+                    if (whenEl) {
+                      when = whenEl.getAttribute('datetime') || whenEl.innerText || '';
+                    }
+                    if (!text) text = (node.innerText || '').trim().slice(0, 500);
+                    if (text || when) reviews.push({text, when});
+                  }
+                  out.reviews = reviews;
                   out.url = location.href;
                   return out;
                 }"""
@@ -770,24 +909,8 @@ class BusinessDiscoverySession:
             self._details_done += 1
             self.stats["detail_pages_opened"] += 1
 
-            if detail.get("name"):
-                entry["business_name"] = detail["name"]
-            address = _strip_label(detail.get("address"), ("Address",))
-            if address:
-                entry["address"] = address
-            phone = _strip_label(detail.get("phone"), ("Phone",))
-            if phone:
-                entry["phone_google"] = phone
-            website = (detail.get("website") or "").strip()
-            if website and "google." not in urlparse(website).netloc.lower():
-                entry["website"] = website
-            rating, reviews = _parse_rating_block(detail.get("rating_block"))
-            if rating is not None:
-                entry["rating"] = rating
-            if reviews is not None:
-                entry["user_ratings_total"] = reviews
-            if detail.get("category"):
-                entry["category"] = detail["category"]
+            detail = detail or {}
+            entry = apply_place_detail(entry, detail)
             detail_url = detail.get("url") or page.url or url
             entry["profile_url"] = detail_url
             place_id = extract_place_id_from_url(detail_url) or entry.get("place_id")
@@ -819,3 +942,39 @@ def dedupe_businesses(businesses):
         seen.add(key)
         unique.append(entry)
     return unique, duplicates
+
+
+def apply_place_detail(entry, detail):
+    """Merge a place-panel scrape onto a listing. Blank fields do not overwrite."""
+    merged = dict(entry or {})
+    detail = detail or {}
+    if detail.get("name"):
+        merged["business_name"] = detail["name"]
+    address = _strip_label(detail.get("address"), ("Address",))
+    if address:
+        merged["address"] = address
+    phone = _strip_label(detail.get("phone"), ("Phone",))
+    if phone:
+        merged["phone_google"] = phone
+    website = (detail.get("website") or "").strip()
+    if website:
+        try:
+            host = urlparse(website).netloc.lower()
+        except Exception:
+            host = ""
+        if "google." not in host and "googleusercontent." not in host:
+            merged["website"] = website
+    rating, reviews = _parse_rating_block(detail.get("rating_block"))
+    if rating is not None:
+        merged["rating"] = rating
+    if reviews is not None:
+        merged["user_ratings_total"] = reviews
+    if detail.get("category"):
+        merged["category"] = detail["category"]
+    status = parse_business_status(detail.get("status_text") or "")
+    if status:
+        merged["business_status"] = status
+    review_list = parse_maps_reviews(detail.get("reviews"))
+    if review_list:
+        merged["reviews"] = review_list
+    return merged

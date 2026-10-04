@@ -425,7 +425,7 @@ class TestLeadEnrichmentSetting(unittest.TestCase):
                 lead_enrichment=False,
                 leadgen_type="playwright",
                 output_mode="both",
-                keywords=["notary"],
+                keywords=["plumbing"],
                 locations=[
                     ("UT", "Salt Lake City", "40.7,-111.8"),
                     ("NV", "Las Vegas", "36.1,-115.1"),
@@ -1345,6 +1345,7 @@ class TestPlaywrightDiscoveryHelpers(unittest.TestCase):
         self.assertEqual(fields["user_ratings_total"], 51)
         self.assertEqual(fields["category"], "Plumber")
         self.assertIn("935 Cropwell", fields["address"])
+        self.assertEqual(fields["business_status"], "OPERATIONAL")
 
         self.assertEqual(expansion_points("39.95,-75.16", "off"), [])
         light = expansion_points("39.95,-75.16", "light")
@@ -1362,10 +1363,27 @@ class TestPlaywrightDiscoveryHelpers(unittest.TestCase):
             "rating": 4.6,
         }
         cfg = LEADGEN.LeadgenConfig(objective="phone", min_reviews=0)
-        self.assertFalse(LEADGEN.listing_needs_detail(card, cfg))
+        # A phone and a website label still leave status and reviews unread.
+        self.assertTrue(LEADGEN.listing_needs_detail(card, cfg))
+        phone_without_site = {
+            "business_name": "Phone Only",
+            "phone_google": "(856) 555-0100",
+            "business_status": "OPERATIONAL",
+            "reviews": [{"text": "Ask for Pat", "time": 1}],
+            "user_ratings_total": 20,
+        }
+        self.assertTrue(LEADGEN.listing_needs_detail(phone_without_site, cfg))
+        complete = dict(phone_without_site)
+        complete["website"] = "https://local.example"
+        self.assertFalse(LEADGEN.listing_needs_detail(complete, cfg))
         self.assertTrue(
             LEADGEN.listing_needs_detail({"business_name": "No Phone"}, cfg)
         )
+        closed = dict(complete)
+        closed["business_status"] = "CLOSED_PERMANENTLY"
+        closed["reviews"] = []
+        closed["website"] = ""
+        self.assertFalse(LEADGEN.listing_needs_detail(closed, cfg))
         cfg_reviews = LEADGEN.LeadgenConfig(objective="phone", min_reviews=5)
         self.assertTrue(LEADGEN.listing_needs_detail(card, cfg_reviews))
 
@@ -1486,6 +1504,195 @@ class TestSearchHistory(unittest.TestCase):
     def test_log_stage_helpers_exist(self):
         self.assertTrue(callable(LEADGEN.log_stage))
         self.assertTrue(callable(LEADGEN.log_step))
+
+    def test_closed_card_status_and_name_only_dedupe(self):
+        from playwright_discovery import (
+            apply_place_detail,
+            business_dedupe_key,
+            dedupe_businesses,
+            parse_card_fields,
+            parse_maps_reviews,
+        )
+
+        closed = parse_card_fields("Joe Plumbing\nPermanently closed\nPlumber · 1 Main")
+        self.assertEqual(closed["business_status"], "CLOSED_PERMANENTLY")
+        hours_closed = parse_card_fields("Closed · Opens 9 AM\n(856) 555-0100")
+        self.assertEqual(hours_closed["business_status"], "OPERATIONAL")
+
+        self.assertIsNone(business_dedupe_key({"business_name": "Joe's"}))
+        unique, removed = dedupe_businesses(
+            [{"business_name": "Joe's"}, {"business_name": "Joe's"}]
+        )
+        self.assertEqual(removed, 0)
+        self.assertEqual(len(unique), 2)
+
+        now = 1_700_000_000
+        reviews = parse_maps_reviews(
+            [{"text": "Ask for Dana the owner", "when": "3 days ago"}],
+            now=datetime_from_unix(now),
+        )
+        self.assertIn("Dana", reviews[0]["text"])
+        self.assertLess(now - reviews[0]["time"], 5 * 24 * 60 * 60)
+
+        merged = apply_place_detail(
+            {"business_name": "Card Name", "business_status": "OPERATIONAL"},
+            {
+                "name": "Panel Name",
+                "status_text": "Permanently closed",
+                "phone": "Phone: (856) 555-0199",
+                "address": "Address: 9 Oak St",
+                "website": "https://panel.example",
+                "rating_block": "4.2\n(12)",
+                "reviews": [{"text": "Ask for Dana", "when": "2 years ago"}],
+            },
+        )
+        self.assertEqual(merged["business_name"], "Panel Name")
+        self.assertEqual(merged["business_status"], "CLOSED_PERMANENTLY")
+        self.assertEqual(merged["website"], "https://panel.example")
+        self.assertEqual(merged["user_ratings_total"], 12)
+        self.assertEqual(merged["reviews"][0]["text"], "Ask for Dana")
+        self.assertIn("time", merged["reviews"][0])
+
+
+def datetime_from_unix(ts):
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(ts, tz=timezone.utc)
+
+
+@SKIP
+class TestPlaywrightDemoSiteScore(unittest.TestCase):
+    def test_no_website_beats_every_broken_site(self):
+        no_site = LEADGEN.score_playwright_lead(
+            has_website=False,
+            https=False,
+            has_viewport=False,
+            html_length=0,
+            has_title=False,
+            has_cta=False,
+            rating=None,
+        )
+        broken = LEADGEN.score_playwright_lead(
+            has_website=True,
+            https=False,
+            has_viewport=False,
+            html_length=100,
+            has_title=False,
+            has_cta=False,
+            rating=3.0,
+            site_error="timeout",
+        )
+        thin = LEADGEN.score_playwright_lead(
+            has_website=True,
+            https=False,
+            has_viewport=False,
+            html_length=1000,
+            has_title=False,
+            has_cta=False,
+            rating=3.0,
+        )
+        self.assertEqual(no_site, LEADGEN.PLAYWRIGHT_NO_WEBSITE_SCORE)
+        self.assertLess(broken, no_site)
+        self.assertLess(thin, no_site)
+        self.assertLessEqual(broken, LEADGEN.PLAYWRIGHT_SITE_CEILING)
+        self.assertGreater(broken, thin)
+        self.assertGreaterEqual(broken, 55)
+
+    def test_missing_title_adds_points_under_the_ceiling(self):
+        healthy = dict(
+            has_website=True,
+            https=True,
+            has_viewport=True,
+            html_length=8000,
+            has_cta=True,
+            rating=5.0,
+        )
+        with_title = LEADGEN.score_playwright_lead(has_title=True, **healthy)
+        without_title = LEADGEN.score_playwright_lead(has_title=False, **healthy)
+        self.assertEqual(with_title, 0)
+        self.assertEqual(without_title, LEADGEN.PLAYWRIGHT_SITE_WEIGHTS["no_title"])
+        self.assertLess(without_title, LEADGEN.PLAYWRIGHT_NO_WEBSITE_SCORE)
+
+    def test_keyword_priority_orders_tiers_and_drops_rejects(self):
+        catalog = set(LEADGEN.KEYWORD_CATEGORIES)
+        priority = set(LEADGEN.PLAYWRIGHT_KEYWORD_PRIORITY)
+        excluded = set(LEADGEN.PLAYWRIGHT_EXCLUDED_KEYWORDS)
+        self.assertFalse(priority & excluded)
+        self.assertEqual(priority | excluded, catalog)
+        ordered = LEADGEN.order_playwright_keywords(list(LEADGEN.KEYWORD_CATEGORIES))
+        self.assertEqual(ordered[:len(LEADGEN.PLAYWRIGHT_TIER_1_KEYWORDS)], list(LEADGEN.PLAYWRIGHT_TIER_1_KEYWORDS))
+        tier2_start = len(LEADGEN.PLAYWRIGHT_TIER_1_KEYWORDS)
+        tier2_end = tier2_start + len(LEADGEN.PLAYWRIGHT_TIER_2_KEYWORDS)
+        self.assertEqual(ordered[tier2_start:tier2_end], list(LEADGEN.PLAYWRIGHT_TIER_2_KEYWORDS))
+        self.assertEqual(ordered[tier2_end:], list(LEADGEN.PLAYWRIGHT_TIER_3_KEYWORDS))
+        for rejected in (
+            "real estate agent",
+            "financial advisor",
+            "mortgage broker",
+            "insurance agency",
+            "accounting",
+            "bookkeeping",
+            "tax preparation",
+        ):
+            self.assertNotIn(rejected, ordered)
+        custom = LEADGEN.order_playwright_keywords(
+            ["bakery", "accounting", "plumbing", "plumbing", "not-a-keyword"]
+        )
+        self.assertEqual(custom, ["plumbing", "bakery"])
+
+    @patch("leadgen.analyze_website")
+    def test_playwright_row_ignores_contact_and_tracker_email(self, mock_analyze):
+        mock_analyze.return_value = {
+            "emails": ["user@mysentry.com", "owner@shop.example"],
+            "phones_website": [],
+            "https": True,
+            "has_viewport": True,
+            "html_length": 8000,
+            "has_title": True,
+            "has_cta": True,
+            "error": None,
+        }
+        shared = {
+            "address": "1 Main St",
+            "phone_google": "(856) 555-0100",
+            "website": "https://shop.example",
+            "rating": 5.0,
+            "niche_key": "plumbing",
+            "source": "playwright",
+            "business_status": "OPERATIONAL",
+            "reviews": [{"text": "Ask for Dana", "time": int(time.time())}],
+        }
+        businesses = [
+            dict(shared, business_name="With Email", place_id="pid-email", user_ratings_total=80),
+            dict(
+                shared,
+                business_name="No Counts",
+                place_id="pid-counts",
+                user_ratings_total=None,
+                business_status=None,
+                reviews=[],
+            ),
+        ]
+        rows = LEADGEN.process_businesses(
+            businesses,
+            api_key=None,
+            existing_ids=set(),
+            contacted_emails=set(),
+            min_score=0,
+            min_reviews=0,
+            objective="phone",
+            fetch_details=False,
+            existing_identities=set(),
+            source="playwright",
+        )
+        by_name = {row["business_name"]: row for row in rows}
+        self.assertEqual(set(by_name), {"With Email", "No Counts"})
+        self.assertEqual(by_name["With Email"]["email"], "owner@shop.example")
+        self.assertNotIn("sentry", by_name["With Email"]["email"])
+        self.assertEqual(
+            by_name["With Email"]["lead_score"],
+            by_name["No Counts"]["lead_score"],
+        )
+        self.assertEqual(by_name["With Email"]["lead_score"], 0)
 
 
 if __name__ == "__main__":

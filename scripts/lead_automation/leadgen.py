@@ -128,6 +128,22 @@ SCORE_WEIGHTS = {
 }
 assert sum(SCORE_WEIGHTS.values()) == 100
 
+# Playwright demo-site rank. No website occupies a band website defects cannot
+# reach. Review count, email, and a status the scraper never collected are not
+# part of this score (contact is a hard objective check).
+PLAYWRIGHT_NO_WEBSITE_SCORE = 100
+PLAYWRIGHT_SITE_CEILING = 84
+PLAYWRIGHT_SITE_WEIGHTS = {
+    "broken": 56,
+    "short_html": 28,
+    "no_https": 14,
+    "no_viewport": 12,
+    "no_title": 12,
+    "no_cta": 8,
+    "low_rating": 1,
+}
+assert PLAYWRIGHT_SITE_CEILING < PLAYWRIGHT_NO_WEBSITE_SCORE
+
 REVIEW_MAX_AGE_MONTHS = 18
 US_PHONE_RE = re.compile(r"^(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$")
 CLOSED_STATUSES = frozenset({"CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"})
@@ -443,6 +459,102 @@ KEYWORD_GROUPS = {
     ],
 }
 
+# Playwright scrape order for a prebuilt demo site plus hosting and monthly SEO.
+# Earlier keywords win dedupe, so tier 1 is searched before weaker fits.
+PLAYWRIGHT_TIER_1_KEYWORDS = (
+    "landscaping",
+    "lawn care",
+    "tree service",
+    "roofing",
+    "fencing",
+    "deck building",
+    "garage door",
+    "window installation",
+    "siding",
+    "gutter cleaning",
+    "pressure washing",
+    "concrete",
+    "masonry",
+    "plumbing",
+    "hvac",
+    "electrician",
+    "general contractor",
+    "remodeling",
+    "home renovation",
+    "painting",
+    "flooring",
+    "carpentry",
+    "handyman",
+    "drywall",
+    "appliance repair",
+    "window cleaning",
+    "carpet cleaning",
+    "house cleaning",
+    "junk removal",
+    "pest control",
+    "pool service",
+    "pool cleaning",
+    "locksmith",
+    "moving company",
+)
+PLAYWRIGHT_TIER_2_KEYWORDS = (
+    "mobile detailing",
+    "auto detailing",
+    "auto repair",
+    "tire shop",
+    "towing",
+    "car window tinting",
+    "mobile mechanic",
+    "pet grooming",
+    "dog walking",
+    "pet sitting",
+    "dog training",
+    "barber",
+    "hair salon",
+    "nail salon",
+    "massage therapy",
+    "personal trainer",
+    "tattoo shop",
+    "tutoring",
+    "music lessons",
+    "driving school",
+    "childcare",
+    "senior care",
+    "home care",
+    "photography",
+    "wedding photography",
+    "videography",
+    "dj services",
+    "event planning",
+    "catering",
+    "commercial cleaning",
+    "upholstery cleaning",
+)
+PLAYWRIGHT_TIER_3_KEYWORDS = (
+    "bakery",
+    "florist",
+    "fitness studio",
+    "med spa",
+    "beauty salon",
+    "law firm",
+    "attorney",
+    "private investigator",
+)
+PLAYWRIGHT_EXCLUDED_KEYWORDS = frozenset({
+    "real estate agent",
+    "financial advisor",
+    "mortgage broker",
+    "insurance agency",
+    "accounting",
+    "bookkeeping",
+    "tax preparation",
+})
+PLAYWRIGHT_KEYWORD_PRIORITY = (
+    PLAYWRIGHT_TIER_1_KEYWORDS
+    + PLAYWRIGHT_TIER_2_KEYWORDS
+    + PLAYWRIGHT_TIER_3_KEYWORDS
+)
+
 
 def keyword_group_for(keyword):
     """Return the industry group key for a keywords.json term."""
@@ -452,8 +564,37 @@ def keyword_group_for(keyword):
     return "other"
 
 
+def order_playwright_keywords(keywords):
+    """Order keywords.json terms for the Playwright demo-site offer.
+
+    Hygiene rejects (realtors and finance offices) are dropped. Everything else
+    is sorted tier 1, then tier 2, then tier 3 so dedupe keeps the better fit.
+    """
+    catalog = {key.lower(): key for key in KEYWORD_CATEGORIES}
+    rank = {key: index for index, key in enumerate(PLAYWRIGHT_KEYWORD_PRIORITY)}
+    chosen = []
+    seen = set()
+    for raw in keywords or []:
+        key = catalog.get(str(raw).strip().lower())
+        if not key or key in PLAYWRIGHT_EXCLUDED_KEYWORDS or key in seen:
+            continue
+        seen.add(key)
+        chosen.append(key)
+    tail = len(rank)
+    chosen.sort(key=lambda key: (rank.get(key, tail), key))
+    return chosen
+
+
 def listing_needs_detail(entry, config):
-    """True when a Maps card is missing fields required by the current run."""
+    """True when a Maps card is missing fields the Playwright route must confirm.
+
+    A phone on the card is not enough. Website, open/closed status, and review
+    text decide scoring and the closed/stale filters, and the feed card often
+    lacks them even when the place panel has them. A card that already says
+    temporarily or permanently closed is not opened; the quality filter drops it.
+    """
+    if (entry.get("business_status") or "") in CLOSED_STATUSES:
+        return False
     objective = normalize_objective(config.objective)
     phone = (entry.get("phone_google") or "").strip()
     website = (entry.get("website") or "").strip()
@@ -475,6 +616,12 @@ def listing_needs_detail(entry, config):
                 return True
         except (TypeError, ValueError):
             return True
+    if not website:
+        return True
+    if not (entry.get("business_status") or "").strip():
+        return True
+    if not entry.get("reviews"):
+        return True
     return False
 
 
@@ -952,7 +1099,11 @@ def score_lead(
     user_ratings_total,
     business_status=None,
 ):
-    """Return integer lead_score 0-100 (higher = worse digital presence / better outreach target)."""
+    """Places-API lead_score, 0-100 (higher = worse digital presence).
+
+    The Playwright route uses score_playwright_lead instead. This function still
+    normalizes website and no-website rows on different denominators.
+    """
     w = SCORE_WEIGHTS
     raw = 0
     max_possible = w["low_rating"] + w["low_reviews"] + w["has_email"] + w["unknown_status"]
@@ -993,6 +1144,69 @@ def score_lead(
     if not max_possible:
         return 0
     return round(raw / max_possible * 100)
+
+
+def _html_length_value(html_length):
+    try:
+        return int(html_length or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def score_playwright_lead(
+    has_website,
+    https,
+    has_viewport,
+    html_length,
+    has_title,
+    has_cta,
+    rating,
+    site_error=None,
+):
+    """Demo-site fit, 0-100. Higher means the business needs a site more.
+
+    No website is PLAYWRIGHT_NO_WEBSITE_SCORE. Any real URL scores at most
+    PLAYWRIGHT_SITE_CEILING, so https/viewport/title/CTA gaps cannot outrank
+    a missing site. A short or unreachable page weighs more than those
+    cosmetic gaps and still stays under that ceiling.
+
+    Email, phone, review count, and a business_status that was never collected
+    are omitted. Contact is enforced by lead_meets_objective. Unknown review
+    counts are neutral; min_reviews is the hard floor.
+    """
+    if not has_website:
+        return PLAYWRIGHT_NO_WEBSITE_SCORE
+
+    weights = PLAYWRIGHT_SITE_WEIGHTS
+    length = _html_length_value(html_length)
+    broken = bool(site_error) or length < MIN_USEFUL_HTML_LENGTH
+    raw = 0
+    if broken:
+        raw += weights["broken"]
+    elif length < 5000:
+        raw += weights["short_html"]
+    if not https:
+        raw += weights["no_https"]
+    if not has_viewport:
+        raw += weights["no_viewport"]
+    if not has_title:
+        raw += weights["no_title"]
+    if not has_cta:
+        raw += weights["no_cta"]
+    try:
+        if rating is None or float(rating) < 4.5:
+            raw += weights["low_rating"]
+    except (TypeError, ValueError):
+        raw += weights["low_rating"]
+    return min(raw, PLAYWRIGHT_SITE_CEILING)
+
+
+def _is_ignored_contact_email(email):
+    """True for blank addresses and tracker inboxes the dashboard already drops."""
+    lowered = (email or "").strip().lower()
+    if not lowered:
+        return True
+    return "sentry" in lowered or "wixpress" in lowered
 
 
 def process_businesses(
@@ -1100,12 +1314,20 @@ def process_businesses(
             logger.info("Quality filter rejected %d leads: %s", count, reason)
 
     unique = {}
+    passthrough = []
     for e in enriched:
-        key = business_dedupe_key(e) or (e.get("website") or e.get("business_name"),)
+        key = business_dedupe_key(e)
+        if key is None:
+            # Name-only rows are not the same business. The Places path still
+            # falls back to website or name so existing API dedupe stays put.
+            if source == "playwright":
+                passthrough.append(e)
+                continue
+            key = (e.get("website") or e.get("business_name"),)
         if key in unique:
             continue
         unique[key] = e
-    businesses_unique = list(unique.values())
+    businesses_unique = list(unique.values()) + passthrough
     log_step(
         4,
         3,
@@ -1187,6 +1409,8 @@ def process_businesses(
             seen_emails = set()
             for raw in emails:
                 email = validate_email(raw)
+                if source == "playwright" and _is_ignored_contact_email(email):
+                    continue
                 if email and email not in seen_emails:
                     seen_emails.add(email)
                     emails_clean.append(email)
@@ -1226,6 +1450,11 @@ def process_businesses(
                     logger.error("[EMAIL] Enrichment failed for %s: %s", row.get("business_name"), e)
 
             emails_clean = lead_emails(row)
+            if source == "playwright":
+                emails_clean = [
+                    email for email in emails_clean
+                    if not _is_ignored_contact_email(email)
+                ]
             row["email"] = ";".join(emails_clean)
             row["has_email"] = bool(emails_clean)
 
@@ -1233,17 +1462,29 @@ def process_businesses(
                 continue
 
             has_website = bool(row.get("website"))
-            lead_score = score_lead(
-                has_website,
-                row.get("https", False),
-                row.get("has_viewport", False),
-                row.get("html_length", 0),
-                row.get("has_email"),
-                row.get("has_cta", False),
-                row.get("rating"),
-                row.get("user_ratings_total"),
-                row.get("business_status"),
-            )
+            if source == "playwright":
+                lead_score = score_playwright_lead(
+                    has_website,
+                    row.get("https", False),
+                    row.get("has_viewport", False),
+                    row.get("html_length", 0),
+                    a.get("has_title", False),
+                    row.get("has_cta", False),
+                    row.get("rating"),
+                    site_error=a.get("error"),
+                )
+            else:
+                lead_score = score_lead(
+                    has_website,
+                    row.get("https", False),
+                    row.get("has_viewport", False),
+                    row.get("html_length", 0),
+                    row.get("has_email"),
+                    row.get("has_cta", False),
+                    row.get("rating"),
+                    row.get("user_ratings_total"),
+                    row.get("business_status"),
+                )
             logger.info("[SCORE] Lead score: %s", lead_score)
             row["lead_score"] = lead_score
 
@@ -1329,7 +1570,7 @@ def extract_real_email(raw_email_field):
     emails = (raw_email_field or "").split(";")
     for e in emails:
         e = e.strip().lower()
-        if e and "sentry" not in e and "wixpress" not in e:
+        if not _is_ignored_contact_email(e):
             return e
     return ""
 
@@ -2045,6 +2286,15 @@ def interactive_run_config():
     cfg = config_from_saved_settings()
     while True:
         cfg.keywords, cfg.locations = interactive_select_locations_and_keywords()
+        if normalize_leadgen_type(cfg.leadgen_type) == "playwright":
+            selected = list(cfg.keywords)
+            cfg.keywords = order_playwright_keywords(selected)
+            removed = [kw for kw in selected if kw not in cfg.keywords]
+            if removed:
+                print(
+                    "Playwright route skips realtor and finance-office keywords: "
+                    + ", ".join(removed)
+                )
         _print_config_summary(cfg)
         confirm = input(
             "Run with these settings? [Y/n/s=settings]: "
@@ -2443,6 +2693,8 @@ def config_from_args(args):
             logger.warning("No cities matched --city filter; using current location set")
     if args.state is not None or args.city is not None:
         config.locations = locations
+    if normalize_leadgen_type(config.leadgen_type) == "playwright":
+        config.keywords = order_playwright_keywords(config.keywords)
     return config
 
 
@@ -2717,6 +2969,23 @@ def gather_leads_playwright(
     location starts so a later crash does not discard earlier leads.
     """
     history = history or SearchHistory(config.search_history_path)
+    ordered_keywords = order_playwright_keywords(config.keywords)
+    ordered_keys = {key.lower() for key in ordered_keywords}
+    dropped_keywords = []
+    seen_dropped = set()
+    for raw in config.keywords or []:
+        token = str(raw).strip().lower()
+        if not token or token in seen_dropped:
+            continue
+        seen_dropped.add(token)
+        if token not in ordered_keys:
+            dropped_keywords.append(str(raw).strip())
+    if dropped_keywords:
+        logger.info(
+            "[Playwright] Skipping keywords outside the demo-site list: %s",
+            ", ".join(dropped_keywords),
+        )
+    config.keywords = ordered_keywords
     session = BusinessDiscoverySession()
     locations_searched = set()
     discovery_stats = {}
