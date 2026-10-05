@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cjm.local/opp_finder_v2/output.schema.json",
+  "title": "Opp finder v2 run output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run", "opportunities"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "dry_run",
+        "criteria",
+        "sites",
+        "totals"
+      ],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "started_at": {"type": "string"},
+        "finished_at": {"type": "string"},
+        "dry_run": {"type": "boolean"},
+        "criteria": {"type": "object"},
+        "sites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "status",
+              "fetched",
+              "matched",
+              "kept",
+              "pages",
+              "duration_s",
+              "error"
+            ],
+            "properties": {
+              "id": {"type": "string"},
+              "status": {"type": "string"},
+              "fetched": {"type": "integer", "minimum": 0},
+              "matched": {"type": "integer", "minimum": 0},
+              "kept": {"type": "integer", "minimum": 0},
+              "pages": {"type": "integer", "minimum": 0},
+              "duration_s": {"type": "number", "minimum": 0},
+              "error": {"type": ["string", "null"]},
+              "artifacts": {"type": "string"}
+            }
+          }
+        },
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fetched", "after_filters", "after_dedupe", "merged", "dropped"],
+          "properties": {
+            "fetched": {"type": "integer", "minimum": 0},
+            "after_filters": {"type": "integer", "minimum": 0},
+            "after_dedupe": {"type": "integer", "minimum": 0},
+            "merged": {"type": "integer", "minimum": 0},
+            "dropped": {
+              "type": "object",
+              "additionalProperties": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    },
+    "opportunities": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/opportunity"}
+    }
+  },
+  "$defs": {
+    "opportunity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opp_id",
+        "title",
+        "company",
+        "location",
+        "remote",
+        "url",
+        "apply_url",
+        "source_site",
+        "sources",
+        "posted_date",
+        "snippet",
+        "salary_text",
+        "rate_min",
+        "rate_max",
+        "rate_unit",
+        "currency",
+        "employment_type",
+        "tags",
+        "matched_keywords",
+        "relevance_score",
+        "score_breakdown",
+        "scraped_at"
+      ],
+      "properties": {
+        "opp_id": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "title": {"type": "string", "minLength": 1},
+        "company": {"type": ["string", "null"]},
+        "location": {"type": ["string", "null"]},
+        "remote": {"type": ["boolean", "null"]},
+        "url": {"type": "string", "minLength": 1},
+        "apply_url": {"type": ["string", "null"]},
+        "source_site": {"type": "string"},
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["site", "url", "scraped_at"],
+            "properties": {
+              "site": {"type": "string"},
+              "url": {"type": "string"},
+              "scraped_at": {"type": "string"}
+            }
+          }
+        },
+        "posted_date": {"type": ["string", "null"]},
+        "snippet": {"type": ["string", "null"]},
+        "salary_text": {"type": ["string", "null"]},
+        "rate_min": {"type": ["number", "null"]},
+        "rate_max": {"type": ["number", "null"]},
+        "rate_unit": {
+          "type": ["string", "null"],
+          "enum": ["hour", "year", "month", "project", null]
+        },
+        "currency": {"type": ["string", "null"]},
+        "employment_type": {
+          "type": ["string", "null"],
+          "enum": ["contract", "freelance", "full_time", "part_time", "temporary", "internship", null]
+        },
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "matched_keywords": {"type": "array", "items": {"type": "string"}},
+        "relevance_score": {"type": "integer", "minimum": 0, "maximum": 100},
+        "score_breakdown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title_keywords",
+            "title_boost",
+            "body_keywords",
+            "remote",
+            "employment_type",
+            "recency",
+            "rate"
+          ],
+          "properties": {
+            "title_keywords": {"type": "integer"},
+            "title_boost": {"type": "integer"},
+            "body_keywords": {"type": "integer"},
+            "remote": {"type": "integer"},
+            "employment_type": {"type": "integer"},
+            "recency": {"type": "integer"},
+            "rate": {"type": "integer"}
+          }
+        },
+        "scraped_at": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,620 @@
+{
+  "version": 1,
+  "defaults": {
+    "rate_limit": {
+      "min_delay_s": 3,
+      "max_delay_s": 7,
+      "max_results": 50,
+      "max_requests": 20
+    },
+    "pagination": {
+      "type": "none",
+      "max_pages": 3,
+      "stop_when_no_new": 2
+    }
+  },
+  "sites": [
+    {
+      "id": "remotive",
+      "name": "Remotive",
+      "enabled": true,
+      "base_url": "https://remotive.com",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://remotive.com/api/remote-jobs",
+      "api": {"method": "GET", "items_path": "jobs"},
+      "results": {
+        "fields": {
+          "title": "title",
+          "company": "company_name",
+          "url": "url",
+          "location": "candidate_required_location",
+          "employment_type": "job_type",
+          "posted_date": "publication_date",
+          "salary": "salary",
+          "tags": "tags",
+          "snippet": "description"
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 5, "max_delay_s": 10, "max_requests": 1, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public API at https://remotive.com/api/remote-jobs. Verified 2026-10-05: jobs[].title, company_name, url, candidate_required_location, job_type, publication_date, salary, description. Docs ask for at most 4 calls a day and block more than 2 a minute; this tool issues one GET per run and filters keywords client-side. Query parameters are not trusted. Link each result back to its Remotive URL. The JSON includes a 0-legal-notice field."
+      },
+      "notes": "Verified live 2026-10-05. Attribution required."
+    },
+    {
+      "id": "remoteok",
+      "name": "Remote OK",
+      "enabled": true,
+      "base_url": "https://remoteok.com",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://remoteok.com/api",
+      "api": {"method": "GET", "items_path": "", "skip_first_item": true},
+      "results": {
+        "fields": {
+          "title": "position",
+          "company": "company",
+          "url": "url",
+          "apply_url": "apply_url",
+          "location": "location",
+          "posted_date": "date",
+          "salary_min": "salary_min",
+          "salary_max": "salary_max",
+          "tags": "tags",
+          "snippet": "description"
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 5, "max_delay_s": 10, "max_requests": 1, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public JSON at https://remoteok.com/api. Verified 2026-10-05: the first array element is a legal/attribution notice (last_updated, legal) and is skipped. Job fields position, company, url, location, date, salary_min, salary_max, tags, description. Link back to the Remote OK URL and name Remote OK as the source. Zero salaries are treated as unknown."
+      },
+      "notes": "Verified live 2026-10-05. Filter keywords client-side."
+    },
+    {
+      "id": "weworkremotely",
+      "name": "We Work Remotely",
+      "enabled": true,
+      "base_url": "https://weworkremotely.com",
+      "mode": "rss",
+      "access": "guest",
+      "search_url": "https://weworkremotely.com/remote-jobs.rss",
+      "custom": "wwr_title",
+      "results": {
+        "fields": {
+          "title": "title",
+          "url": "link",
+          "posted_date": "pubDate",
+          "location": "region",
+          "employment_type": "type",
+          "snippet": "description",
+          "tags": "category"
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 4, "max_delay_s": 8, "max_requests": 1, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": false,
+        "notes": "RSS https://weworkremotely.com/remote-jobs.rss verified 2026-10-05. Item children include title, link, pubDate, description, region, type, category. Title is usually 'Company: Role' or 'Company.: Role' and is split by the wwr_title hook. Category feeds exist; this entry uses the combined remote-jobs feed."
+      },
+      "notes": "Verified live 2026-10-05."
+    },
+    {
+      "id": "workingnomads",
+      "name": "Working Nomads",
+      "enabled": false,
+      "base_url": "https://www.workingnomads.com",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://www.workingnomads.com/",
+      "api": {"method": "GET", "items_path": ""},
+      "results": {"fields": {"title": "title", "company": "company", "url": "url"}},
+      "pagination": {"type": "none"},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "medium",
+        "scraping_prohibited": false,
+        "attribution_required": false,
+        "notes": "TODO: no documented public JSON or RSS endpoint was confirmed on 2026-10-05. An internal search backend is not a guest API and is not called. Leave disabled until a public feed URL and field names are verified."
+      },
+      "notes": "Disabled. Verify a public API or RSS URL before enabling."
+    },
+    {
+      "id": "himalayas",
+      "name": "Himalayas",
+      "enabled": true,
+      "base_url": "https://himalayas.app",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://himalayas.app/jobs/api/search?q={keywords}&page={page}",
+      "api": {"method": "GET", "items_path": "jobs"},
+      "results": {
+        "fields": {
+          "title": "title",
+          "company": "companyName",
+          "url": "guid",
+          "apply_url": "applicationLink",
+          "location": "locationRestrictions",
+          "employment_type": "employmentType",
+          "posted_date": "pubDate",
+          "salary_min": "minSalary",
+          "salary_max": "maxSalary",
+          "rate_unit": "salaryPeriod",
+          "currency": "currency",
+          "snippet": "excerpt"
+        }
+      },
+      "pagination": {"type": "page_param", "start": 1, "step": 1, "max_pages": 1},
+      "rate_limit": {"min_delay_s": 4, "max_delay_s": 8, "max_requests": 2, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public search API https://himalayas.app/jobs/api/search verified 2026-10-05. Response jobs[] includes title, companyName, guid (absolute job URL), applicationLink, employmentType, locationRestrictions, pubDate (unix seconds), minSalary, maxSalary, salaryPeriod, currency, excerpt. Docs: https://himalayas.app/docs/remote-jobs-api. Keep the Himalayas URL on every record. One page per run."
+      },
+      "notes": "Verified live 2026-10-05. Non-USD salaries stay unknown for the USD rate filter."
+    },
+    {
+      "id": "jobicy",
+      "name": "Jobicy",
+      "enabled": true,
+      "base_url": "https://jobicy.com",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://jobicy.com/api/v2/remote-jobs?count=50",
+      "api": {"method": "GET", "items_path": "jobs"},
+      "results": {
+        "fields": {
+          "title": "jobTitle",
+          "company": "companyName",
+          "url": "url",
+          "location": "jobGeo",
+          "employment_type": "jobType",
+          "posted_date": "pubDate",
+          "salary_min": "salaryMin",
+          "salary_max": "salaryMax",
+          "rate_unit": "salaryPeriod",
+          "currency": "salaryCurrency",
+          "snippet": "jobExcerpt",
+          "tags": "jobIndustry"
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 4, "max_delay_s": 8, "max_requests": 1, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public API https://jobicy.com/api/v2/remote-jobs verified 2026-10-05. No API key: url is the Jobicy listing, not a direct ATS apply link. Fields jobTitle, companyName, url, jobGeo, jobType, pubDate, salaryMin, salaryMax, salaryCurrency, salaryPeriod, jobExcerpt. Docs: https://jobicy.com/jobs-rss-feed. Keywords are filtered client-side. Do not send a Bearer token from this tool."
+      },
+      "notes": "Verified live 2026-10-05."
+    },
+    {
+      "id": "hn_hiring",
+      "name": "HN Who is hiring?",
+      "enabled": true,
+      "base_url": "https://news.ycombinator.com",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://hn.algolia.com/api/v1/search_by_date?query=Ask%20HN%3A%20Who%20is%20hiring&tags=story",
+      "custom": "hn_hiring",
+      "api": {"method": "GET", "items_path": "hits"},
+      "results": {"fields": {}},
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 2, "max_delay_s": 5, "max_requests": 2, "max_results": 50},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "HN Algolia search API (hn.algolia.com/api/v1) is public. Verified 2026-10-05 with search_by_date so the current monthly 'Ask HN: Who is hiring?' story is selected, then one page of its comments. Each kept comment links to https://news.ycombinator.com/item?id=<comment>. The comment format is parsed by adapters/custom/hn_hiring.py because it is not a job object."
+      },
+      "notes": "Verified live 2026-10-05. Keyword filter is client-side."
+    },
+    {
+      "id": "greenhouse_boards",
+      "name": "Greenhouse company boards",
+      "enabled": false,
+      "base_url": "https://boards-api.greenhouse.io",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://boards-api.greenhouse.io/v1/boards/{company}/jobs",
+      "companies": [],
+      "api": {"method": "GET", "items_path": "jobs"},
+      "results": {
+        "fields": {
+          "title": "title",
+          "url": "absolute_url",
+          "location": "location.name",
+          "posted_date": "updated_at"
+        }
+      },
+      "pagination": {"type": "none"},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public Greenhouse board JSON, one request per company token in companies. No companies are configured, so the site fetches nothing. Add board tokens only for employers you intend to read. Verify each board's terms. Field paths are the documented Greenhouse jobs payload; confirm when a token is added."
+      },
+      "notes": "Off until companies is a non-empty list of board tokens."
+    },
+    {
+      "id": "lever_boards",
+      "name": "Lever company boards",
+      "enabled": false,
+      "base_url": "https://api.lever.co",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://api.lever.co/v0/postings/{company}?mode=json",
+      "companies": [],
+      "api": {"method": "GET", "items_path": ""},
+      "results": {
+        "fields": {
+          "title": "text",
+          "url": "hostedUrl",
+          "location": "categories.location",
+          "employment_type": "categories.commitment",
+          "snippet": "descriptionPlain"
+        }
+      },
+      "pagination": {"type": "none"},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public Lever postings JSON per company token. companies is empty, so nothing is fetched. Confirm field names when a token is added."
+      },
+      "notes": "Off until companies lists Lever site names."
+    },
+    {
+      "id": "remote_co",
+      "name": "Remote.co",
+      "enabled": false,
+      "base_url": "https://remote.co",
+      "mode": "playwright",
+      "access": "guest",
+      "search_url": "https://remote.co/remote-jobs/search/?search_keywords={keywords}",
+      "results": {
+        "list": [{"css": "div.job_listing"}, {"css": "li.job"}],
+        "fields": {
+          "title": [{"css": "a h3"}, {"css": "h2 a"}],
+          "url": [{"css": "a", "attr": "href", "absolute_url": true}]
+        }
+      },
+      "pagination": {"type": "next_button", "max_pages": 2, "next": [{"css": "a.next"}]},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "medium",
+        "scraping_prohibited": false,
+        "attribution_required": false,
+        "notes": "TODO: no public API confirmed. RSS not verified. Selectors are placeholders. Check Remote.co terms and robots.txt before enabling."
+      },
+      "notes": "Disabled. Selectors are unverified placeholders."
+    },
+    {
+      "id": "builtin_remote",
+      "name": "Built In (remote)",
+      "enabled": false,
+      "base_url": "https://builtin.com",
+      "mode": "playwright",
+      "access": "guest",
+      "search_url": "https://builtin.com/jobs/remote?search={keywords}",
+      "results": {
+        "list": [{"css": "[data-id='job-card']"}, {"css": "div.job-item"}],
+        "fields": {
+          "title": [{"css": "a"}],
+          "url": [{"css": "a", "attr": "href", "absolute_url": true}]
+        }
+      },
+      "pagination": {"type": "next_button", "max_pages": 2, "next": [{"role": "link", "name_regex": "(?i)next"}]},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "medium",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "TODO: no public search API confirmed. Built In terms restrict automated access. Selectors are placeholders. Leave disabled."
+      },
+      "notes": "Disabled. Verify terms before any use."
+    },
+    {
+      "id": "dice",
+      "name": "Dice (contract tech)",
+      "enabled": false,
+      "base_url": "https://www.dice.com",
+      "mode": "playwright",
+      "access": "guest",
+      "search_url": "https://www.dice.com/jobs?q={keywords_plus}&filters.isRemote=true&filters.employmentType={employment_type}&page={page}",
+      "param_map": {
+        "employment_type": {
+          "contract": "CONTRACTS",
+          "full_time": "FULLTIME",
+          "part_time": "PARTTIME"
+        }
+      },
+      "results": {
+        "list": [{"test_id": "job-card"}, {"css": "[data-cy='card']"}, {"css": "div.card"}],
+        "fields": {
+          "title": [{"role": "link"}, {"css": "a.card-title-link"}],
+          "url": [{"css": "a.card-title-link", "attr": "href", "absolute_url": true}],
+          "company": [{"css": "[data-cy='search-result-company-name']"}],
+          "location": [{"css": "[data-cy='search-result-location']"}],
+          "posted_date": [{"css": "[data-cy='card-posted-date']"}],
+          "employment_type": [{"css": "[data-cy='search-result-employment-type']"}]
+        }
+      },
+      "pagination": {"type": "page_param", "start": 1, "step": 1, "max_pages": 3},
+      "rate_limit": {"min_delay_s": 4, "max_delay_s": 9, "max_results": 60, "max_requests": 6},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "medium",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "Placeholder params and selectors — not verified live. Dice terms restrict automated access. Check the current ToS and robots.txt before enabling. Do not enable on a guess."
+      },
+      "notes": "Disabled. Selectors are unverified placeholders."
+    },
+    {
+      "id": "flexjobs",
+      "name": "FlexJobs",
+      "enabled": false,
+      "base_url": "https://www.flexjobs.com",
+      "mode": "playwright",
+      "access": "paywalled",
+      "search_url": "https://www.flexjobs.com/search?search={keywords}&remoteoptions=100%25%20Remote%20Work",
+      "results": {
+        "list": [{"css": "li.job"}],
+        "fields": {
+          "title": [{"css": "a"}],
+          "url": [{"css": "a", "attr": "href", "absolute_url": true}]
+        }
+      },
+      "pagination": {"type": "next_button", "max_pages": 1, "next": [{"css": "a.next"}]},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "high",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "Paywalled: listings may be visible while details and apply need a subscription (verify). No public API. Terms restrict automated access. Leave disabled. Selectors are placeholders."
+      },
+      "notes": "Disabled. Do not log in or bypass the paywall."
+    },
+    {
+      "id": "wellfound",
+      "name": "Wellfound",
+      "enabled": false,
+      "base_url": "https://wellfound.com",
+      "mode": "playwright",
+      "access": "login_required",
+      "search_url": "https://wellfound.com/role/r/{keywords}",
+      "results": {
+        "list": [{"css": "[data-test='StartupResult']"}],
+        "fields": {}
+      },
+      "pagination": {"type": "infinite_scroll", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 8, "max_delay_s": 15, "max_results": 20, "max_requests": 4},
+      "auth": {"type": "storage_state", "storage_state_env": "WELLFOUND_STORAGE_STATE"},
+      "detection": {
+        "login_wall_url": ["/login", "/signin"],
+        "captcha_text": ["verify you are human"]
+      },
+      "tos": {
+        "risk": "high",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "Guest search scope is unverified and bot protection is reported. Most actions need a login. Terms restrict automated access. Requires --allow-login, an enabled flag, and WELLFOUND_STORAGE_STATE pointing at a file outside the repo. Off by default. Selectors are placeholders."
+      },
+      "notes": "Disabled. Do not run in CI."
+    },
+    {
+      "id": "upwork",
+      "name": "Upwork",
+      "enabled": false,
+      "base_url": "https://www.upwork.com",
+      "mode": "playwright",
+      "access": "guest",
+      "search_url": "https://www.upwork.com/nx/search/jobs/?q={keywords}&sort=recency",
+      "results": {
+        "list": [{"css": "article[data-test='JobTile']"}, {"css": "section.air3-card-section"}],
+        "fields": {
+          "title": [{"css": "h2 a"}, {"css": "a"}],
+          "url": [{"css": "a", "attr": "href", "absolute_url": true}]
+        }
+      },
+      "pagination": {"type": "next_button", "max_pages": 1, "next": [{"css": "button[data-test='next-page']"}]},
+      "rate_limit": {"min_delay_s": 8, "max_delay_s": 15, "max_results": 20, "max_requests": 3},
+      "auth": {"type": "none"},
+      "detection": {
+        "captcha_text": ["verify you are human"],
+        "login_wall_url": ["/login", "/ab/account-security"]
+      },
+      "tos": {
+        "risk": "high",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "Guest search pages exist but are heavily bot-protected (verify). The official API needs an approved OAuth app and is not used here. Job RSS feeds were reportedly discontinued; do not rely on them. Terms prohibit scraping. Selectors are placeholders. Leave disabled."
+      },
+      "notes": "Disabled. No OAuth client is configured."
+    },
+    {
+      "id": "contra",
+      "name": "Contra",
+      "enabled": false,
+      "base_url": "https://contra.com",
+      "mode": "playwright",
+      "access": "guest",
+      "search_url": "https://contra.com/jobs?query={keywords}",
+      "results": {
+        "list": [{"css": "a[href*='/opportunity/']"}],
+        "fields": {
+          "title": [{"css": "a"}],
+          "url": [{"css": "a", "attr": "href", "absolute_url": true}]
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "medium",
+        "scraping_prohibited": false,
+        "attribution_required": false,
+        "notes": "TODO: verify whether guest search is allowed and whether terms prohibit automation. No public API is known. Selectors are placeholders. Leave disabled until that check is written into this note."
+      },
+      "notes": "Disabled. Guest vs login is unverified."
+    },
+    {
+      "id": "toptal",
+      "name": "Toptal",
+      "enabled": false,
+      "base_url": "https://www.toptal.com",
+      "mode": "none",
+      "access": "guest",
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "high",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "Toptal is an application-based talent network, not an open listing board. Do not build an adapter. Apply manually if you want to join the network."
+      },
+      "notes": "Catalogue stub only. mode none is never fetched."
+    },
+    {
+      "id": "indeed",
+      "name": "Indeed",
+      "enabled": false,
+      "base_url": "https://www.indeed.com",
+      "mode": "playwright",
+      "access": "guest",
+      "search_url": "https://www.indeed.com/jobs?q={keywords}&l=Remote&sc=0kf%3Aattr(DSQF7)%3B&fromage={posted_days}&start={offset}",
+      "results": {
+        "list": [{"css": "div.job_seen_beacon"}, {"css": "td.resultContent"}],
+        "fields": {
+          "title": [{"css": "h2 a"}],
+          "url": [{"css": "h2 a", "attr": "href", "absolute_url": true}],
+          "company": [{"css": "[data-testid='company-name']"}],
+          "location": [{"css": "[data-testid='text-location']"}]
+        }
+      },
+      "pagination": {"type": "offset_param", "start": 0, "step": 10, "max_pages": 2},
+      "rate_limit": {"min_delay_s": 8, "max_delay_s": 15, "max_results": 20, "max_requests": 3},
+      "auth": {"type": "none"},
+      "detection": {
+        "captcha_text": ["verify you are human", "additional verification required"],
+        "login_wall_url": ["/account/login"]
+      },
+      "tos": {
+        "risk": "high",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "Indeed prohibits automated scraping and actively blocks it. No public search API for new users was confirmed. Selectors are placeholders and were not verified. Off by default. Stop on the first captcha or block. Do not bypass."
+      },
+      "notes": "Disabled. High ToS risk."
+    },
+    {
+      "id": "linkedin_guest",
+      "name": "LinkedIn Jobs (guest)",
+      "enabled": false,
+      "base_url": "https://www.linkedin.com",
+      "mode": "playwright",
+      "access": "guest",
+      "search_url": "https://www.linkedin.com/jobs/search/?keywords={keywords}&f_WT=2&f_JT={employment_type}&f_TPR=r{posted_seconds}",
+      "param_map": {
+        "employment_type": {"contract": "C", "full_time": "F", "part_time": "P"}
+      },
+      "results": {
+        "list": [{"css": "ul.jobs-search__results-list > li"}, {"css": "div.base-card"}],
+        "fields": {
+          "title": [{"css": "h3"}, {"css": "a.base-card__full-link"}],
+          "url": [{"css": "a.base-card__full-link", "attr": "href", "absolute_url": true}],
+          "company": [{"css": "h4"}],
+          "location": [{"css": "span.job-search-card__location"}]
+        }
+      },
+      "pagination": {"type": "infinite_scroll", "max_pages": 2},
+      "rate_limit": {"min_delay_s": 8, "max_delay_s": 15, "max_results": 25, "max_requests": 4},
+      "auth": {"type": "none"},
+      "detection": {
+        "login_wall_text": ["Sign in", "Join now"],
+        "login_wall_url": ["/authwall", "/login", "/checkpoint"]
+      },
+      "tos": {
+        "risk": "high",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "The LinkedIn User Agreement prohibits scraping and the site actively blocks it. Guest job search still breaches those terms. Param names f_WT, f_JT, and f_TPR are unverified. Selectors are placeholders. Off by default."
+      },
+      "notes": "Disabled. High ToS risk. Login-wall text is only treated as a wall on a short page or a login URL so a normal results page that mentions Sign in is not flagged by the generic detector alone."
+    },
+    {
+      "id": "linkedin_auth",
+      "name": "LinkedIn Jobs (logged in)",
+      "enabled": false,
+      "base_url": "https://www.linkedin.com",
+      "mode": "playwright",
+      "access": "login_required",
+      "search_url": "https://www.linkedin.com/jobs/search/?keywords={keywords}&f_WT=2&f_JT={employment_type}&f_TPR=r{posted_seconds}",
+      "param_map": {
+        "employment_type": {"contract": "C", "full_time": "F", "part_time": "P"}
+      },
+      "results": {
+        "list": [{"css": "div.job-card-container"}, {"css": "li.jobs-search-results__list-item"}],
+        "fields": {
+          "title": [{"css": "a.job-card-list__title"}],
+          "url": [{"css": "a.job-card-list__title", "attr": "href", "absolute_url": true}],
+          "company": [{"css": "span.job-card-container__primary-description"}],
+          "location": [{"css": "li.job-card-container__metadata-item"}]
+        }
+      },
+      "pagination": {"type": "infinite_scroll", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 10, "max_delay_s": 20, "max_results": 15, "max_requests": 3},
+      "auth": {"type": "storage_state", "storage_state_env": "LINKEDIN_STORAGE_STATE"},
+      "detection": {
+        "login_wall_text": ["Sign in", "Join now"],
+        "login_wall_url": ["/authwall", "/login", "/checkpoint"]
+      },
+      "tos": {
+        "risk": "high",
+        "scraping_prohibited": true,
+        "attribution_required": false,
+        "notes": "Logged-in scraping risks restriction or loss of the personal LinkedIn account. Runs only when this entry is enabled, it is selected, --allow-login is set, and LINKEDIN_STORAGE_STATE points at an existing Playwright storage-state file kept outside the repo. Never commit that file. Not used in CI. Selectors are unverified."
+      },
+      "notes": "Disabled. Needs an explicit opt-in per the ToS section of the docs."
+    },
+    {
+      "id": "supercruiter",
+      "name": "SuperCruiter",
+      "enabled": false,
+      "base_url": "https://example.com/supercruiter-todo",
+      "mode": "none",
+      "access": "guest",
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "medium",
+        "scraping_prohibited": false,
+        "attribution_required": false,
+        "notes": "TODO: confirm the exact site and URL with CJ. This stub does not fetch anything. The base_url is a placeholder, not a real board."
+      },
+      "notes": "Disabled stub until CJ confirms which SuperCruiter site to use."
+    }
+  ]
+}

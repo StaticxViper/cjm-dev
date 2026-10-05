@@ -22,3 +22,8 @@ __pycache__/
 *.log
 *leads_output*
 *property_urls.json
+
+# opp_finder_v2 runtime output and browser auth state
+scripts/opp_finder_v2/artifacts/
+*storage_state*.json
+!scripts/opp_finder_v2/schemas/output.schema.json

@@ -1,0 +1,55 @@
+{
+  "jobs": [
+    {
+      "title": "Senior React Full-stack Developer",
+      "companyName": "lemon.io",
+      "guid": "https://himalayas.app/companies/lemon-io/jobs/senior-full-stack-developer-4016266853",
+      "applicationLink": "https://himalayas.app/companies/lemon-io/jobs/senior-full-stack-developer-4016266853",
+      "employmentType": "Full Time",
+      "locationRestrictions": [
+        "Albania",
+        "Andorra",
+        "Argentina",
+        "Australia",
+        "Austria",
+        "Belgium",
+        "Belize",
+        "Bolivia",
+        "Canada",
+        "United States"
+      ],
+      "pubDate": 1790075996,
+      "minSalary": null,
+      "maxSalary": null,
+      "salaryPeriod": "annual",
+      "currency": "USD",
+      "excerpt": "Are you a talented Senior Developer looking for a remote job that lets you show your skills and get decent compensation?"
+    },
+    {
+      "title": "Senior React Native Developer",
+      "companyName": "lemon.io",
+      "guid": "https://himalayas.app/companies/lemon-io/jobs/senior-react-native-developer-5236230554",
+      "applicationLink": "https://himalayas.app/companies/lemon-io/jobs/senior-react-native-developer-5236230554",
+      "employmentType": "Contractor",
+      "locationRestrictions": [
+        "Albania",
+        "Andorra",
+        "Australia",
+        "Austria",
+        "Belgium",
+        "Belize",
+        "Bolivia",
+        "Bosnia and Herzegovina",
+        "Canada",
+        "United States"
+      ],
+      "pubDate": 1789127040,
+      "minSalary": null,
+      "maxSalary": null,
+      "salaryPeriod": "annual",
+      "currency": "USD",
+      "excerpt": "Are you a talented Senior Developer looking for a remote job that lets you show your skills and get decent compensation?"
+    }
+  ],
+  "totalCount": 5000
+}
