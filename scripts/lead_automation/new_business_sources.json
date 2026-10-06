@@ -1,0 +1,475 @@
+{
+  "sources": [
+    {
+      "id": "ny_active_corporations",
+      "name": "NY DOS active corporations",
+      "category": "Secretary of State / entity databases",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["NY"], "counties": [], "cities": []},
+      "endpoint": "https://data.ny.gov/resource/n9v6-gdp6.json",
+      "url": "https://data.ny.gov/resource/n9v6-gdp6.json",
+      "record_url": "https://data.ny.gov/resource/n9v6-gdp6.json?dos_id={id}",
+      "newness_field": "initial_dos_filing_date",
+      "newness_type": "formation_date",
+      "query": {
+        "style": "socrata",
+        "date_column": "initial_dos_filing_date",
+        "extra_where": "",
+        "select": [
+          "dos_id",
+          "current_entity_name",
+          "initial_dos_filing_date",
+          "county",
+          "entity_type",
+          "location_city",
+          "location_state",
+          "location_zip",
+          "location_address_1"
+        ]
+      },
+      "field_map": {
+        "business_name": "current_entity_name",
+        "entity_id": "dos_id",
+        "category": "entity_type",
+        "formation_date": "initial_dos_filing_date",
+        "county": "county",
+        "city": "location_city",
+        "state": "location_state",
+        "zip": "location_zip",
+        "address": "location_address_1"
+      },
+      "constants": {"state": "NY", "business_status": "active"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 4, "page_size": 200},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Public SODA API. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. Dataset overview says the extract is active entities only, monthly, and not a legal status certificate."
+      },
+      "notes": "Verified 2026-10-05: GET https://data.ny.gov/resource/n9v6-gdp6.json?$limit=1 returned dos_id, current_entity_name, initial_dos_filing_date, county, entity_type. A $where initial_dos_filing_date > 2026-06-01 query returned a row. location_* is often null (service-of-process fields are not the operating address); those rows stay geo_unverified unless county or city is present. Not a paid API."
+    },
+    {
+      "id": "pa_registered_businesses",
+      "name": "Pennsylvania registered businesses (current by county)",
+      "category": "State business / entity search databases",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["PA"], "counties": [], "cities": []},
+      "endpoint": "https://data.pa.gov/resource/xvd7-5r2c.json",
+      "url": "https://data.pa.gov/resource/xvd7-5r2c.json",
+      "record_url": "https://data.pa.gov/resource/xvd7-5r2c.json?filing_number={id}",
+      "newness_field": "creationdate",
+      "newness_type": "formation_date",
+      "query": {
+        "style": "socrata",
+        "date_column": "creationdate",
+        "extra_where": "",
+        "select": [
+          "business_name",
+          "filing_number",
+          "address_line1",
+          "city",
+          "state",
+          "zip",
+          "creationdate",
+          "shortcountyname",
+          "typeofbusinessregistration"
+        ]
+      },
+      "field_map": {
+        "business_name": "business_name",
+        "entity_id": "filing_number",
+        "category": "typeofbusinessregistration",
+        "formation_date": "creationdate",
+        "county": "shortcountyname",
+        "city": "city",
+        "state": "state",
+        "zip": "zip",
+        "address": "address_line1",
+        "phone": "phone",
+        "email": "email"
+      },
+      "constants": {"business_status": "active"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 4, "page_size": 200},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "PA Open Data SODA endpoint. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. No login and no per-record fee on this extract."
+      },
+      "notes": "Verified 2026-10-05: https://data.pa.gov/resource/xvd7-5r2c.json returned business_name, filing_number, address, city, state, zip, creationdate, shortcountyname. A creationdate filter returned a 2026-06-02 filing. The distinct view 3urc-uaba omits creationdate, so this current-by-county resource is the one with a newness date."
+    },
+    {
+      "id": "co_business_entities",
+      "name": "Colorado business entities",
+      "category": "Secretary of State / entity databases",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["CO"], "counties": [], "cities": []},
+      "endpoint": "https://data.colorado.gov/resource/4ykn-tg5h.json",
+      "url": "https://data.colorado.gov/resource/4ykn-tg5h.json",
+      "record_url": "https://data.colorado.gov/resource/4ykn-tg5h.json?entityid={id}",
+      "newness_field": "entityformdate",
+      "newness_type": "formation_date",
+      "query": {
+        "style": "socrata",
+        "date_column": "entityformdate",
+        "extra_where": "entitystatus = 'Good Standing'",
+        "select": [
+          "entityid",
+          "entityname",
+          "entitystatus",
+          "entitytype",
+          "entityformdate",
+          "principaladdress1",
+          "principalcity",
+          "principalstate",
+          "principalzipcode",
+          "agentfirstname",
+          "agentlastname"
+        ]
+      },
+      "field_map": {
+        "business_name": "entityname",
+        "entity_id": "entityid",
+        "category": "entitytype",
+        "formation_date": "entityformdate",
+        "business_status": "entitystatus",
+        "city": "principalcity",
+        "state": "principalstate",
+        "zip": "principalzipcode",
+        "address": "principaladdress1",
+        "contact_name": ["agentfirstname", "agentlastname"],
+        "contact_role": "registered_agent"
+      },
+      "constants": {},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 4, "page_size": 200},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Colorado Information Marketplace publishes this SOS dataset for public reuse. robots.txt allows /resource/ with Crawl-delay 1. The query keeps Good Standing rows only."
+      },
+      "notes": "Verified 2026-10-05: https://data.colorado.gov/resource/4ykn-tg5h.json returned entityid, entityname, entitystatus, entityformdate, principal address, and agent name. A Good Standing filter with entityformdate > 2026-06-01 returned a row. Agent first and last name are stored as one public registered-agent contact with the record URL. The agent mailing address is not copied onto the lead. Delinquent entities are excluded by extra_where."
+    },
+    {
+      "id": "phl_business_licenses",
+      "name": "Philadelphia L&I business licenses",
+      "category": "Local government business-license databases",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["PA"], "counties": ["Philadelphia"], "cities": ["Philadelphia"]},
+      "endpoint": "https://phl.carto.com/api/v2/sql?q=",
+      "url": "https://phl.carto.com/api/v2/sql?q=",
+      "record_url": "https://phl.carto.com/api/v2/sql?q=SELECT%20*%20FROM%20business_licenses%20WHERE%20licensenum%20%3D%20%27{id}%27",
+      "newness_field": "initialissuedate",
+      "newness_type": "license_date",
+      "query": {
+        "style": "carto",
+        "table": "business_licenses",
+        "date_column": "initialissuedate",
+        "select": [
+          "business_name",
+          "address",
+          "zip",
+          "licensetype",
+          "initialissuedate",
+          "licensestatus",
+          "licensenum",
+          "legalname",
+          "legalentitytype"
+        ],
+        "extra_where": "licensestatus = 'Active' AND licensetype IN ('Food Preparing and Serving', 'Food Preparing and Serving (30+ SEATS)', 'Food Estab, Retail Non-Permanent Location (Annual)', 'Food Establishment, Retail Permanent Location', 'Food Establishment, Retail Perm Location (Large)', 'Food Caterer', 'Motor Vehicle Repair / Fuel Dispensing', 'Vendor - Sidewalk Sales', 'Vendor - Motor Vehicle Sales', 'Tow Truck', 'Tow Company', 'Sidewalk Cafe', 'Tire Dealer', 'Child Care Facility')"
+      },
+      "field_map": {
+        "business_name": "business_name",
+        "entity_id": "licensenum",
+        "category": "licensetype",
+        "business_status": "licensestatus",
+        "address": "address",
+        "zip": "zip",
+        "contact_name": "legalname",
+        "contact_role": "license_applicant"
+      },
+      "constants": {"state": "PA", "city": "Philadelphia"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 2, "page_size": 200},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "OpenDataPhilly lists this dataset under the City of Philadelphia License and a public Carto SQL API. phl.carto.com/robots.txt disallows /api/ only for named crawlers (Googlebot, Slurp, Yandex, msnbot, baiduspider), not for a normal browser user-agent. No login and no fee."
+      },
+      "notes": "Verified 2026-10-05: SELECT from business_licenses returned initialissuedate, licensetype, licensestatus, business_name, address, zip. Rental (about 7,800 active 2026 issuances) and Vacant Residential Property rows are excluded so homeowner rental licenses are not treated as business leads. The extra_where list keeps food, vehicle, vendor, tow, sidewalk cafe, tire, and child-care licenses. initialissuedate is a license date, not a formation date. legalname is stored only as a public license-applicant contact."
+    },
+    {
+      "id": "google_maps",
+      "name": "Google Maps verification",
+      "category": "Google Maps / Google Business Profiles",
+      "adapter": "google_maps",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": [], "counties": [], "cities": []},
+      "endpoint": "https://www.google.com/maps/search/",
+      "url": "https://www.google.com/maps/search/",
+      "newness_field": "",
+      "newness_type": "",
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 20, "max_records": 20},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "www.google.com/robots.txt allows /maps/search/ and /maps/place/ for User-agent *. Disallow: /search does not apply to these Maps paths. Existing BusinessDiscoverySession already uses /maps/search/."
+      },
+      "notes": "Verification and enrichment only (website, phone, category, status, place URL). A low review count is never written as newness evidence. Block pages stop the source for the rest of the run. fetch() returns no discovery records."
+    },
+    {
+      "id": "google_search",
+      "name": "Google search soft signals",
+      "category": "Google search results",
+      "adapter": "google_search",
+      "enabled": false,
+      "status": "blocked",
+      "access": "public",
+      "coverage": {"states": [], "counties": [], "cities": []},
+      "endpoint": "https://www.google.com/search",
+      "url": "https://www.google.com/search",
+      "newness_field": "",
+      "newness_type": "grand_opening",
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 5, "max_records": 20},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "www.google.com/robots.txt User-agent: * Disallow: /search. Automated fetches of Google search result pages are not allowed. The adapter exists for fixtures and will not request /search."
+      },
+      "notes": "Not enabled. check_access returns robots_disallowed when a robots body is supplied, and live runs must not fetch /search. Soft signals (grand opening, now open, ribbon cutting, new business) would be low-confidence newness only. Reuses parse_google_results and block-page detection. Dry-run can parse the saved fixture without a network call."
+    },
+    {
+      "id": "nj_dores",
+      "name": "NJ Division of Revenue business records",
+      "category": "State business / entity search databases",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "blocked",
+      "access": "paywall",
+      "coverage": {"states": ["NJ"], "counties": [], "cities": []},
+      "endpoint": "https://www.njportal.com/DOR/businessRecords/",
+      "url": "https://www.njportal.com/DOR/businessRecords/",
+      "newness_field": "",
+      "newness_type": "formation_date",
+      "table": {"columns": {"business_name": "Business Name"}},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 2},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Public pages describe name search plus standing certificates, status reports, and document copies. No free formation-date-range query was found. Detailed reports are paid services. Not queried."
+      },
+      "notes": "Skipped. The Business Records Service (https://www.njportal.com/DOR/businessRecords/) is a name/entity lookup. Standing certificates and filed-document copies are offered as paid records. No public date-range index was verified, so there is no adapter fetch."
+    },
+    {
+      "id": "nj_open_data",
+      "name": "NJ open data business filings",
+      "category": "Other publicly accessible business-registration or new-business sources",
+      "adapter": "open_data",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["NJ"], "counties": [], "cities": []},
+      "endpoint": "https://data.nj.gov/",
+      "url": "https://data.nj.gov/",
+      "newness_field": "",
+      "newness_type": "formation_date",
+      "query": {"style": "socrata", "date_column": "", "select": []},
+      "field_map": {"business_name": "business_name"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 1},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "data.nj.gov catalog was searched for a business-formation dataset. None was found. robots.txt allows normal catalog/resource paths with Crawl-delay 1."
+      },
+      "notes": "Catalog checks on 2026-10-05: data.nj.gov/api/catalog/v1?search_context=data.nj.gov&q=corporation returned a NJ Transit annual report, not entity filings. q=revenue enterprise with domains=data.nj.gov returned zero datasets. No formation-date resource to enable."
+    },
+    {
+      "id": "nj_county_clerks",
+      "name": "NJ county clerk trade-name indexes",
+      "category": "County clerk / public-record business listings",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["NJ"], "counties": [], "cities": []},
+      "endpoint": "",
+      "url": "",
+      "newness_field": "",
+      "newness_type": "filing_date",
+      "table": {"columns": {"business_name": "Business Name"}},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 2},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "No county in coords.json publishes a verified free date-range trade-name index. Name-search clerk systems were not automated."
+      },
+      "notes": "Cherry Hill is in Camden County and Cinnaminson is in Burlington County, but coords.json has no county field and this file does not invent one. Clerk indexes that are name-search only, account-gated, or fee-based are skipped until a public HTML or open-data index with filing dates is confirmed. Set coverage.counties and url after verification, then flip status to verified."
+    },
+    {
+      "id": "cherry_hill_licenses",
+      "name": "Cherry Hill municipal licenses",
+      "category": "Local government business-license databases",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["NJ"], "counties": [], "cities": ["Cherry Hill"]},
+      "endpoint": "https://www.chnj.gov/379/Licensing",
+      "url": "https://www.chnj.gov/379/Licensing",
+      "newness_field": "",
+      "newness_type": "license_date",
+      "table": {"columns": {"business_name": "Business Name"}},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 1},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Township licensing page publishes application PDFs, not a roster of issued licenses."
+      },
+      "notes": "https://www.chnj.gov/379/Licensing lists applications (taxi, massage, liquor, transient merchant) and tells applicants to call the clerk. No public issued-license table or date field was found. Not fetched."
+    },
+    {
+      "id": "cinnaminson_directory",
+      "name": "Cinnaminson business directory",
+      "category": "Public business directories that show recently added businesses",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["NJ"], "counties": [], "cities": ["Cinnaminson"]},
+      "endpoint": "https://cinnaminsonnj.org/business-directory/",
+      "url": "https://cinnaminsonnj.org/business-directory/",
+      "newness_field": "",
+      "newness_type": "opening_date",
+      "table": {
+        "columns": {
+          "business_name": "Business Name",
+          "category": "Industry",
+          "address": "Address",
+          "phone": "Phone Number",
+          "website": "Website"
+        }
+      },
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 1},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Public township directory page. No dates, so it is not a newness source. Left disabled."
+      },
+      "notes": "https://cinnaminsonnj.org/business-directory/ is an HTML table of name, industry, address, phone, and website for businesses that ask to be listed. No added-date or opening-date column was visible. Parsing that table would not show which businesses are new, so the source stays a candidate."
+    },
+    {
+      "id": "local_chambers",
+      "name": "Local chamber new-member pages",
+      "category": "Public chamber-of-commerce / new-member directories",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["NJ"], "counties": [], "cities": ["Cherry Hill", "Cinnaminson"]},
+      "endpoint": "https://shccnj.chambermaster.com/list",
+      "url": "https://shccnj.chambermaster.com/list",
+      "newness_field": "",
+      "newness_type": "new_chamber_member",
+      "table": {"columns": {"business_name": "Business Name"}},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 1},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "A public member directory was found. A dated new-member or ribbon-cutting list was not."
+      },
+      "notes": "Southern NJ Chamber directory (https://shccnj.chambermaster.com/list) is a category listing, not a dated new-member feed. No Cherry Hill or Cinnaminson ribbon-cutting page was verified as crawlable. ChamberMaster directories are often member-managed. Not enabled."
+    },
+    {
+      "id": "de_division_of_corporations",
+      "name": "Delaware Division of Corporations entity search",
+      "category": "Secretary of State / entity databases",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "blocked",
+      "access": "paywall",
+      "coverage": {"states": ["DE"], "counties": [], "cities": ["Dover"]},
+      "endpoint": "https://icis.corp.delaware.gov/ecorp/entitysearch/NameSearch.aspx",
+      "url": "https://icis.corp.delaware.gov/ecorp/entitysearch/NameSearch.aspx",
+      "newness_field": "",
+      "newness_type": "formation_date",
+      "table": {"columns": {"business_name": "Entity Name"}},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 0},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "ICIS name search says the Division strictly prohibits mining data and that automated tools may be suspended. Certificates and document copies cost a fee. Not accessed."
+      },
+      "notes": "Name search can show entity name, file number, formation date, and registered agent for free, but the same page prohibits automated tools and data mining. Additional records are paid. This source is blocked and must not be fetched."
+    },
+    {
+      "id": "fl_sunbiz_daily",
+      "name": "Florida Sunbiz daily new filings",
+      "category": "Secretary of State / entity databases",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "candidate",
+      "access": "login",
+      "coverage": {"states": ["FL"], "counties": [], "cities": []},
+      "endpoint": "https://dos.fl.gov/sunbiz/other-services/data-downloads/daily-data/",
+      "url": "https://dos.fl.gov/sunbiz/other-services/data-downloads/daily-data/",
+      "newness_field": "",
+      "newness_type": "filing_date",
+      "table": {"columns": {"business_name": "Business Name"}},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 0},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Daily new-entity files are published for free, but the download portal is an SFTP login. Credentials are not stored here. Fixed-width files are not fetched."
+      },
+      "notes": "dos.fl.gov documents daily corporate filing files (doc/cor/yyyymmddc.txt) as informational and free, via sftp.floridados.gov with a published public account. That is still a login, and the payload is a fixed-width file rather than an open HTTP API. Left disabled. Do not embed the portal password."
+    },
+    {
+      "id": "tx_business_entities",
+      "name": "Texas business entity open data",
+      "category": "Other publicly accessible business-registration or new-business sources",
+      "adapter": "open_data",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["TX"], "counties": [], "cities": []},
+      "endpoint": "https://data.texas.gov/",
+      "url": "https://data.texas.gov/",
+      "newness_field": "",
+      "newness_type": "formation_date",
+      "query": {"style": "socrata", "date_column": "", "select": []},
+      "field_map": {"business_name": "business_name"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 1},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Catalog request to data.texas.gov failed TLS verification in this environment. No dataset was confirmed, so nothing is enabled."
+      },
+      "notes": "coords.json includes Houston, Austin, Dallas, and San Antonio. A formation-date open-data set was not verified on 2026-10-05 (catalog TLS error). Add an endpoint only after a public, robots-allowed, dated extract is confirmed."
+    },
+    {
+      "id": "example_public_table",
+      "name": "Example public HTML table",
+      "category": "Public new-business / new-license lists",
+      "adapter": "http_table",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["NJ"], "counties": [], "cities": ["Cinnaminson"]},
+      "endpoint": "",
+      "url": "https://example.gov/new-businesses",
+      "newness_field": "filing_date",
+      "newness_type": "filing_date",
+      "table": {
+        "columns": {
+          "business_name": "Business Name",
+          "filing_date": "Filed",
+          "city": "City",
+          "state": "State",
+          "phone": "Phone",
+          "category": "Category"
+        }
+      },
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 1},
+      "terms_checked": {
+        "date": "2026-10-05",
+        "note": "Fixture-only sample for the generic HTML-table adapter. Not a live source."
+      },
+      "notes": "Disabled candidate used to prove http_table parsing. The saved fixture is synthetic, with the column layout a clerk table would use. It is not fetched."
+    }
+  ]
+}

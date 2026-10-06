@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), [niche search](../scripts/niche_search.md) config, intent scoring, filters, and CSV export, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out).
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), [niche search](../scripts/niche_search.md) config, intent scoring, filters, and CSV export, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out). New-business discovery is covered by `test_new_business_scoring`, `test_new_business_dedupe`, `test_new_business_website`, `test_new_business_email`, `test_new_business_sources`, and `test_new_business_cli` (the CLI dry run uses fixtures and does not call the network).
 
 ## Prerequisites
 
@@ -24,6 +24,7 @@ python -m unittest unittests.lead_automation.test_email_discovery
 python -m unittest unittests.lead_automation.test_leadenrich
 python -m unittest unittests.lead_automation.test_leadenrich_playwright
 python -m unittest unittests.lead_automation.test_niche_search
+python -m unittest discover unittests/lead_automation
 python -m unittest unittests.zillow_automation.test_property_listing_gen
 ```
 

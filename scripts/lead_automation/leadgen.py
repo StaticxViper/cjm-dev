@@ -113,6 +113,16 @@ PERSISTED_SETTINGS_KEYS = (
     "playwright_area_expansion",
     "skip_searched",
     "search_history_path",
+    "discovery_mode",
+    "nb_max_age_days",
+    "nb_very_new_days",
+    "nb_min_score",
+    "nb_website_check",
+    "nb_csv_output",
+    "nb_max_records_per_source",
+    "nb_score_rules_path",
+    "nb_regions_file",
+    "nb_sources",
 )
 
 SCORE_WEIGHTS = {
@@ -207,6 +217,27 @@ class LeadgenConfig:
     playwright_area_expansion: str = DEFAULT_PLAYWRIGHT_AREA_EXPANSION
     skip_searched: bool = True
     search_history_path: str = DEFAULT_HISTORY_PATH
+    discovery_mode: str = "standard"
+    nb_max_age_days: int = 365
+    nb_very_new_days: int = 90
+    nb_min_score: int = 50
+    nb_website_check: str = "deep"
+    nb_csv_output: str = "new_business_leads.csv"
+    nb_max_records_per_source: int = 200
+    nb_score_rules_path: str = "new_business_score_rules.json"
+    nb_regions_file: str = "geo_regions.json"
+    nb_sources: str = ""
+    nb_counties: list = field(default_factory=list)
+    nb_region: str = ""
+    nb_zips: list = field(default_factory=list)
+    nb_dry_run: bool = False
+    nb_refresh_enrichment: bool = False
+    nb_include_seen: bool = False
+    nb_headful: bool = False
+    nb_artifacts: bool = True
+    nb_seen_path: str = "new_business_seen.json"
+    nb_enrichment_cache_path: str = "new_business_enrichment_cache.json"
+    nb_enrichment_ttl_days: int = 30
 
 
 def load_saved_settings(path=None):
@@ -224,7 +255,10 @@ def load_saved_settings(path=None):
         return {}
 
     # Migrate legacy CSV settings keys to JSON.
-    if "output_mode" in data and data["output_mode"] == "csv":
+    if (
+        data.get("output_mode") == "csv"
+        and data.get("discovery_mode", "standard") != "new-business"
+    ):
         data["output_mode"] = "json"
     if "json_output" not in data and data.get("csv_output"):
         path_val = str(data["csv_output"])
@@ -261,6 +295,16 @@ def save_settings(config, path=None):
         ),
         "skip_searched": bool(config.skip_searched),
         "search_history_path": str(config.search_history_path or DEFAULT_HISTORY_PATH),
+        "discovery_mode": config.discovery_mode if config.discovery_mode in ("standard", "new-business") else "standard",
+        "nb_max_age_days": int(config.nb_max_age_days),
+        "nb_very_new_days": int(config.nb_very_new_days),
+        "nb_min_score": int(config.nb_min_score),
+        "nb_website_check": config.nb_website_check if config.nb_website_check in ("none", "cheap", "deep") else "deep",
+        "nb_csv_output": config.nb_csv_output,
+        "nb_max_records_per_source": int(config.nb_max_records_per_source),
+        "nb_score_rules_path": config.nb_score_rules_path,
+        "nb_regions_file": config.nb_regions_file,
+        "nb_sources": config.nb_sources or "",
     }
     with open(settings_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
@@ -292,7 +336,7 @@ def config_from_saved_settings(path=None):
         config.require_website = bool(saved["require_website"])
     if "lead_enrichment" in saved:
         config.lead_enrichment = bool(saved["lead_enrichment"])
-    if "output_mode" in saved and saved["output_mode"] in ("json", "dashboard", "both"):
+    if "output_mode" in saved and saved["output_mode"] in ("json", "dashboard", "both", "csv"):
         config.output_mode = saved["output_mode"]
     if "json_output" in saved and saved["json_output"]:
         config.json_output = str(saved["json_output"])
@@ -318,6 +362,19 @@ def config_from_saved_settings(path=None):
         config.skip_searched = bool(saved["skip_searched"])
     if "search_history_path" in saved and saved["search_history_path"]:
         config.search_history_path = str(saved["search_history_path"])
+    if saved.get("discovery_mode") in ("standard", "new-business"):
+        config.discovery_mode = saved["discovery_mode"]
+    for key in ("nb_max_age_days", "nb_very_new_days", "nb_min_score", "nb_max_records_per_source"):
+        if key in saved:
+            try:
+                setattr(config, key, int(saved[key]))
+            except (TypeError, ValueError):
+                pass
+    if saved.get("nb_website_check") in ("none", "cheap", "deep"):
+        config.nb_website_check = saved["nb_website_check"]
+    for key in ("nb_csv_output", "nb_score_rules_path", "nb_regions_file", "nb_sources"):
+        if saved.get(key):
+            setattr(config, key, str(saved[key]))
     return config
 
 
@@ -2040,6 +2097,32 @@ def _print_config_summary(config, include_run_scope=True):
     print()
 
 
+def interactive_new_business():
+    """Configure a new-business run from the same menu as keyword discovery."""
+    cfg = config_from_saved_settings()
+    cfg.discovery_mode = "new-business"
+    print("\nNew-business discovery")
+    print("Searches public registration and license sources for newly formed businesses.")
+    print("Keyword Google Maps search is not used.")
+    cfg.locations = _prompt_locations(_default_locations())
+    cfg.nb_max_age_days = _prompt_int("Max age in days", cfg.nb_max_age_days)
+    cfg.nb_min_score = _prompt_int("Minimum new-business score", cfg.nb_min_score)
+    if cfg.json_output in ("leads_output.json", "", None):
+        cfg.json_output = "new_business_leads.json"
+    if cfg.output_mode == "dashboard":
+        print("Dashboard output is not used for new-business discovery. Writing JSON and CSV.")
+        cfg.output_mode = "both"
+    locs = ", ".join(f"{city}, {state}" for state, city, _coords in cfg.locations[:12])
+    print(f"\nLocations: {locs}")
+    print(f"Max age: {cfg.nb_max_age_days} days | min score {cfg.nb_min_score}")
+    print(f"JSON: {cfg.json_output}")
+    print(f"CSV: {cfg.nb_csv_output}")
+    confirm = input("Run new-business discovery? [Y/n]: ").strip().lower()
+    if confirm in ("n", "no"):
+        return None
+    return cfg
+
+
 def interactive_run_config():
     """Load saved defaults, prompt keywords/locations, return config or None if cancelled."""
     cfg = config_from_saved_settings()
@@ -2080,6 +2163,7 @@ def interactive_main_menu():
         print("3) High-volume preset (Playwright, area expansion, no Facebook enrich)")
         print("4) Exit")
         print("5) Lead Search (micro-niche intent search)")
+        print("6) New-business discovery")
         choice = input("Select [1]: ").strip() or "1"
         if choice == "5":
             from niche_search import interactive_niche_search
@@ -2103,9 +2187,14 @@ def interactive_main_menu():
                 print(f"Defaults saved to {SETTINGS_PATH.name}. Returning to menu.")
                 continue
             return interactive_run_config()
+        if choice == "6":
+            return interactive_new_business()
         if choice == "1":
-            return interactive_run_config()
-        print("Invalid choice. Please select 1, 2, 3, 4, or 5.")
+            cfg = interactive_run_config()
+            if cfg is not None:
+                cfg.discovery_mode = "standard"
+            return cfg
+        print("Invalid choice. Please select 1, 2, 3, 4, 5, or 6.")
 
 
 def parse_args():
@@ -2248,8 +2337,8 @@ def parse_args():
     )
     parser.add_argument(
         "--output",
-        choices=["json", "dashboard", "both"],
-        help="Output destination",
+        choices=["json", "csv", "dashboard", "both"],
+        help="Output destination (new-business: json, csv, or both; standard both is JSON + dashboard)",
     )
     parser.add_argument("--json-path", help="JSON output path (default leads_output.json)")
     parser.add_argument("--keywords", nargs="+", help="Keyword subset from keywords.json")
@@ -2341,6 +2430,38 @@ def parse_args():
         nargs="+",
         help="Additional niche search queries",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["standard", "new-business"],
+        default=None,
+        help="standard keeps keyword discovery; new-business finds newly registered businesses",
+    )
+    parser.add_argument("--max-age-days", type=int, default=None, help="New-business age window in days (default 365)")
+    parser.add_argument("--very-new-days", type=int, default=None, help="Top newness tier in days (default 90)")
+    parser.add_argument(
+        "--sources",
+        default=None,
+        help="Comma-separated new-business source ids (default: all enabled verified sources)",
+    )
+    parser.add_argument("--list-sources", action="store_true", help="Print new-business sources and exit")
+    parser.add_argument("--county", action="append", default=None, help="County filter for new-business records (repeatable)")
+    parser.add_argument("--region", default=None, help="Region name from geo_regions.json")
+    parser.add_argument("--regions-file", default=None, help="Path to geo_regions.json")
+    parser.add_argument("--min-new-business-score", type=int, default=None, help="Minimum new_business_score (default 50)")
+    parser.add_argument("--score-rules", default=None, help="Path to new_business_score_rules.json")
+    parser.add_argument(
+        "--website-check",
+        choices=["none", "cheap", "deep"],
+        default=None,
+        help="Website check depth for new-business mode (default deep)",
+    )
+    parser.add_argument("--refresh-enrichment", action="store_true", help="Ignore the new-business email cache TTL")
+    parser.add_argument("--include-seen", action="store_true", help="Re-output businesses already written by new-business mode")
+    parser.add_argument("--csv-path", default=None, help="CSV path for new-business mode (default new_business_leads.csv)")
+    parser.add_argument("--max-records-per-source", type=int, default=None, help="Cap records fetched from each source (default 200)")
+    parser.add_argument("--dry-run", action="store_true", help="New-business fixtures only; no network")
+    parser.add_argument("--headful", action="store_true", help="Show the browser for Playwright new-business adapters")
+    parser.add_argument("--no-artifacts", action="store_true", help="Do not write new_business_artifacts on errors")
     return parser.parse_args()
 
 
@@ -2366,6 +2487,15 @@ def _has_cli_overrides(args):
         args.keywords is not None,
         args.city is not None,
         args.state is not None,
+        getattr(args, "mode", None) is not None,
+        getattr(args, "max_age_days", None) is not None,
+        getattr(args, "very_new_days", None) is not None,
+        getattr(args, "sources", None) is not None,
+        getattr(args, "county", None) is not None,
+        getattr(args, "region", None) is not None,
+        getattr(args, "min_new_business_score", None) is not None,
+        getattr(args, "dry_run", False),
+        getattr(args, "csv_path", None) is not None,
     ])
 
 
@@ -2443,6 +2573,54 @@ def config_from_args(args):
             logger.warning("No cities matched --city filter; using current location set")
     if args.state is not None or args.city is not None:
         config.locations = locations
+    if getattr(args, "mode", None) in ("standard", "new-business"):
+        config.discovery_mode = args.mode
+    if getattr(args, "max_age_days", None) is not None:
+        config.nb_max_age_days = max(1, int(args.max_age_days))
+    if getattr(args, "very_new_days", None) is not None:
+        config.nb_very_new_days = max(1, int(args.very_new_days))
+    if getattr(args, "sources", None) is not None:
+        config.nb_sources = args.sources
+    if getattr(args, "county", None):
+        config.nb_counties = list(args.county)
+    if getattr(args, "region", None):
+        config.nb_region = args.region
+    if getattr(args, "regions_file", None):
+        config.nb_regions_file = args.regions_file
+    if getattr(args, "min_new_business_score", None) is not None:
+        config.nb_min_score = int(args.min_new_business_score)
+    if getattr(args, "score_rules", None):
+        config.nb_score_rules_path = args.score_rules
+    if getattr(args, "website_check", None):
+        config.nb_website_check = args.website_check
+    if getattr(args, "csv_path", None):
+        config.nb_csv_output = args.csv_path
+    if getattr(args, "max_records_per_source", None) is not None:
+        config.nb_max_records_per_source = max(1, int(args.max_records_per_source))
+    config.nb_dry_run = bool(getattr(args, "dry_run", False))
+    config.nb_refresh_enrichment = bool(getattr(args, "refresh_enrichment", False))
+    config.nb_include_seen = bool(getattr(args, "include_seen", False))
+    config.nb_headful = bool(getattr(args, "headful", False))
+    config.nb_artifacts = not bool(getattr(args, "no_artifacts", False))
+    if config.discovery_mode == "new-business":
+        if getattr(args, "zips", None):
+            from niche_search import expand_locations
+            config.nb_zips = list(args.zips)
+            config.locations = expand_locations(
+                states=args.state,
+                cities=args.city,
+                zips=args.zips,
+                api_key=None if config.nb_dry_run else GOOGLE_API_KEY,
+            )
+        if args.radius is not None:
+            config.search_radius = int(args.radius)
+        if args.json_path is None and config.json_output in ("leads_output.json", "", None):
+            config.json_output = "new_business_leads.json"
+        if config.output_mode == "csv" and config.discovery_mode != "new-business":
+            config.output_mode = "json"
+    elif config.output_mode == "csv":
+        logger.warning("CSV output is for new-business mode. Standard mode will write JSON.")
+        config.output_mode = "json"
     return config
 
 
@@ -2933,6 +3111,11 @@ def run_leadgen(config):
     """Run lead generation with the given configuration."""
     from datetime import datetime, timezone
 
+    if getattr(config, "discovery_mode", "standard") == "new-business":
+        from new_business_pipeline import run_new_business
+        run_new_business(config)
+        return
+
     started_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     leadgen_type = normalize_leadgen_type(config.leadgen_type)
     config.leadgen_type = leadgen_type
@@ -3085,6 +3268,11 @@ def run_leadgen(config):
 
 def main():
     args = parse_args()
+    if getattr(args, "list_sources", False):
+        from new_business_sources import list_sources
+        for line in list_sources():
+            print(line)
+        return
     if getattr(args, "review_leads", False):
         from niche_results import review_leads
         review_leads(json_path=args.json_path or "niche_leads_output.json")

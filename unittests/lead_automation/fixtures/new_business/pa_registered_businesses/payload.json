@@ -1,0 +1,15 @@
+[
+  {
+    "business_name": "Smith Landscaping LLC",
+    "filing_number": "EXAMPLE123",
+    "address_line1": "123 Example Rd",
+    "city": "Philadelphia",
+    "state": "PA",
+    "zip": "19147",
+    "creationdate": "{{days_ago:30}}",
+    "shortcountyname": "Philadelphia",
+    "typeofbusinessregistration": "landscaping",
+    "phone": "(215) 555-0100",
+    "email": "smithlandscapingpa@gmail.com"
+  }
+]

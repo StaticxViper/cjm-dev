@@ -48,5 +48,6 @@ Both endpoints use `LEAD_INGEST_KEY` via `APIManager`.
 
 ## Related scripts
 
-- [leadgen.md](leadgen.md) — generates the CSV
+- [leadgen.md](leadgen.md) — generates the CSV. `--mode new-business` writes `new_business_leads.json` and `new_business_leads.csv` and does not go through this ingest.
+- [new_business_sources.md](new_business_sources.md) — sources used by new-business discovery
 - [webhook_manager.md](webhook_manager.md) — optional Make.com email trigger (separate flow)
