@@ -4,6 +4,21 @@ Config-driven finder for remote and contract roles. It reads public JSON and RSS
 
 `scripts/opp_finder` (automation-opportunity scoring, contact enrichment, Google discovery) and `scripts/lead_automation` (local-business lead gen) are separate tools. V2 does not import them.
 
+## Run it
+
+From the repo root, with the project virtualenv active. Install dependencies first if Python reports `No module named 'jsonschema'`:
+
+```bash
+source .venv/Scripts/activate
+pip install -r requirements/requirements.txt
+cd scripts
+python -m opp_finder_v2
+```
+
+That searches the enabled boards and writes `scripts/opp_finder_v2/output/opps_<timestamp>.json`. The `cd scripts` is required. From the repo root, `python -m opp_finder_v2` cannot find the package.
+
+`--dry-run` uses fixtures and does not use the network. `--format both` also writes a CSV beside the JSON. The rest of the flags are in [scripts/opp_finder_v2/README.md](../../scripts/opp_finder_v2/README.md).
+
 ## What a run does
 
 1. Validate `sites.json` and `criteria.json`. Invalid files exit 2.

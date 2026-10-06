@@ -4,6 +4,34 @@ Personal remote and contract job search. A JSON file lists the boards. For each 
 
 This package does not import or modify `scripts/opp_finder` or `scripts/lead_automation`. It does not apply to jobs, send messages, or upload results to a CRM. It writes JSON and optional CSV.
 
+## Run it
+
+From the repo root, with the project virtualenv active. `jsonschema` was added for this tool, so install dependencies once if a run fails with `No module named 'jsonschema'`:
+
+```bash
+source .venv/Scripts/activate
+pip install -r requirements/requirements.txt
+cd scripts
+python -m opp_finder_v2
+```
+
+That is the live search. It queries every board with `enabled: true` in `sites.json` (Remotive, Remote OK, We Work Remotely, Himalayas, Jobicy, and HN Who is hiring) and writes:
+
+`scripts/opp_finder_v2/output/opps_<timestamp>.json`
+
+You have to `cd scripts` first. The package is `scripts/opp_finder_v2`, so `python -m opp_finder_v2` from the repo root fails with `ModuleNotFoundError`.
+
+Useful extras, still from `scripts/`:
+
+```bash
+python -m opp_finder_v2 --dry-run
+python -m opp_finder_v2 --format both
+python -m opp_finder_v2 --keywords "python, automation, playwright"
+python -m opp_finder_v2 --sites remotive,remoteok
+```
+
+`--dry-run` reads the saved fixtures and does not open the network. `--format both` writes a CSV next to the JSON. `--keywords` replaces the keyword list in `criteria.json` for this run only. `--sites` limits the run to those ids.
+
 ## Setup
 
 From the repo root, install dependencies (Playwright is already listed):
