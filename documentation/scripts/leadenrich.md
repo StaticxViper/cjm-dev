@@ -16,7 +16,7 @@ Runs two ways:
 - Python 3.12+
 - `apify-client`, `python-dotenv`
 - `APIFY_API_KEY` in repo-root `.env`
-- `LEAD_INGEST_KEY` in repo-root `.env` (only for `--dashboard`)
+- `CRM_MCP_MV_LLC` in repo-root `.env` (only for `--dashboard`)
 - A leads JSON file from leadgen (default `leads_output.json`)
 
 Both actors are paid per result. See [Apify actors](#apify-actors) for pricing links and [Cost control](#cost-control) before running against a large file.
@@ -71,7 +71,7 @@ flowchart LR
   enrich -->|facebook page url| search[danek/facebook-search-ppr]
   enrich -->|page contact info| pages[apify/facebook-pages-scraper]
   enrich --> jsonOut
-  enrich --> supabase[Supabase leads-ingest-bulk]
+  enrich --> crm[CRM MCP create_lead]
 ```
 
 ## Entry points

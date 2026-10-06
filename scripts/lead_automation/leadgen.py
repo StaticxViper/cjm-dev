@@ -64,8 +64,6 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 PLACES_SLEEP = 2  # seconds between place detail / next_page_token attempts
 CONTACTED_FILE = "contacted.txt"
-DASHBOARD_BASE_URL = "https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1"
-DASHBOARD_BULK_ENDPOINT = "/leads-ingest-bulk"
 
 _LEADGEN_DIR = Path(__file__).resolve().parent
 SETTINGS_PATH = _LEADGEN_DIR / "leadgen_settings.json"
@@ -1392,8 +1390,8 @@ def extract_real_email(raw_email_field):
 
 
 def send_to_dashboard(rows):
-    """Bulk-ingest qualifying leads to the dashboard API."""
-    from helper_scripts.api_manager import APIManager as api
+    """Create qualifying leads in the CRM via the MCP server."""
+    from crm_mcp import CrmMcpClient
 
     payload = []
     for row in rows:
@@ -1406,14 +1404,17 @@ def send_to_dashboard(rows):
         for extra in row.get("tags") or []:
             if extra and extra not in tags:
                 tags.append(extra)
+        score = row.get("lead_score")
+        if score in (None, ""):
+            score = row.get("new_business_score")
         item = {
             "business_name": row["business_name"],
             "address": row.get("address") or "",
-            "phone": row.get("phone_google") or "",
+            "phone": row.get("phone_google") or row.get("phone") or "",
             "email": extract_real_email(row.get("email") or ""),
             "category": category,
             "tags": tags,
-            "score": int(row["lead_score"]),
+            "score": int(score or 0),
         }
         if row.get("website") not in (None, ""):
             item["website"] = row.get("website")
@@ -1426,38 +1427,47 @@ def send_to_dashboard(rows):
         payload.append(item)
 
     if not payload:
-        logger.info("No leads to send to dashboard")
+        logger.info("No leads to send to CRM")
         return 0
 
-    logger.critical("Sending %d leads to dashboard (bulk ingest)", len(payload))
-    last_error = None
-    for attempt in range(1, 4):
-        try:
-            api().build_request(
-                base_url=DASHBOARD_BASE_URL,
-                endpoint=DASHBOARD_BULK_ENDPOINT,
-                json_body=payload,
-                api="Lead Ingest",
-                method="POST",
-                timeout=60.0,
-            )
-            return len(payload)
-        except Exception as exc:
-            last_error = exc
+    client = CrmMcpClient()
+    if not client.api_key:
+        logger.error("CRM_MCP_MV_LLC is required to upload leads.")
+        return 0
+
+    logger.critical("Sending %d leads to CRM", len(payload))
+    uploaded = 0
+    for item in payload:
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                client.create_lead(item)
+                uploaded += 1
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                logger.error(
+                    "CRM upload attempt %d/3 failed for %s: %s",
+                    attempt,
+                    item.get("business_name"),
+                    exc,
+                )
+                if attempt < 3:
+                    time.sleep(1.5 * attempt)
+        if last_error:
             logger.error(
-                "Dashboard ingest attempt %d/3 failed (%d leads): %s",
-                attempt,
-                len(payload),
-                exc,
+                "CRM upload skipped for %s; the lead remains in JSON: %s",
+                item.get("business_name"),
+                last_error,
             )
-            if attempt < 3:
-                time.sleep(1.5 * attempt)
-    logger.error(
-        "Dashboard ingest skipped after retries; %d leads remain in JSON: %s",
-        len(payload),
-        last_error,
-    )
-    return 0
+    if uploaded != len(payload):
+        logger.error(
+            "CRM upload finished with %d of %d leads created",
+            uploaded,
+            len(payload),
+        )
+    return uploaded
 
 
 def persist_lead_batch(rows, config, location_label=None, json_path=None):
@@ -3136,8 +3146,8 @@ def run_leadgen(config):
     else:
         raise ValueError(f"Unsupported leadgen_type: {leadgen_type}")
 
-    if config.output_mode in ("dashboard", "both") and not os.getenv("LEAD_INGEST_KEY"):
-        logger.error("LEAD_INGEST_KEY is required for dashboard output mode.")
+    if config.output_mode in ("dashboard", "both") and not os.getenv("CRM_MCP_MV_LLC"):
+        logger.error("CRM_MCP_MV_LLC is required for dashboard output mode.")
         return
 
     log_stage(2, "Load prior state")

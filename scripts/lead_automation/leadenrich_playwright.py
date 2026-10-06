@@ -922,8 +922,8 @@ def enrich_leads(leads, config=None, session=None):
 
 def run_enrichment(config):
     """Load leads from CRM and/or JSON, enrich, save, optionally ingest."""
-    if config.dashboard and not os.getenv("LEAD_INGEST_KEY"):
-        logger.error("LEAD_INGEST_KEY is required for dashboard ingest.")
+    if config.dashboard and not os.getenv("CRM_MCP_MV_LLC"):
+        logger.error("CRM_MCP_MV_LLC is required for dashboard ingest.")
         return
     if config.from_crm and not os.getenv("LEAD_INGEST_KEY"):
         logger.error("LEAD_INGEST_KEY is required to pull CRM Pipeline leads.")

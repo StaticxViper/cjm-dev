@@ -18,7 +18,7 @@ The `email` objective (and `either`/`both` when email is still missing) uses [em
 - `requests`, `beautifulsoup4`, `python-dotenv`, `playwright`
 - `playwright install chromium` (needed for `--objective email`, Playwright discovery, and Playwright enrichment)
 - `GOOGLE_API_KEY` in repo-root `.env` (API Manager discovery)
-- `LEAD_INGEST_KEY` in repo-root `.env` (required for dashboard output mode)
+- `CRM_MCP_MV_LLC` in repo-root `.env` (required for dashboard output; bearer token for the CRM MCP server)
 - `APIFY_API_KEY` in repo-root `.env` (required for Facebook enrichment in API Manager mode)
 
 ## Configuration
@@ -191,7 +191,7 @@ flowchart LR
   filters --> enrich[leadenrich.py or leadenrich_playwright.py]
   enrich --> jsonOut[leads_output.json]
   filters --> jsonOut
-  filters --> supabase[Supabase leads-ingest-bulk]
+  filters --> crm[CRM MCP create_lead]
   leadfilter[leadfilter.py] -.-> filters
 ```
 
@@ -282,10 +282,12 @@ Notes:
 | Mode | Behavior |
 |------|----------|
 | `json` | Append qualifying leads to `leads_output.json` |
-| `dashboard` | Bulk POST to `/leads-ingest-bulk` via `APIManager` |
-| `both` | JSON save and dashboard ingest |
+| `dashboard` | Create each lead in the CRM with the MCP `create_lead` tool |
+| `both` | JSON save and CRM upload |
 
-Playwright discovery writes each finished city/state immediately (`persist_lead_batch`). A later crash during another city does not lose the leads already qualified. Dashboard ingest retries transient DNS/connect errors and then continues the run; JSON is kept even when the upload misses.
+Dashboard upload calls `https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1/mcp-crm` with `Authorization: Bearer` from `CRM_MCP_MV_LLC`. Leads go to the Web Dev - MV Software venture (`web-dev-mv-software-iq3x`, override with `CRM_MCP_VENTURE`). One batch is created per process, named `Leadgen YYYY-MM-DD HH:MM`. Fields the CRM does not store (category, rating, review count, niche) are appended to the lead notes. Google Places discovery still uses API Manager; only the upload path changed.
+
+Playwright discovery writes each finished city/state immediately (`persist_lead_batch`). A later crash during another city does not lose the leads already qualified. Each CRM create retries three times; JSON is kept when an upload misses.
 
 Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sample.json).
 
