@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cjm.local/opp_finder_v2/criteria.schema.json",
+  "title": "Opp finder v2 criteria",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "keywords",
+    "exclude_keywords",
+    "remote_only",
+    "employment_types",
+    "location",
+    "posted_within_days",
+    "min_rate",
+    "min_relevance"
+  ],
+  "properties": {
+    "keywords": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["any", "all", "title_boost"],
+      "properties": {
+        "any": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "all": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "title_boost": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "exclude_keywords": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "remote_only": {"type": "boolean"},
+    "employment_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["contract", "freelance", "part_time", "full_time", "temporary", "internship"]
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allow", "deny", "unknown"],
+      "properties": {
+        "allow": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "deny": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "unknown": {"type": "string", "enum": ["keep", "drop"]}
+      }
+    },
+    "posted_within_days": {"type": ["integer", "null"], "minimum": 0},
+    "min_rate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hourly_usd", "annual_usd", "unknown"],
+      "properties": {
+        "hourly_usd": {"type": ["number", "null"], "minimum": 0},
+        "annual_usd": {"type": ["number", "null"], "minimum": 0},
+        "unknown": {"type": "string", "enum": ["keep", "drop"]}
+      }
+    },
+    "min_relevance": {"type": "integer", "minimum": 0, "maximum": 100},
+    "require_title_match": {"type": "boolean"},
+    "us_only": {"type": "boolean"}
+  }
+}

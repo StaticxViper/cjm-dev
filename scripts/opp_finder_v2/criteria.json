@@ -1,0 +1,40 @@
+{
+  "keywords": {
+    "any": [
+      "QA",
+      "SDET",
+      "tester",
+      "test engineer",
+      "software test",
+      "quality assurance",
+      "quality engineer",
+      "automation engineer",
+      "python",
+      "playwright",
+      "javascript",
+      "sql",
+      "IT support",
+      "help desk",
+      "systems administrator"
+    ],
+    "all": [],
+    "title_boost": ["QA", "SDET", "test engineer", "python", "automation"]
+  },
+  "exclude_keywords": ["senior staff", "onsite only", "commission only", "unpaid", "no experience", "rater"],
+  "remote_only": true,
+  "employment_types": ["contract", "freelance", "part_time", "full_time"],
+  "location": {
+    "allow": ["united states", "usa", "us", "u.s.", "u.s.a."],
+    "deny": ["europe only", "emea only", "uk only", "apac only", "india only"],
+    "unknown": "drop"
+  },
+  "posted_within_days": 14,
+  "min_rate": {
+    "hourly_usd": 40,
+    "annual_usd": 85000,
+    "unknown": "keep"
+  },
+  "min_relevance": 25,
+  "require_title_match": true,
+  "us_only": true
+}

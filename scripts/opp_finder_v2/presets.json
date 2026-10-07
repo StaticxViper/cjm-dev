@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "part_time_remote_data_entry",
+      "name": "Part-time remote data entry",
+      "employment": "part_time",
+      "remote_only": true,
+      "keyword_mode": "custom",
+      "keywords": ["data entry"],
+      "skill_ids": [],
+      "min_relevance": 15,
+      "clear_rates": true
+    },
+    {
+      "id": "part_time_it",
+      "name": "Part-time IT",
+      "employment": "part_time",
+      "remote_only": false,
+      "keyword_mode": "custom",
+      "keywords": ["IT support", "help desk", "desktop support", "technical support", "systems administrator"],
+      "skill_ids": [],
+      "min_relevance": 20,
+      "clear_rates": true
+    },
+    {
+      "id": "remote_anything",
+      "name": "Remote anything",
+      "employment": "any",
+      "remote_only": true,
+      "keyword_mode": "any",
+      "keywords": [],
+      "skill_ids": [],
+      "min_relevance": 15,
+      "clear_rates": true
+    }
+  ]
+}

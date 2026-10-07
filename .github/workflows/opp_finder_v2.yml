@@ -1,0 +1,150 @@
+name: Opp Finder V2
+
+# workflow_dispatch is available in the Actions tab only after this file
+# is on the default branch (main). Until then, dispatching opp_finder_v2.yml fails.
+
+on:
+  workflow_dispatch:
+    inputs:
+      keywords:
+        description: Comma-separated keywords. Empty uses criteria.json.
+        required: false
+        type: string
+        default: ""
+      sites:
+        description: Site ids. Login adapters are never started (no --allow-login).
+        required: false
+        type: string
+        default: "remotive,remoteok,weworkremotely,weworkremotely_programming,weworkremotely_devops,hn_hiring,himalayas,jobicy,themuse,workingnomads,greenhouse_boards"
+      max_per_site:
+        description: Cap results per site
+        required: false
+        type: string
+        default: "50"
+      dry_run:
+        description: Read fixtures only
+        required: false
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - "scripts/opp_finder_v2/**"
+      - "unittests/opp_finder_v2/**"
+      - "requirements/requirements.txt"
+      - ".github/workflows/opp_finder_v2.yml"
+
+jobs:
+  test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements/requirements.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Unit tests
+        run: pytest unittests/opp_finder_v2
+
+  search:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements/requirements.txt
+      - name: Install Chromium when a Playwright site is selected
+        working-directory: scripts
+        env:
+          SELECTED_SITES: ${{ github.event.inputs.sites }}
+        run: |
+          python - << 'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          selected = {
+              part.strip()
+              for part in os.environ.get("SELECTED_SITES", "").split(",")
+              if part.strip()
+          }
+          document = json.loads(Path("opp_finder_v2/sites.json").read_text(encoding="utf-8"))
+          modes = {site["id"]: site.get("mode") for site in document["sites"]}
+          if any(modes.get(site_id) == "playwright" for site_id in selected):
+              subprocess.check_call(["python", "-m", "playwright", "install", "--with-deps", "chromium"])
+          else:
+              print("No Playwright site selected; skipping browser install")
+          PY
+      - name: Search
+        working-directory: scripts
+        env:
+          KEYWORDS: ${{ github.event.inputs.keywords }}
+          SITES: ${{ github.event.inputs.sites }}
+          MAX_PER_SITE: ${{ github.event.inputs.max_per_site }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(
+            --config opp_finder_v2/sites.json
+            --criteria opp_finder_v2/criteria.json
+            --sites "$SITES"
+            --max-per-site "$MAX_PER_SITE"
+            --format both
+            --no-crm
+            --out opp_finder_v2/output/out.json
+          )
+          if [ -n "${KEYWORDS}" ]; then
+            args+=(--keywords "$KEYWORDS")
+          fi
+          if [ "${DRY_RUN}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          python -m opp_finder_v2 "${args[@]}"
+      - name: Write job summary
+        working-directory: scripts
+        run: |
+          python - << 'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("opp_finder_v2/output/out.json")
+          lines = ["## Opp finder v2", ""]
+          if not path.is_file():
+              lines.append("No output JSON was written.")
+          else:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              totals = document["run"]["totals"]
+              lines.append(f"- fetched: {totals.get('fetched', 0)}")
+              lines.append(f"- after filters: {totals.get('after_filters', 0)}")
+              lines.append(f"- after dedupe: {totals.get('after_dedupe', 0)}")
+              lines.append("")
+              lines.append("### Top 10")
+              opps = document.get("opportunities") or []
+              if not opps:
+                  lines.append("No opportunities passed the filters.")
+              for opp in opps[:10]:
+                  company = opp.get("company") or ""
+                  lines.append(
+                      f"- {opp.get('title')} @ {company} "
+                      f"(score {opp.get('relevance_score')}, {opp.get('source_site')})"
+                  )
+              lines.append("")
+              lines.append("Download the `opp-finder-v2-results` artifact for the full JSON and CSV.")
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: opp-finder-v2-results
+          path: |
+            scripts/opp_finder_v2/output/**
+            scripts/opp_finder_v2/artifacts/**
+          if-no-files-found: warn

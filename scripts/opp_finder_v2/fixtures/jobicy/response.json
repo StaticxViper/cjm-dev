@@ -1,0 +1,43 @@
+{
+  "jobs": [
+    {
+      "id": 154667,
+      "url": "https://jobicy.com/jobs/154667-technical-account-manager-uk",
+      "jobTitle": "Technical Account Manager - UK",
+      "companyName": "Dataiku",
+      "jobType": [
+        "Full-Time"
+      ],
+      "jobGeo": "UK",
+      "jobIndustry": [
+        "Technical Support"
+      ],
+      "pubDate": "2026-10-05T18:57:59+00:00",
+      "salaryMin": null,
+      "salaryMax": null,
+      "salaryCurrency": null,
+      "salaryPeriod": null,
+      "jobExcerpt": "Dataiku is the Platform for AI Success, the enterprise orchestration layer for building, deploying, and governing AI. In a single environment, teams design and operate analytics, machine learning, and AI agents with the transparency, collaboration, and control enterprises require. Sitting above data platforms, cloud infrastructure, and AI services, Dataiku connects the full enterprise AI stack&hel"
+    },
+    {
+      "id": 154664,
+      "url": "https://jobicy.com/jobs/154664-technical-account-manager-france",
+      "jobTitle": "Technical Account Manager - France",
+      "companyName": "Dataiku",
+      "jobType": [
+        "Full-Time"
+      ],
+      "jobGeo": "France",
+      "jobIndustry": [
+        "Technical Support"
+      ],
+      "pubDate": "2026-10-05T18:57:58+00:00",
+      "salaryMin": null,
+      "salaryMax": null,
+      "salaryCurrency": null,
+      "salaryPeriod": null,
+      "jobExcerpt": "Dataiku is the Platform for AI Success, the enterprise orchestration layer for building, deploying, and governing AI. In a single environment, teams design and operate analytics, machine learning, and AI agents with the transparency, collaboration, and control enterprises require. Sitting above data platforms, cloud infrastructure, and AI services, Dataiku connects the full enterprise AI stack&hel"
+    }
+  ],
+  "jobCount": 2
+}

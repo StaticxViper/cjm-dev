@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cjm.local/opp_finder_v2/sites.schema.json",
+  "title": "Opp finder v2 site catalogue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "sites"],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rate_limit": {"$ref": "#/$defs/rate_limit"},
+        "pagination": {"$ref": "#/$defs/pagination"}
+      }
+    },
+    "sites": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/site"}
+    }
+  },
+  "$defs": {
+    "rate_limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_delay_s": {"type": "number", "minimum": 0},
+        "max_delay_s": {"type": "number", "minimum": 0},
+        "max_results": {"type": "integer", "minimum": 1},
+        "max_requests": {"type": "integer", "minimum": 1}
+      }
+    },
+    "pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["none", "next_button", "page_param", "offset_param", "infinite_scroll"]
+        },
+        "next": {"$ref": "#/$defs/locator"},
+        "start": {"type": "integer"},
+        "step": {"type": "integer"},
+        "max_pages": {"type": "integer", "minimum": 1},
+        "stop_when_no_new": {"type": "integer", "minimum": 1}
+      }
+    },
+    "locator": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {
+          "type": "array",
+          "items": {"$ref": "#/$defs/locator_strategy"}
+        }
+      ]
+    },
+    "locator_strategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "role": {"type": "string"},
+        "name": {"type": "string"},
+        "name_regex": {"type": "string"},
+        "test_id": {"type": "string"},
+        "attr": {"type": "string"},
+        "text": {"type": "string"},
+        "css": {"type": "string"},
+        "absolute_url": {"type": "boolean"},
+        "regex": {"type": "string"}
+      }
+    },
+    "field_spec": {
+      "oneOf": [
+        {"type": "string"},
+        {"type": "array", "items": {"$ref": "#/$defs/locator_strategy"}},
+        {"$ref": "#/$defs/locator_strategy"}
+      ]
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {"type": "string", "enum": ["none", "storage_state"]},
+        "storage_state_env": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        }
+      }
+    },
+    "tos": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["risk", "scraping_prohibited", "attribution_required", "notes"],
+      "properties": {
+        "risk": {"type": "string", "enum": ["low", "medium", "high"]},
+        "scraping_prohibited": {"type": "boolean"},
+        "attribution_required": {"type": "boolean"},
+        "notes": {"type": "string"}
+      }
+    },
+    "site": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "enabled", "base_url", "mode", "access", "auth", "tos"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "name": {"type": "string", "minLength": 1},
+        "enabled": {"type": "boolean"},
+        "base_url": {"type": "string", "format": "uri"},
+        "mode": {"type": "string", "enum": ["api", "rss", "playwright", "none"]},
+        "access": {"type": "string", "enum": ["guest", "login_required", "paywalled"]},
+        "search_url": {"type": "string"},
+        "search_flow": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["op"],
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": ["goto", "fill", "click", "select", "press", "wait_for", "wait_ms", "dismiss"]
+              },
+              "url": {"type": "string"},
+              "locator": {"$ref": "#/$defs/locator"},
+              "value": {"type": "string"},
+              "key": {"type": "string"},
+              "optional": {"type": "boolean"},
+              "timeout_ms": {"type": "integer", "minimum": 0},
+              "ms": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "param_map": {"type": "object"},
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": {"type": "string", "enum": ["GET", "POST"]},
+            "params": {"type": "object"},
+            "headers": {"type": "object", "additionalProperties": {"type": "string"}},
+            "items_path": {"type": "string"},
+            "skip_first_item": {"type": "boolean"}
+          }
+        },
+        "results": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "list": {"$ref": "#/$defs/locator"},
+            "fields": {
+              "type": "object",
+              "additionalProperties": {"$ref": "#/$defs/field_spec"}
+            }
+          }
+        },
+        "detail_page": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "fields": {
+              "type": "object",
+              "additionalProperties": {"$ref": "#/$defs/field_spec"}
+            }
+          }
+        },
+        "pagination": {"$ref": "#/$defs/pagination"},
+        "rate_limit": {"$ref": "#/$defs/rate_limit"},
+        "auth": {"$ref": "#/$defs/auth"},
+        "detection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "login_wall_text": {"type": "array", "items": {"type": "string"}},
+            "login_wall_url": {"type": "array", "items": {"type": "string"}},
+            "block_text": {"type": "array", "items": {"type": "string"}},
+            "captcha_text": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "tos": {"$ref": "#/$defs/tos"},
+        "notes": {"type": "string"},
+        "custom": {"type": "string", "pattern": "^[a-z0-9_]*$"},
+        "companies": {"type": "array", "items": {"type": "string"}},
+        "listing_defaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remote": {"type": "boolean"}
+          }
+        }
+      }
+    }
+  }
+}
