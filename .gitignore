@@ -27,3 +27,5 @@ __pycache__/
 scripts/opp_finder_v2/artifacts/
 *storage_state*.json
 !scripts/opp_finder_v2/schemas/output.schema.json
+*new_business*.json
+*new_business*.csv
