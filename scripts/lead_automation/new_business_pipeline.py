@@ -512,6 +512,7 @@ def run_new_business(config, today=None):
         if email_session is not None:
             _log_stage(5, "Email enrichment", f"{len(merged)} businesses")
             for row in merged:
+                website_before = (row.get("website") or "").strip()
                 enrich_new_business_lead(
                     row,
                     city=row.get("city"),
@@ -519,6 +520,15 @@ def run_new_business(config, today=None):
                     session=email_session,
                     allow_google=not dry_run,
                 )
+                website_after = (row.get("website") or "").strip()
+                if website_after and website_after != website_before:
+                    apply_website(
+                        row,
+                        mode=getattr(config, "nb_website_check", "deep"),
+                        today=today,
+                        threshold=int(rules.get("poor_website_min_quality_score") or 41),
+                        dry_run=dry_run,
+                    )
         else:
             _log_stage(5, "Email enrichment", "skipped by configuration")
 

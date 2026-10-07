@@ -7,8 +7,11 @@ from email_discovery import (
     NEW_BUSINESS_EMAIL_TEMPLATES,
     EmailDiscoverySession,
     _accept_confidence,
+    _host_from_url,
     build_google_queries,
     cache_key,
+    discover_business_website,
+    extract_emails_from_html,
     inspect_website,
     is_directory_host,
     score_email_confidence,
@@ -140,6 +143,8 @@ def enrich_new_business_lead(
         session = EmailDiscoverySession()
     city = city or lead.get("city")
     state = state or lead.get("state")
+    if not lead.get("phone_google") and lead.get("phone"):
+        lead["phone_google"] = lead.get("phone")
     try:
         cached = None
         if hasattr(session, "persistent_result"):
@@ -196,14 +201,26 @@ def enrich_new_business_lead(
                 state=state,
                 templates=NEW_BUSINESS_EMAIL_TEMPLATES,
             )
+            inspector = inspect_fn or inspect_website
+            visited_hosts = set()
+            known_host = _host_from_url(lead.get("website"))
+            if known_host:
+                visited_hosts.add(known_host)
             for query in queries:
-                if getattr(session, "google_blocked", False):
+                if getattr(session, "google_blocked", False) or lead.get("email"):
                     break
                 results = session.search(query) or []
                 for result in results:
+                    if lead.get("email"):
+                        break
                     page_url = result.get("url") or ""
                     snippet = result.get("snippet") or ""
-                    for raw in result.get("emails") or []:
+                    page_text = f"{result.get('title') or ''} {snippet}"
+                    seen_emails = []
+                    for raw in list(result.get("emails") or []) + extract_emails_from_html(page_text):
+                        if raw in seen_emails:
+                            continue
+                        seen_emails.append(raw)
                         email = validate_email(raw)
                         if not email:
                             continue
@@ -211,7 +228,7 @@ def enrich_new_business_lead(
                             email,
                             lead,
                             page_url=page_url,
-                            page_text=f"{result.get('title') or ''} {snippet}",
+                            page_text=page_text,
                             website=lead.get("website"),
                         )
                         if not _accept_confidence(confidence):
@@ -219,10 +236,42 @@ def enrich_new_business_lead(
                         source = "google_result"
                         if is_social_or_directory_url(page_url):
                             source = "directory" if is_directory_host(page_url) else "social_profile"
-                        _apply_found(lead, email, source, confidence, page_url, snippet)
+                        _apply_found(lead, email, source, confidence, page_url, snippet or page_text)
                         if hasattr(session, "remember_result"):
                             session.remember_result(lead, city, state)
                         return lead
+                    if lead.get("email"):
+                        break
+                    found_site = discover_business_website([result], lead)
+                    if not found_site or is_directory_host(found_site) or is_social_or_directory_url(found_site):
+                        continue
+                    host = _host_from_url(found_site)
+                    if not host or host in visited_hosts:
+                        continue
+                    visited_hosts.add(host)
+                    try:
+                        inspected = inspector(found_site) or {}
+                    except Exception:
+                        continue
+                    if not (lead.get("website") or "").strip():
+                        lead["website"] = found_site
+                        lead["website_search_ran"] = True
+                    accepted = _pick(inspected.get("emails") or [], lead, inspected, found_site)
+                    if not accepted:
+                        continue
+                    email, confidence = accepted
+                    found_page = inspected.get("page_url") or found_site
+                    _apply_found(
+                        lead,
+                        email,
+                        classify_email_source(found_page, inspected.get("html") or ""),
+                        confidence,
+                        found_page,
+                        inspected.get("page_text") or "",
+                    )
+                    if hasattr(session, "remember_result"):
+                        session.remember_result(lead, city, state)
+                    return lead
         if hasattr(session, "remember_result"):
             session.remember_result(lead, city, state)
         return lead

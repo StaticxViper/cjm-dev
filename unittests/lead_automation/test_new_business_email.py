@@ -86,6 +86,37 @@ class TestEmailEnrichment(unittest.TestCase):
         self.assertEqual(lead["email_source"], "google_result")
         self.assertTrue(lead["email_source_url"])
 
+    def test_google_result_website_is_opened_for_email(self):
+        session = _FakeSession()
+        session.results = [{
+            "url": "https://smithlandscaping.example/contact",
+            "title": "Smith Landscaping Cinnaminson NJ",
+            "snippet": "Landscaping in Cinnaminson NJ. Call (856) 555-0100.",
+            "emails": [],
+        }]
+        lead = {
+            "business_name": "Smith Landscaping LLC",
+            "city": "Cinnaminson",
+            "state": "NJ",
+            "phone": "(856) 555-0100",
+            "address": "123 Example Rd, Cinnaminson, NJ 08077",
+        }
+
+        def inspect(url):
+            return {
+                "emails": ["hello@smithlandscaping.example"],
+                "page_url": url,
+                "page_text": "Smith Landscaping contact Cinnaminson NJ (856) 555-0100",
+                "html": "<p>Contact Smith Landscaping</p>",
+            }
+
+        enrich_new_business_lead(lead, session=session, inspect_fn=inspect)
+        self.assertEqual(lead["email"], "hello@smithlandscaping.example")
+        self.assertEqual(lead["email_source"], "website_contact")
+        self.assertEqual(lead["email_source_url"], "https://smithlandscaping.example/contact")
+        self.assertEqual(lead["website"], "https://smithlandscaping.example/contact")
+        self.assertEqual(lead["phone_google"], "(856) 555-0100")
+
     def test_guessed_emails_are_not_produced(self):
         session = _FakeSession()
         lead = {
