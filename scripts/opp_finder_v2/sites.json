@@ -21,7 +21,7 @@
       "base_url": "https://remotive.com",
       "mode": "api",
       "access": "guest",
-      "search_url": "https://remotive.com/api/remote-jobs",
+      "search_url": "https://remotive.com/api/remote-jobs?category=software-dev",
       "api": {"method": "GET", "items_path": "jobs"},
       "results": {
         "fields": {
@@ -44,7 +44,7 @@
         "risk": "low",
         "scraping_prohibited": false,
         "attribution_required": true,
-        "notes": "Public API at https://remotive.com/api/remote-jobs. Verified 2026-10-05: jobs[].title, company_name, url, candidate_required_location, job_type, publication_date, salary, description. Docs ask for at most 4 calls a day and block more than 2 a minute; this tool issues one GET per run and filters keywords client-side. Query parameters are not trusted. Link each result back to its Remotive URL. The JSON includes a 0-legal-notice field."
+        "notes": "Public API at https://remotive.com/api/remote-jobs. Checked 2026-10-06 with category=software-dev: 18 jobs, software titles. Docs ask for at most 4 calls a day and block more than 2 a minute; this tool issues one GET per run and still requires a title keyword match. Link each result back to its Remotive URL."
       },
       "notes": "Verified live 2026-10-05. Attribution required."
     },
@@ -116,24 +116,100 @@
       "notes": "Verified live 2026-10-05."
     },
     {
+      "id": "weworkremotely_programming",
+      "name": "We Work Remotely (programming)",
+      "enabled": true,
+      "base_url": "https://weworkremotely.com",
+      "mode": "rss",
+      "access": "guest",
+      "search_url": "https://weworkremotely.com/categories/remote-programming-jobs.rss",
+      "custom": "wwr_title",
+      "results": {
+        "fields": {
+          "title": "title",
+          "url": "link",
+          "posted_date": "pubDate",
+          "location": "region",
+          "employment_type": "type",
+          "snippet": "description",
+          "tags": "category"
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 4, "max_delay_s": 8, "max_requests": 1, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": false,
+        "notes": "Category RSS https://weworkremotely.com/categories/remote-programming-jobs.rss verified 2026-10-06. Same item shape as the all-jobs feed. Title is split by the wwr_title hook. One GET per run."
+      },
+      "notes": "Verified live 2026-10-06. Programming roles only."
+    },
+    {
+      "id": "weworkremotely_devops",
+      "name": "We Work Remotely (DevOps and sysadmin)",
+      "enabled": true,
+      "base_url": "https://weworkremotely.com",
+      "mode": "rss",
+      "access": "guest",
+      "search_url": "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss",
+      "custom": "wwr_title",
+      "results": {
+        "fields": {
+          "title": "title",
+          "url": "link",
+          "posted_date": "pubDate",
+          "location": "region",
+          "employment_type": "type",
+          "snippet": "description",
+          "tags": "category"
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 4, "max_delay_s": 8, "max_requests": 1, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": false,
+        "notes": "Category RSS https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss verified 2026-10-06. Same item shape as the programming feed."
+      },
+      "notes": "Verified live 2026-10-06."
+    },
+    {
       "id": "workingnomads",
       "name": "Working Nomads",
-      "enabled": false,
+      "enabled": true,
       "base_url": "https://www.workingnomads.com",
       "mode": "api",
       "access": "guest",
-      "search_url": "https://www.workingnomads.com/",
+      "search_url": "https://www.workingnomads.com/api/exposed_jobs",
       "api": {"method": "GET", "items_path": ""},
-      "results": {"fields": {"title": "title", "company": "company", "url": "url"}},
-      "pagination": {"type": "none"},
-      "auth": {"type": "none"},
-      "tos": {
-        "risk": "medium",
-        "scraping_prohibited": false,
-        "attribution_required": false,
-        "notes": "TODO: no documented public JSON or RSS endpoint was confirmed on 2026-10-05. An internal search backend is not a guest API and is not called. Leave disabled until a public feed URL and field names are verified."
+      "results": {
+        "fields": {
+          "title": "title",
+          "company": "company_name",
+          "url": "url",
+          "location": "location",
+          "posted_date": "pub_date",
+          "snippet": "description",
+          "tags": "tags"
+        }
       },
-      "notes": "Disabled. Verify a public API or RSS URL before enabling."
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 4, "max_delay_s": 8, "max_requests": 1, "max_results": 50},
+      "auth": {"type": "none"},
+      "listing_defaults": {"remote": true},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public JSON array at https://www.workingnomads.com/api/exposed_jobs verified 2026-10-06. Fields: url, title, description, company_name, category_name, tags, location, pub_date. No API key. One GET per run. Keep the Working Nomads URL on each record."
+      },
+      "notes": "Verified live 2026-10-06. Title keywords still have to match."
     },
     {
       "id": "himalayas",
@@ -232,32 +308,64 @@
       "notes": "Verified live 2026-10-05. Keyword filter is client-side."
     },
     {
-      "id": "greenhouse_boards",
-      "name": "Greenhouse company boards",
-      "enabled": false,
-      "base_url": "https://boards-api.greenhouse.io",
+      "id": "themuse",
+      "name": "The Muse",
+      "enabled": true,
+      "base_url": "https://www.themuse.com",
       "mode": "api",
       "access": "guest",
-      "search_url": "https://boards-api.greenhouse.io/v1/boards/{company}/jobs",
-      "companies": [],
-      "api": {"method": "GET", "items_path": "jobs"},
+      "search_url": "https://www.themuse.com/api/public/jobs?category=Computer%20and%20IT&location=Flexible&page={page}",
+      "api": {"method": "GET", "items_path": "results"},
       "results": {
         "fields": {
-          "title": "title",
-          "url": "absolute_url",
-          "location": "location.name",
-          "posted_date": "updated_at"
+          "title": "name",
+          "company": "company.name",
+          "url": "refs.landing_page",
+          "location": "locations",
+          "posted_date": "publication_date",
+          "snippet": "contents"
         }
       },
-      "pagination": {"type": "none"},
+      "pagination": {"type": "page_param", "start": 1, "step": 1, "max_pages": 2},
+      "rate_limit": {"min_delay_s": 3, "max_delay_s": 6, "max_requests": 2, "max_results": 40},
       "auth": {"type": "none"},
       "tos": {
         "risk": "low",
         "scraping_prohibited": false,
         "attribution_required": true,
-        "notes": "Public Greenhouse board JSON, one request per company token in companies. No companies are configured, so the site fetches nothing. Add board tokens only for employers you intend to read. Verify each board's terms. Field paths are the documented Greenhouse jobs payload; confirm when a token is added."
+        "notes": "Public jobs API https://www.themuse.com/api/public/jobs verified 2026-10-06. category=Computer and IT and location=Flexible returned 83 remote listings (20 per page). Fields: name, company.name, refs.landing_page, locations[].name, publication_date, contents. Two pages per run. Keep the Muse landing page URL."
       },
-      "notes": "Off until companies is a non-empty list of board tokens."
+      "notes": "Verified live 2026-10-06. Remote Computer and IT listings only."
+    },
+    {
+      "id": "greenhouse_boards",
+      "name": "Greenhouse company boards",
+      "enabled": true,
+      "base_url": "https://boards-api.greenhouse.io",
+      "mode": "api",
+      "access": "guest",
+      "search_url": "https://boards-api.greenhouse.io/v1/boards/{company}/jobs",
+      "companies": ["gitlab", "cloudflare", "elastic", "datadog"],
+      "api": {"method": "GET", "items_path": "jobs"},
+      "results": {
+        "fields": {
+          "title": "title",
+          "company": "company_name",
+          "url": "absolute_url",
+          "location": "location.name",
+          "posted_date": "first_published"
+        }
+      },
+      "pagination": {"type": "none", "max_pages": 1},
+      "rate_limit": {"min_delay_s": 3, "max_delay_s": 6, "max_requests": 4, "max_results": 2000},
+      "auth": {"type": "none"},
+      "tos": {
+        "risk": "low",
+        "scraping_prohibited": false,
+        "attribution_required": true,
+        "notes": "Public Greenhouse board JSON verified 2026-10-06 for gitlab, cloudflare, elastic, and datadog. Each job has title, company_name, absolute_url, location.name, and first_published. One GET per board, without the content flag, so descriptions are not downloaded. Office locations that do not say remote are treated as on-site. Keep the Greenhouse URL."
+      },
+      "notes": "Verified live 2026-10-06. Four engineering boards. Title keywords still have to match."
     },
     {
       "id": "lever_boards",

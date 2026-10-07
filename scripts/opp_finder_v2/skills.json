@@ -1,0 +1,53 @@
+{
+  "profile": {
+    "name": "Chris Moulton",
+    "headline": "M.S. Computer Science, System Software Test Engineer at ASRC Federal",
+    "location": "Clementon, New Jersey",
+    "url": "https://www.linkedin.com/in/moultonc",
+    "notes": "Built from the public LinkedIn profile on 2026-10-06. Certifications include ISTQB CTFL, SQL, JavaScript, HTML, CSS, Bash, Certified Scrum Master, and Certified Scrum Product Owner. Side projects include Python automation, a Unity/C# game, and SQL game data."
+  },
+  "groups": [
+    {
+      "id": "testing",
+      "name": "Software testing",
+      "enabled": true,
+      "keywords": ["QA", "SDET", "tester", "test engineer", "software testing", "quality assurance", "quality engineer"]
+    },
+    {
+      "id": "automation",
+      "name": "Python automation",
+      "enabled": true,
+      "keywords": ["python", "automation", "playwright"]
+    },
+    {
+      "id": "web",
+      "name": "Web",
+      "enabled": true,
+      "keywords": ["javascript", "html", "css"]
+    },
+    {
+      "id": "sql",
+      "name": "SQL",
+      "enabled": true,
+      "keywords": ["sql"]
+    },
+    {
+      "id": "it",
+      "name": "IT and systems",
+      "enabled": true,
+      "keywords": ["IT support", "help desk", "linux", "bash"]
+    },
+    {
+      "id": "scrum",
+      "name": "Scrum",
+      "enabled": false,
+      "keywords": ["scrum", "agile"]
+    },
+    {
+      "id": "data_entry",
+      "name": "Data entry",
+      "enabled": false,
+      "keywords": ["data entry"]
+    }
+  ]
+}

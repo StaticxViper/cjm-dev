@@ -221,9 +221,10 @@ def infer_remote(location: str | None, tags: list[str] | None, snippet: str | No
         part for part in [location or "", " ".join(tags or []), snippet or ""] if part
     )
     low = blob.lower()
-    if re.search(r"\b(remote|anywhere|worldwide|work from home|wfh)\b", low):
+    has_remote = re.search(r"\b(remote|anywhere|worldwide|work from home|wfh)\b", low)
+    if has_remote:
         return True
-    if re.search(r"\b(on-?site|in[- ]office|in person)\b", low):
+    if re.search(r"\b(hybrid|on-?site|in[- ]office|in person)\b", low):
         return False
     return None
 
@@ -310,7 +311,15 @@ def join_location(value: object) -> str | None:
     if value is None:
         return None
     if isinstance(value, list):
-        parts = [collapse_ws(str(item)) for item in value if collapse_ws(str(item))]
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, dict):
+                text = item.get("name") or item.get("display_name") or ""
+            else:
+                text = str(item)
+            cleaned = collapse_ws(text)
+            if cleaned:
+                parts.append(cleaned)
         return ", ".join(parts) or None
     text = collapse_ws(str(value))
     return text or None

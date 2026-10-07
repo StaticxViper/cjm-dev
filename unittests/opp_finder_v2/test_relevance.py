@@ -187,6 +187,19 @@ class TestRelevance(unittest.TestCase):
         reason = apply_relevance(opp, criteria(keywords_any=["python"], title_boost=[], min_relevance=0), SCRAPED)
         self.assertEqual(reason, "no_keyword")
 
+    def test_title_match_required_drops_body_only(self):
+        opp = opportunity(title="Marketing manager", snippet="We use python and automation.")
+        reason = apply_relevance(opp, criteria(require_title_match=True, min_relevance=0), SCRAPED)
+        self.assertEqual(reason, "no_keyword")
+        kept = opportunity(title="Python QA engineer", snippet="manual testing")
+        self.assertIsNone(apply_relevance(kept, criteria(require_title_match=True, min_relevance=0), SCRAPED))
+
+    def test_hybrid_is_not_remote(self):
+        from opp_finder_v2.parsing import infer_remote
+
+        self.assertFalse(infer_remote("Hybrid - Austin, TX", [], None))
+        self.assertTrue(infer_remote("Remote or hybrid, United States", [], None))
+
 
 if __name__ == "__main__":
     unittest.main()

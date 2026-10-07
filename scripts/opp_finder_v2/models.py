@@ -88,7 +88,8 @@ class Criteria:
     min_rate_annual: float | None
     min_rate_unknown: str
     min_relevance: int
-    raw: dict[str, Any]
+    require_title_match: bool = False
+    raw: dict[str, Any] = field(default_factory=dict)
 
     def resolved_dict(self) -> dict[str, Any]:
         """Criteria actually used for this run, suitable for the output file."""
@@ -113,6 +114,7 @@ class Criteria:
                 "unknown": self.min_rate_unknown,
             },
             "min_relevance": self.min_relevance,
+            "require_title_match": self.require_title_match,
         }
         return payload
 
@@ -255,3 +257,9 @@ class RunOptions:
     validate_only: bool = False
     run_id: str = ""
     artifacts_root: Path | None = None
+    upload_crm: bool = False
+    crm_venture: str = "Side Job Leads"
+    batch_label: str = ""
+    employment_types: list[str] | None = None
+    remote_only: bool | None = None
+    min_relevance: int | None = None

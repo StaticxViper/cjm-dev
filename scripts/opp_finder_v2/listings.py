@@ -114,8 +114,11 @@ def build_opportunity(
         remote = raw.remote
     else:
         remote = infer_remote(raw.location, raw.tags, snippet)
-        if remote is None and "remote" in (site.listing_defaults or {}):
-            remote = bool(site.listing_defaults["remote"])
+        defaults = site.listing_defaults or {}
+        if remote is None and "remote" in defaults:
+            remote = bool(defaults["remote"])
+        elif remote is None and raw.location and "remote" not in defaults:
+            remote = False
 
     employment = normalize_employment(raw.employment_type)
     if employment is None:

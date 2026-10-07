@@ -42,8 +42,15 @@ def gate_status(site: SiteConfig, options: RunOptions) -> str | None:
 def _apply_overrides(criteria: Criteria, options: RunOptions) -> None:
     if options.keywords is not None:
         criteria.keywords_any = list(options.keywords)
+        criteria.title_boost = list(options.keywords)
     if options.since_days is not None:
         criteria.posted_within_days = options.since_days
+    if options.employment_types is not None:
+        criteria.employment_types = list(options.employment_types)
+    if options.remote_only is not None:
+        criteria.remote_only = options.remote_only
+    if options.min_relevance is not None:
+        criteria.min_relevance = options.min_relevance
 
 
 def _assign_kept(results: list[SiteResult], opportunities: list[Opportunity]) -> None:
@@ -88,9 +95,12 @@ def run(options: RunOptions, catalog: SiteCatalog | None = None, criteria: Crite
     site_results: list[SiteResult] = []
     dropped: Counter[str] = Counter()
     browser: BrowserSession | None = None
+    last_deduped: list[Opportunity] = []
 
     def persist() -> dict:
+        nonlocal last_deduped
         deduped, merges = dedupe_opportunities(collected, criteria, started)
+        last_deduped = deduped
         _assign_kept(site_results, deduped)
         document = build_document(
             run_id=options.run_id,
@@ -167,6 +177,22 @@ def run(options: RunOptions, catalog: SiteCatalog | None = None, criteria: Crite
 
     document = persist()
     _print_summary(document)
+    if options.upload_crm and not options.dry_run:
+        from opp_finder_v2.crm_mcp import CrmError, upload_opportunities
+
+        label = options.batch_label or f"Opp finder {options.run_id}"
+        try:
+            uploaded = upload_opportunities(
+                last_deduped,
+                venture=options.crm_venture,
+                batch_label=label,
+            )
+            print(
+                f"crm venture={options.crm_venture} batch={uploaded.batch or '(none)'} "
+                f"created={uploaded.created} skipped={uploaded.skipped} failed={uploaded.failed}"
+            )
+        except CrmError as exc:
+            print(f"crm upload failed: {exc}")
     if not site_results:
         return 3
     if all(item.status != "ok" for item in site_results):

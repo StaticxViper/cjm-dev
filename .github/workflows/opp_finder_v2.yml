@@ -15,7 +15,7 @@ on:
         description: Site ids. Login adapters are never started (no --allow-login).
         required: false
         type: string
-        default: "remotive,remoteok,weworkremotely,hn_hiring,himalayas,jobicy"
+        default: "remotive,remoteok,weworkremotely,weworkremotely_programming,weworkremotely_devops,hn_hiring,himalayas,jobicy,themuse,workingnomads,greenhouse_boards"
       max_per_site:
         description: Cap results per site
         required: false
@@ -97,6 +97,7 @@ jobs:
             --sites "$SITES"
             --max-per-site "$MAX_PER_SITE"
             --format both
+            --no-crm
             --out opp_finder_v2/output/out.json
           )
           if [ -n "${KEYWORDS}" ]; then

@@ -1,23 +1,22 @@
 # Opp finder v2
 
-Config-driven finder for remote and contract roles. It reads public JSON and RSS first, and uses Playwright only for boards that have no such feed. Output is a JSON file (and optional CSV) for a later CRM ingest. This run does not call a CRM, apply, or message anyone.
+Config-driven finder for remote and contract roles. It reads public JSON and RSS first, and uses Playwright only for boards that have no such feed. A live run writes JSON (and optional CSV) and uploads kept listings to the CRM MCP server. It does not apply to jobs or message anyone.
 
 `scripts/opp_finder` (automation-opportunity scoring, contact enrichment, Google discovery) and `scripts/lead_automation` (local-business lead gen) are separate tools. V2 does not import them.
 
 ## Run it
 
-From the repo root, with the project virtualenv active. Install dependencies first if Python reports `No module named 'jsonschema'`:
+From the repo root, with the project virtualenv active:
 
 ```bash
 source .venv/Scripts/activate
-pip install -r requirements/requirements.txt
 cd scripts
 python -m opp_finder_v2
 ```
 
-That searches the enabled boards and writes `scripts/opp_finder_v2/output/opps_<timestamp>.json`. The `cd scripts` is required. From the repo root, `python -m opp_finder_v2` cannot find the package.
+No flags opens the menu: employment type, remote or on-site, keywords, skill toggles, and saved presets. `--run` skips the menu and searches with `criteria.json`. `--preset "Part-time IT"` runs that saved search. Matches upload to the CRM MCP server (`https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1/mcp-crm`, bearer token `CRM_MCP_MV_LLC`) in the Side Job Leads venture. `--no-crm` and `--dry-run` do not upload. The tool does not use `APIManager`.
 
-`--dry-run` uses fixtures and does not use the network. `--format both` also writes a CSV beside the JSON. The rest of the flags are in [scripts/opp_finder_v2/README.md](../../scripts/opp_finder_v2/README.md).
+The `cd scripts` is required. From the repo root, `python -m opp_finder_v2` cannot find the package.
 
 ## What a run does
 
@@ -55,16 +54,19 @@ Both should pass. They do not use the network. The Playwright test loads `fixtur
 
 ## Enabled boards
 
-Verified against the live feeds on 2026-10-05 and enabled:
+Verified against the live feeds on 2026-10-06 and enabled:
 
-- Remotive `GET https://remotive.com/api/remote-jobs` (one request per run; keywords filtered locally; attribute Remotive)
+- Remotive `GET https://remotive.com/api/remote-jobs?category=software-dev` (one request per run; a keyword has to appear in the title)
 - Remote OK `GET https://remoteok.com/api` (first element is the legal notice and is skipped; attribute Remote OK)
-- We Work Remotely `https://weworkremotely.com/remote-jobs.rss` (title `Company: Role` is split in `adapters/custom/wwr_title.py`)
+- We Work Remotely combined feed plus the programming and DevOps/sysadmin category RSS feeds (title `Company: Role` is split in `adapters/custom/wwr_title.py`)
 - Himalayas `https://himalayas.app/jobs/api/search`
 - Jobicy `https://jobicy.com/api/v2/remote-jobs` (no API key; `url` stays the Jobicy listing)
-- HN "Who is hiring?" via `hn.algolia.com/api/v1` (`adapters/custom/hn_hiring.py` reads the monthly thread's comments)
+- HN "Who is hiring?" via `hn.algolia.com/api/v1`
+- The Muse public API, Computer and IT, Flexible/Remote (`https://www.themuse.com/api/public/jobs`)
+- Working Nomads `https://www.workingnomads.com/api/exposed_jobs`
+- Greenhouse public boards for GitLab, Cloudflare, Elastic, and Datadog (`boards-api.greenhouse.io`)
 
-Working Nomads is present and disabled: no documented public JSON or RSS endpoint was confirmed. Greenhouse and Lever board JSON is wired but disabled until `companies` lists board tokens. Dice, Remote.co, Built In, Indeed, LinkedIn (guest and logged-in), Wellfound, Upwork, FlexJobs, and Contra are disabled placeholder entries. Toptal and SuperCruiter use `mode: none`.
+Lever board JSON is wired but disabled until `companies` lists board tokens. Dice, Remote.co, Built In, Indeed, LinkedIn (guest and logged-in), Wellfound, Upwork, FlexJobs, and Contra are disabled placeholder entries. Toptal and SuperCruiter use `mode: none`. A kept job has to carry a keyword in the title (`require_title_match`). Hybrid and office locations are not treated as remote.
 
 ## Politeness and blocks
 

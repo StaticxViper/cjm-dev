@@ -58,6 +58,7 @@
         "unknown": {"type": "string", "enum": ["keep", "drop"]}
       }
     },
-    "min_relevance": {"type": "integer", "minimum": 0, "maximum": 100}
+    "min_relevance": {"type": "integer", "minimum": 0, "maximum": 100},
+    "require_title_match": {"type": "boolean"}
   }
 }

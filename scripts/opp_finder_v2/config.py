@@ -171,6 +171,7 @@ def load_criteria(path: Path | None = None) -> Criteria:
         min_rate_annual=min_rate["annual_usd"],
         min_rate_unknown=min_rate["unknown"],
         min_relevance=int(document["min_relevance"]),
+        require_title_match=bool(document.get("require_title_match", False)),
         raw=document,
     )
 

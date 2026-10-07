@@ -187,7 +187,12 @@ def hard_filter_reason(
         if not all(contains_keyword(combined, keyword) for keyword in criteria.keywords_all):
             return "missing_all"
     if criteria.keywords_any:
-        if not any(contains_keyword(combined, keyword) for keyword in criteria.keywords_any):
+        in_title = any(contains_keyword(title, keyword) for keyword in criteria.keywords_any)
+        in_text = any(contains_keyword(combined, keyword) for keyword in criteria.keywords_any)
+        if criteria.require_title_match:
+            if not in_title:
+                return "no_keyword"
+        elif not in_text:
             return "no_keyword"
     if criteria.remote_only and opp.remote is False:
         return "not_remote"

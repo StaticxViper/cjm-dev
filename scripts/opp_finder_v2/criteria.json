@@ -1,15 +1,31 @@
 {
   "keywords": {
-    "any": ["python", "automation", "playwright", "web scraping", "data engineer", "backend"],
+    "any": [
+      "QA",
+      "SDET",
+      "tester",
+      "test engineer",
+      "software test",
+      "quality assurance",
+      "quality engineer",
+      "automation engineer",
+      "python",
+      "playwright",
+      "javascript",
+      "sql",
+      "IT support",
+      "help desk",
+      "systems administrator"
+    ],
     "all": [],
-    "title_boost": ["python", "automation"]
+    "title_boost": ["QA", "SDET", "test engineer", "python", "automation"]
   },
-  "exclude_keywords": ["senior staff", "clearance required", "onsite only", "commission only", "unpaid"],
+  "exclude_keywords": ["senior staff", "onsite only", "commission only", "unpaid", "no experience", "rater"],
   "remote_only": true,
   "employment_types": ["contract", "freelance", "part_time", "full_time"],
   "location": {
-    "allow": ["us", "usa", "united states", "north america", "americas", "anywhere", "worldwide"],
-    "deny": ["europe only", "emea only", "uk only", "apac only"],
+    "allow": ["us", "usa", "united states", "north america", "americas", "anywhere", "worldwide", "new jersey", "nj", "remote"],
+    "deny": ["europe only", "emea only", "uk only", "apac only", "india only", "remote, france", "remote, germany", "remote, india", "remote, poland", "remote, brazil", "remote, philippines"],
     "unknown": "keep"
   },
   "posted_within_days": 14,
@@ -18,5 +34,6 @@
     "annual_usd": 85000,
     "unknown": "keep"
   },
-  "min_relevance": 40
+  "min_relevance": 25,
+  "require_title_match": true
 }
