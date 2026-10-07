@@ -1,0 +1,15 @@
+[
+  {
+    "entityid": "20260000001",
+    "entityname": "Example Services LLC",
+    "principaladdress1": "100 Example St",
+    "principalcity": "Denver",
+    "principalstate": "CO",
+    "principalzipcode": "80202",
+    "entitystatus": "Good Standing",
+    "entitytype": "DLLC",
+    "agentfirstname": "Ada",
+    "agentlastname": "Example",
+    "entityformdate": "{{days_ago:20}}"
+  }
+]

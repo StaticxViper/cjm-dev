@@ -1,0 +1,24 @@
+{
+  "very_new_days": 90,
+  "max_age_days": 365,
+  "min_new_business_score": 50,
+  "established_after_days": 1095,
+  "established_review_count": 50,
+  "poor_website_min_quality_score": 41,
+  "require_contact": true,
+  "points": {
+    "new_business_registered_90d": 35,
+    "new_business_registered": 25,
+    "recently_opened_signal": 15,
+    "no_website": 30,
+    "broken_website": 25,
+    "poor_website": 15,
+    "business_email_found": 15,
+    "public_phone_found": 5,
+    "local_service_category": 10,
+    "established_business": -25,
+    "good_website": -15,
+    "no_contact_info": -20
+  },
+  "local_categories": []
+}

@@ -413,7 +413,7 @@ class TestRunEnrichment(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = self._write_leads(tmp, leads)
             with patch.object(LEADENRICH, "APIFY_API_KEY", "fake-key"), \
-                    patch.dict(os.environ, {"LEAD_INGEST_KEY": "fake-key"}), \
+                    patch.dict(os.environ, {"CRM_MCP_MV_LLC": "fake-key"}), \
                     patch.object(LEADENRICH, "scrape_facebook_pages", return_value=pages), \
                     patch("leadgen.send_to_dashboard") as mock_dashboard:
                 LEADENRICH.run_enrichment(

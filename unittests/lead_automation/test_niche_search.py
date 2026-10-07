@@ -499,14 +499,15 @@ class TestFiltersExportAndIngest(unittest.TestCase):
                 MODULES["niche_config"].get_niche("specialty_dog_trainers"),
             ),
         }]
-        with patch("helper_scripts.api_manager.APIManager") as mock_api_cls:
-            mock_api = MagicMock()
-            mock_api_cls.return_value = mock_api
+        with patch("crm_mcp.CrmMcpClient") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.api_key = "test-key"
+            mock_client_cls.return_value = mock_client
             leadgen.send_to_dashboard(rows)
-        payload = mock_api.build_request.call_args.kwargs["json_body"]
-        self.assertIn("high-pri-lead", payload[0]["tags"])
-        self.assertIn("lead_automation", payload[0]["tags"])
-        self.assertEqual(payload[0]["category"], "dog-training-leads")
+        payload = mock_client.create_lead.call_args.args[0]
+        self.assertIn("high-pri-lead", payload["tags"])
+        self.assertIn("lead_automation", payload["tags"])
+        self.assertEqual(payload["category"], "dog-training-leads")
 
     def test_keyword_search_payload_omits_high_pri_without_row_tags(self):
         leadgen = MODULES["leadgen"]
@@ -518,13 +519,14 @@ class TestFiltersExportAndIngest(unittest.TestCase):
             "niche_key": "landscaping",
             "lead_score": 85,
         }]
-        with patch("helper_scripts.api_manager.APIManager") as mock_api_cls:
-            mock_api = MagicMock()
-            mock_api_cls.return_value = mock_api
+        with patch("crm_mcp.CrmMcpClient") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.api_key = "test-key"
+            mock_client_cls.return_value = mock_client
             leadgen.send_to_dashboard(rows)
-        payload = mock_api.build_request.call_args.kwargs["json_body"]
+        payload = mock_client.create_lead.call_args.args[0]
         self.assertEqual(
-            payload[0]["tags"],
+            payload["tags"],
             ["lead_automation", "google-places-api"],
         )
 

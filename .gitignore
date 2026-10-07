@@ -22,3 +22,11 @@ __pycache__/
 *.log
 *leads_output*
 *property_urls.json
+
+# New-business discovery runtime output
+new_business_artifacts/
+new_business_seen.json
+new_business_enrichment_cache.json
+new_business_leads.json
+new_business_leads.csv
+new_business_run_*.json

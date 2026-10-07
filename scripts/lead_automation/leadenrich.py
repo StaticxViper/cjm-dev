@@ -563,8 +563,8 @@ def run_enrichment(config):
     if _apify_key_missing():
         return
 
-    if config.dashboard and not os.getenv("LEAD_INGEST_KEY"):
-        logger.error("LEAD_INGEST_KEY is required for dashboard ingest.")
+    if config.dashboard and not os.getenv("CRM_MCP_MV_LLC"):
+        logger.error("CRM_MCP_MV_LLC is required for dashboard ingest.")
         return
 
     leads = load_leads(config.json_path)

@@ -546,7 +546,7 @@ class TestRunEnrichment(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = self._write_leads(tmp, leads)
             session = FakeSession(results=[])
-            with patch.dict(os.environ, {"LEAD_INGEST_KEY": "fake-key"}), \
+            with patch.dict(os.environ, {"CRM_MCP_MV_LLC": "fake-key"}), \
                     patch.object(MOD, "EmailDiscoverySession", return_value=session), \
                     patch.object(MOD, "visit_website", return_value=visit), \
                     patch("leadgen.send_to_dashboard") as mock_dashboard:
