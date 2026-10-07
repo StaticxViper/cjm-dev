@@ -59,6 +59,7 @@
       }
     },
     "min_relevance": {"type": "integer", "minimum": 0, "maximum": 100},
-    "require_title_match": {"type": "boolean"}
+    "require_title_match": {"type": "boolean"},
+    "us_only": {"type": "boolean"}
   }
 }

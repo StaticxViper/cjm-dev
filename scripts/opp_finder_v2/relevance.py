@@ -57,6 +57,57 @@ def location_matches(location: str | None, phrases: list[str]) -> bool:
     return any(contains_keyword(text, phrase) for phrase in phrases if phrase.strip())
 
 
+_NON_US = (
+    "united kingdom", "uk", "england", "scotland", "wales", "ireland", "france", "germany",
+    "deutschland", "india", "poland", "brazil", "philippines", "canada", "mexico", "australia",
+    "spain", "netherlands", "portugal", "italy", "sweden", "norway", "denmark", "finland",
+    "belgium", "switzerland", "austria", "romania", "nigeria", "singapore", "japan", "china",
+    "europe", "emea", "apac", "latam", "latin america", "africa", "asia", "new zealand",
+    "south africa", "israel", "dubai", "korea", "taiwan", "hong kong", "vietnam", "indonesia",
+    "thailand", "argentina", "colombia", "chile", "ukraine", "pakistan", "bangladesh",
+    "london", "berlin", "paris", "toronto", "dublin", "amsterdam", "bangalore", "bengaluru",
+    "mumbai", "hyderabad", "tbilisi", "johannesburg", "tokyo",
+)
+
+_US_STATES = (
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut",
+    "delaware", "florida", "georgia", "hawaii", "idaho", "illinois", "indiana", "iowa",
+    "kansas", "kentucky", "louisiana", "maine", "maryland", "massachusetts", "michigan",
+    "minnesota", "mississippi", "missouri", "montana", "nebraska", "nevada",
+    "new hampshire", "new jersey", "new mexico", "new york", "north carolina",
+    "north dakota", "ohio", "oklahoma", "oregon", "pennsylvania", "rhode island",
+    "south carolina", "south dakota", "tennessee", "texas", "utah", "vermont",
+    "virginia", "washington", "west virginia", "wisconsin", "wyoming",
+    "district of columbia",
+)
+
+# Postal abbreviations. IN and DE are left out: job boards use those for India and Germany.
+_STATE_ABBREV_RE = re.compile(
+    r"(?:^|,\s*)("
+    r"al|ak|az|ar|ca|co|ct|dc|fl|ga|hi|ia|id|il|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|"
+    r"nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|va|vt|wa|wi|wv|wy"
+    r")\b"
+)
+
+
+def classify_location(location: str | None) -> str:
+    """Return 'us', 'non_us', or 'unknown'."""
+    text = normalize_match_text(location)
+    if not text:
+        return "unknown"
+    if any(contains_keyword(text, phrase) for phrase in _NON_US):
+        return "non_us"
+    if re.search(r"\b(united states|usa|u\.s\.a\.?)\b", text) or re.search(r"\bus\b", text):
+        return "us"
+    if re.search(r"u\.s\.a?\.?", text):
+        return "us"
+    if any(contains_keyword(text, name) for name in _US_STATES):
+        return "us"
+    if _STATE_ABBREV_RE.search(text):
+        return "us"
+    return "unknown"
+
+
 def _hourly_and_annual(opp: Opportunity) -> tuple[float | None, float | None]:
     if opp.currency and opp.currency.upper() not in {"USD", "$", "US$"}:
         return None, None
@@ -136,7 +187,8 @@ def score_opportunity(
     boost = min(boost, TITLE_BOOST_CAP)
 
     remote_points = 0
-    if opp.remote is True and location_matches(opp.location, criteria.location_allow):
+    us_based = criteria.us_only and classify_location(opp.location) == "us"
+    if opp.remote is True and (us_based or location_matches(opp.location, criteria.location_allow)):
         remote_points = REMOTE_ALLOW_POINTS
 
     employment_points = 0
@@ -196,7 +248,13 @@ def hard_filter_reason(
             return "no_keyword"
     if criteria.remote_only and opp.remote is False:
         return "not_remote"
-    if opp.location:
+    if criteria.us_only:
+        kind = classify_location(opp.location)
+        if kind == "non_us":
+            return "location_deny"
+        if kind != "us":
+            return "unknown_location"
+    elif opp.location:
         if location_matches(opp.location, criteria.location_deny):
             return "location_deny"
     elif criteria.location_unknown == "drop":

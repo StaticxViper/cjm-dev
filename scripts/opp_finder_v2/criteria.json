@@ -24,9 +24,9 @@
   "remote_only": true,
   "employment_types": ["contract", "freelance", "part_time", "full_time"],
   "location": {
-    "allow": ["us", "usa", "united states", "north america", "americas", "anywhere", "worldwide", "new jersey", "nj", "remote"],
-    "deny": ["europe only", "emea only", "uk only", "apac only", "india only", "remote, france", "remote, germany", "remote, india", "remote, poland", "remote, brazil", "remote, philippines"],
-    "unknown": "keep"
+    "allow": ["united states", "usa", "us", "u.s.", "u.s.a."],
+    "deny": ["europe only", "emea only", "uk only", "apac only", "india only"],
+    "unknown": "drop"
   },
   "posted_within_days": 14,
   "min_rate": {
@@ -35,5 +35,6 @@
     "unknown": "keep"
   },
   "min_relevance": 25,
-  "require_title_match": true
+  "require_title_match": true,
+  "us_only": true
 }

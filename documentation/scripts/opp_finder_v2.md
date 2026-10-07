@@ -27,7 +27,7 @@ The `cd scripts` is required. From the repo root, `python -m opp_finder_v2` cann
 5. Dedupe across sites on canonical URL, then on `sha256(title|company)` when the company name is present.
 6. Rewrite the output file after every site so a crash keeps earlier results.
 
-Hard filters drop a record for an exclude keyword, a failed `keywords.all` list, no `keywords.any` match, `remote: false` when `remote_only` is set, a location deny phrase, a known post date older than `posted_within_days`, a known USD rate under `min_rate`, or an employment type outside the allowed list. Missing date, rate, location, or type does not drop the record and does not add points, unless that field's `unknown` value is `drop`.
+Hard filters drop a record for an exclude keyword, a failed `keywords.all` list, no `keywords.any` match, `remote: false` when `remote_only` is set, a location outside the United States when `us_only` is true (including a blank location, "Worldwide", or "Remote" with no country), a location deny phrase, a known post date older than `posted_within_days`, a known USD rate under `min_rate`, or an employment type outside the allowed list. Missing date, rate, or type does not drop the record and does not add points, unless that field's `unknown` value is `drop`.
 
 Score weights live in `scripts/opp_finder_v2/relevance.py`. `relevance_score` is the sum of `score_breakdown`, clamped to 100. Records under `min_relevance` are dropped and counted.
 

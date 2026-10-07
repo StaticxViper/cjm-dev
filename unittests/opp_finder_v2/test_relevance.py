@@ -200,6 +200,18 @@ class TestRelevance(unittest.TestCase):
         self.assertFalse(infer_remote("Hybrid - Austin, TX", [], None))
         self.assertTrue(infer_remote("Remote or hybrid, United States", [], None))
 
+    def test_us_only_keeps_us_locations(self):
+        us_criteria = criteria(us_only=True, min_relevance=0)
+        for place in ("Remote (US)", "Austin, TX", "New York, NY", "San Francisco, CA", "United States"):
+            kept = opportunity(location=place)
+            self.assertIsNone(apply_relevance(kept, us_criteria, SCRAPED), place)
+        for place in ("Remote, France", "Berlin, Germany", "London, UK", "Tokyo, Japan", "Toronto, Canada", ""):
+            dropped = opportunity(location=place or None)
+            reason = apply_relevance(dropped, us_criteria, SCRAPED)
+            self.assertIn(reason, {"location_deny", "unknown_location"}, place)
+        worldwide = opportunity(location="Worldwide")
+        self.assertEqual(apply_relevance(worldwide, us_criteria, SCRAPED), "unknown_location")
+
 
 if __name__ == "__main__":
     unittest.main()

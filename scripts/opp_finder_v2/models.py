@@ -89,6 +89,7 @@ class Criteria:
     min_rate_unknown: str
     min_relevance: int
     require_title_match: bool = False
+    us_only: bool = False
     raw: dict[str, Any] = field(default_factory=dict)
 
     def resolved_dict(self) -> dict[str, Any]:
@@ -115,6 +116,7 @@ class Criteria:
             },
             "min_relevance": self.min_relevance,
             "require_title_match": self.require_title_match,
+            "us_only": self.us_only,
         }
         return payload
 

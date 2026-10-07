@@ -137,7 +137,7 @@ Point an env var at that file (for example `LINKEDIN_STORAGE_STATE`) and set `au
 
 ## Terms
 
-Prefer the public APIs and RSS feeds that ship enabled (Remotive, Remote OK, We Work Remotely and its programming and DevOps feeds, Himalayas, Jobicy, HN, The Muse, Working Nomads, and the GitLab, Cloudflare, Elastic, and Datadog Greenhouse boards). Keep each record's source URL. Remotive, Remote OK, The Muse, and Working Nomads require attribution if you display results. A keyword has to appear in the job title.
+Prefer the public APIs and RSS feeds that ship enabled (Remotive, Remote OK, We Work Remotely and its programming and DevOps feeds, Himalayas, Jobicy, HN, The Muse, Working Nomads, and the GitLab, Cloudflare, Elastic, and Datadog Greenhouse boards). Keep each record's source URL. Remotive, Remote OK, The Muse, and Working Nomads require attribution if you display results. A keyword has to appear in the job title, and the location has to be in the United States. Worldwide, Europe, and a bare "Remote" with no country are dropped.
 
 LinkedIn and Indeed prohibit automated scraping and ship `enabled: false` with `tos.risk: high`. Logged-in LinkedIn scraping can cost you the account. Dice, Upwork, Wellfound, FlexJobs, and Built In also ship disabled. Working Nomads stays disabled until a documented public feed exists. Toptal is a talent network, not a board (`mode: none`). SuperCruiter is a stub until the real URL is confirmed.
 
