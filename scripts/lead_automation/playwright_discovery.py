@@ -284,9 +284,13 @@ def business_dedupe_key(entry):
 class BusinessDiscoverySession:
     """One Playwright browser for multi-page Maps discovery."""
 
-    def __init__(self, delay=None, detail_delay=None, headless=True):
+    def __init__(self, delay=None, detail_delay=None, headless=True, launch_args=None):
         self.google_blocked = False
         self._headless = bool(headless)
+        # None keeps the historical Chromium flag. Pass [] to launch with no extra args.
+        if launch_args is None:
+            launch_args = ["--disable-blink-features=AutomationControlled"]
+        self._launch_args = list(launch_args)
         self._playwright = None
         self._browser = None
         self._page = None
@@ -342,7 +346,7 @@ class BusinessDiscoverySession:
             self._playwright = sync_playwright().start()
             self._browser = self._playwright.chromium.launch(
                 headless=self._headless,
-                args=["--disable-blink-features=AutomationControlled"],
+                args=self._launch_args,
             )
             self._page = self._browser.new_page(
                 user_agent=FETCH_HEADERS["User-Agent"],

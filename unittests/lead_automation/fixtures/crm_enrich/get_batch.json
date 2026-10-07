@@ -1,0 +1,21 @@
+{
+  "batch": {
+    "batch_id": "35404690-180f-42af-b034-dcf567a1628f",
+    "name": "New Businesses, Pulled Oct 6, 2026",
+    "venture_id": "7370dd04-0865-42a3-966e-09f70a5e8d5a",
+    "total": 789,
+    "with_email": 0,
+    "with_phone": 2,
+    "with_website": 2,
+    "needs_review": 0,
+    "avg_score": 0,
+    "statuses": [
+      {"id": "status-new", "name": "New Lead", "count": 789, "is_default": true, "position": 0}
+    ],
+    "rates": {
+      "phone_coverage_pct": 0.3,
+      "email_coverage_pct": 0
+    }
+  },
+  "time_in_status": []
+}

@@ -14,6 +14,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 | Niche lead search | [scripts/niche_search.md](scripts/niche_search.md) |
 | Lead enrichment (Facebook) | [scripts/leadenrich.md](scripts/leadenrich.md) |
 | Lead enrichment (Playwright / Google) | [scripts/leadenrich_playwright.md](scripts/leadenrich_playwright.md) |
+| CRM batch enrichment (MCP) | [scripts/crm_enrich.md](scripts/crm_enrich.md) |
 | Lead ingest | [scripts/lead_automation.md](scripts/lead_automation.md) |
 | Lead filter (library) | [scripts/leadfilter.md](scripts/leadfilter.md) |
 | Stock analyzer | [scripts/stock_analyzer.md](scripts/stock_analyzer.md) |
@@ -63,7 +64,9 @@ flowchart LR
 | `CHIKARA_REALMS_SECRET` | `blog_automation`, `api_manager` |
 | `GOOGLE_API_KEY` | `leadgen`, `api_manager` |
 | `LEAD_INGEST_KEY` | `leadenrich_playwright` (`--from-crm` export), `api_manager` |
-| `CRM_MCP_MV_LLC` | `leadgen`, `lead_automation`, `leadenrich`, `leadenrich_playwright` (CRM upload) |
+| `CRM_MCP_URL` | `crm_enrich` (required; no default URL) |
+| `CRM_MCP_TOKEN` | `crm_enrich` (optional; falls back to `CRM_MCP_MV_LLC`) |
+| `CRM_MCP_MV_LLC` | `leadgen`, `lead_automation`, `leadenrich`, `leadenrich_playwright` (CRM upload); `crm_enrich` when `CRM_MCP_TOKEN` is unset |
 | `CRM_MCP_VENTURE` | CRM upload venture id, slug, or name (optional; default Web Dev - MV Software) |
 | `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `property_listing_gen`, `api_manager` |
 | `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
@@ -79,7 +82,7 @@ flowchart LR
 | Working directory | Scripts |
 |-------------------|---------|
 | `scripts/chikara_realms/` | `blog_automation.py` |
-| `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `leadenrich_playwright.py`, `lead_automation.py` |
+| `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `leadenrich_playwright.py`, `lead_automation.py`, `crm_enrich.py` |
 | `scripts/zillow_automation/` | `property_listing_gen.py` |
 | `scripts/lovable_automation/` | `lovable_automation.py` |
 | `scripts/json_formatter/` | `json_formatter.py` |

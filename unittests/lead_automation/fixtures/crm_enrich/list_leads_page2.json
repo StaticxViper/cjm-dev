@@ -1,0 +1,23 @@
+{
+  "count": 1,
+  "offset": 2,
+  "leads": [
+    {
+      "id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "business_name": "NORTHWIND CUSTOMS LLC",
+      "email": null,
+      "phone": null,
+      "website": null,
+      "address": "NY",
+      "score": null,
+      "notes": "",
+      "tags": ["ny", "new-business"],
+      "business_description": "category=DOMESTIC LIMITED LIABILITY COMPANY; formation_date=2026-10-05; state=NY; county=Cattaraugus; city=; status=active;",
+      "batch_id": "35404690-180f-42af-b034-dcf567a1628f",
+      "status_name": "New Lead",
+      "batch_name": "New Businesses, Pulled Oct 6, 2026",
+      "venture_id": "7370dd04-0865-42a3-966e-09f70a5e8d5a",
+      "venture_name": "Web Dev - MV Software"
+    }
+  ]
+}

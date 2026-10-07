@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), [niche search](../scripts/niche_search.md) config, intent scoring, filters, and CSV export, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out). New-business discovery is covered by `test_new_business_scoring`, `test_new_business_dedupe`, `test_new_business_website`, `test_new_business_email`, `test_new_business_sources`, and `test_new_business_cli` (the CLI dry run uses fixtures and does not call the network).
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), [niche search](../scripts/niche_search.md) config, intent scoring, filters, and CSV export, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out). New-business discovery is covered by `test_new_business_scoring`, `test_new_business_dedupe`, `test_new_business_website`, `test_new_business_email`, `test_new_business_sources`, and `test_new_business_cli` (the CLI dry run uses fixtures and does not call the network). CRM batch enrichment is covered by `test_crm_enrich_match`, `test_crm_enrich_robots`, `test_crm_mcp_client`, and `test_crm_enrich_cli` (in-process MCP, fixture HTML, no network).
 
 ## Prerequisites
 
@@ -24,6 +24,10 @@ python -m unittest unittests.lead_automation.test_email_discovery
 python -m unittest unittests.lead_automation.test_leadenrich
 python -m unittest unittests.lead_automation.test_leadenrich_playwright
 python -m unittest unittests.lead_automation.test_niche_search
+python -m unittest unittests.lead_automation.test_crm_enrich_match
+python -m unittest unittests.lead_automation.test_crm_enrich_robots
+python -m unittest unittests.lead_automation.test_crm_mcp_client
+python -m unittest unittests.lead_automation.test_crm_enrich_cli
 python -m unittest discover unittests/lead_automation
 python -m unittest unittests.zillow_automation.test_property_listing_gen
 ```
@@ -172,6 +176,17 @@ Imports niche search modules the same way (CWD switched to `scripts/lead_automat
 | `TestWebsiteAndSocial` | Social URL ≠ website; broken site only after a failed request; quality bands; malformed `http://[` hrefs are skipped; URL-only social is not active |
 | `TestIntentScoring` | Deterministic additive scores, negatives, breakdown, evidence-based outreach angle, seven fixtures |
 | `TestFiltersExportAndIngest` | Result presets, CSV columns, `high-pri-lead` dashboard tags, keyword ingest unchanged, search job filters franchises, per-city save/upload + running lead stats |
+
+## Test files: `test_crm_enrich_*.py`
+
+Import the CRM enrich modules with CWD `scripts/lead_automation/`. No live MCP, Maps, or website calls.
+
+| Test file | What it checks |
+|-----------|----------------|
+| `test_crm_enrich_match` | Suffix/DBA stripping, distinctive tokens (`striker` ≠ `staker`, `basecamp` = `base camp`), both description formats, ZIP/county and area-code checks, STRIKER 17/10/5/0 = 32, B&B address mismatch, county match writes at 85, no-county stays low confidence, no first-result fallback |
+| `test_crm_enrich_robots` | RFC 9309 longest match: `/maps/search/` and `/maps/place/` allowed, `/search` disallowed; a disallowed source is disabled |
+| `test_crm_mcp_client` | URL required, 401 message has no token, pagination stops on a short page, `is_error` raises `CrmToolError`, missing `update_lead` is reported |
+| `test_crm_enrich_cli` | Filter grammar, non-interactive never calls `input()`, `NY` counts as an empty address, overwrite/note/tag merge, checkpoint resume and config-hash mismatch, dry-run preview with zero writes, live `update_lead` keys, audit tags both false matches |
 
 ## Test file: `unittests/zillow_automation/test_property_listing_gen.py`
 

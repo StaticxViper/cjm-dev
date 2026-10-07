@@ -1,0 +1,46 @@
+{
+  "count": 2,
+  "offset": 0,
+  "leads": [
+    {
+      "id": "e89bdb1c-22af-4d6f-a529-12e8207abdcb",
+      "business_name": "STRIKER CONSTRUCTION SERVICES LLC",
+      "contact_first_name": null,
+      "contact_last_name": null,
+      "contact_title": null,
+      "email": null,
+      "phone": "(631) 821-4921",
+      "website": "http://cstakerremodeling.com/",
+      "address": "NY",
+      "score": 87,
+      "notes": "place_id=ChIJ___LaZ1n6IkRBv6QRmL-qc4",
+      "tags": ["ny", "no-email", "new-business"],
+      "column_id": "status-new",
+      "business_description": "DOMESTIC LIMITED LIABILITY COMPANY. Formed 2026-10-04 (NY DOS). County: Cattaraugus.",
+      "batch_id": "35404690-180f-42af-b034-dcf567a1628f",
+      "status_name": "New Lead",
+      "batch_name": "New Businesses, Pulled Oct 6, 2026",
+      "venture_id": "7370dd04-0865-42a3-966e-09f70a5e8d5a",
+      "venture_name": "Web Dev - MV Software"
+    },
+    {
+      "id": "459faa3b-1111-4222-8333-459faa3b0001",
+      "business_name": "B&B Basecamp LLC",
+      "contact_first_name": null,
+      "contact_last_name": null,
+      "email": null,
+      "phone": "(303) 582-9979",
+      "website": "http://www.basecampco.com/",
+      "address": "2079 W 44th Ave, Denver, CO, 80211",
+      "score": 80,
+      "notes": "",
+      "tags": ["co", "denver", "no-email", "new-business"],
+      "business_description": "DLLC. Formed 2026-10-04 (CO). City: Denver 80211.",
+      "batch_id": "35404690-180f-42af-b034-dcf567a1628f",
+      "status_name": "New Lead",
+      "batch_name": "New Businesses, Pulled Oct 6, 2026",
+      "venture_id": "7370dd04-0865-42a3-966e-09f70a5e8d5a",
+      "venture_name": "Web Dev - MV Software"
+    }
+  ]
+}

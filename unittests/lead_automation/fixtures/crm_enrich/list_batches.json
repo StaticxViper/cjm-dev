@@ -1,0 +1,27 @@
+{
+  "batches": [
+    {
+      "batch_id": "35404690-180f-42af-b034-dcf567a1628f",
+      "name": "New Businesses, Pulled Oct 6, 2026",
+      "venture_id": "7370dd04-0865-42a3-966e-09f70a5e8d5a",
+      "is_legacy": false,
+      "source": "open_data",
+      "imported_at": "2026-10-06T12:00:00Z",
+      "total": 789,
+      "contacted": 0,
+      "replied": 0,
+      "won": 0,
+      "pipeline_value": 0,
+      "rates": {
+        "contact_rate_pct": 0,
+        "reply_rate_pct": 0,
+        "demo_rate_pct": 0,
+        "win_rate_pct": 0,
+        "win_from_contacted_pct": 0,
+        "phone_coverage_pct": 0.3,
+        "email_coverage_pct": 0
+      },
+      "low_sample": false
+    }
+  ]
+}
