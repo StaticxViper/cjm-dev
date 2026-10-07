@@ -1,0 +1,13 @@
+[
+  {
+    "dos_id": "EXAMPLE7931947",
+    "current_entity_name": "Example Reid LLC",
+    "initial_dos_filing_date": "{{days_ago:40}}",
+    "county": "Montgomery",
+    "entity_type": "DOMESTIC LIMITED LIABILITY COMPANY",
+    "location_city": "",
+    "location_state": "NY",
+    "location_zip": "",
+    "location_address_1": ""
+  }
+]

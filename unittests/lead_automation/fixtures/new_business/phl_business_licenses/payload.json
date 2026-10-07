@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "business_name": "Example Cafe LLC",
+      "address": "100 Market St",
+      "zip": "19106",
+      "licensetype": "Food Preparing and Serving",
+      "initialissuedate": "{{days_ago:15}}",
+      "licensestatus": "Active",
+      "licensenum": "EXAMPLE101",
+      "legalname": "Example Cafe LLC",
+      "legalentitytype": "Company"
+    }
+  ]
+}

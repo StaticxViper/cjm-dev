@@ -23,9 +23,10 @@ __pycache__/
 *leads_output*
 *property_urls.json
 
-# opp_finder_v2 runtime output and browser auth state
-scripts/opp_finder_v2/artifacts/
-*storage_state*.json
-!scripts/opp_finder_v2/schemas/output.schema.json
-*new_business*.json
-*new_business*.csv
+# New-business discovery runtime output
+new_business_artifacts/
+new_business_seen.json
+new_business_enrichment_cache.json
+new_business_leads.json
+new_business_leads.csv
+new_business_run_*.json

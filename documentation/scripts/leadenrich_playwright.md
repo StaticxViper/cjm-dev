@@ -16,7 +16,8 @@ Runs two ways:
 - Python 3.12+
 - `playwright`, `beautifulsoup4`, `python-dotenv`, `httpx`
 - `playwright install chromium`
-- `LEAD_INGEST_KEY` in repo-root `.env` (required for `--from-crm` and `--dashboard`)
+- `CRM_MCP_MV_LLC` in repo-root `.env` (required for `--dashboard`)
+- `LEAD_INGEST_KEY` in repo-root `.env` (required for `--from-crm`)
 
 ## How to run
 
@@ -74,7 +75,7 @@ flowchart LR
   pw --> google[Google SERP]
   google --> site[Website visit plus SEO]
   pw --> jsonOut[leads JSON]
-  pw -->|optional new emails| supabase[Supabase leads-ingest-bulk]
+  pw -->|optional new emails| crm[CRM MCP create_lead]
 ```
 
 API Manager is used only for CRM export and optional dashboard write-back. Google and site visits use Playwright (or a requests fallback), not Apify.

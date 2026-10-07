@@ -857,10 +857,11 @@ class TestProcessBusinessesFilter(unittest.TestCase):
 
 @SKIP
 class TestSendToDashboard(unittest.TestCase):
-    @patch("helper_scripts.api_manager.APIManager")
-    def test_send_to_dashboard_builds_bulk_payload(self, mock_api_cls):
-        mock_api = MagicMock()
-        mock_api_cls.return_value = mock_api
+    @patch("crm_mcp.CrmMcpClient")
+    def test_send_to_dashboard_builds_bulk_payload(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.api_key = "test-key"
+        mock_client_cls.return_value = mock_client
         rows = [{
             "business_name": "Test Biz",
             "address": "123 Main St, Houston, TX 77001, USA",
@@ -871,22 +872,20 @@ class TestSendToDashboard(unittest.TestCase):
         }]
         uploaded = LEADGEN.send_to_dashboard(rows)
         self.assertEqual(uploaded, 1)
-        mock_api.build_request.assert_called_once()
-        call_kwargs = mock_api.build_request.call_args.kwargs
-        self.assertEqual(call_kwargs["endpoint"], LEADGEN.DASHBOARD_BULK_ENDPOINT)
-        payload = call_kwargs["json_body"]
-        self.assertEqual(len(payload), 1)
-        self.assertEqual(payload[0]["business_name"], "Test Biz")
-        self.assertEqual(payload[0]["address"], "123 Main St, Houston, TX 77001, USA")
-        self.assertEqual(payload[0]["score"], 85)
-        self.assertEqual(payload[0]["category"], "landscaping-leads")
+        mock_client.create_lead.assert_called_once()
+        payload = mock_client.create_lead.call_args.args[0]
+        self.assertEqual(payload["business_name"], "Test Biz")
+        self.assertEqual(payload["address"], "123 Main St, Houston, TX 77001, USA")
+        self.assertEqual(payload["score"], 85)
+        self.assertEqual(payload["category"], "landscaping-leads")
 
     @patch("leadgen.time.sleep", return_value=None)
-    @patch("helper_scripts.api_manager.APIManager")
-    def test_send_to_dashboard_connect_error_does_not_raise(self, mock_api_cls, _sleep):
-        mock_api = MagicMock()
-        mock_api.build_request.side_effect = ConnectionError("getaddrinfo failed")
-        mock_api_cls.return_value = mock_api
+    @patch("crm_mcp.CrmMcpClient")
+    def test_send_to_dashboard_connect_error_does_not_raise(self, mock_client_cls, _sleep):
+        mock_client = MagicMock()
+        mock_client.api_key = "test-key"
+        mock_client.create_lead.side_effect = ConnectionError("getaddrinfo failed")
+        mock_client_cls.return_value = mock_client
         rows = [{
             "business_name": "Test Biz",
             "address": "123 Main St, Houston, TX 77001, USA",
@@ -897,7 +896,50 @@ class TestSendToDashboard(unittest.TestCase):
         }]
         uploaded = LEADGEN.send_to_dashboard(rows)
         self.assertEqual(uploaded, 0)
-        self.assertEqual(mock_api.build_request.call_count, 3)
+        self.assertEqual(mock_client.create_lead.call_count, 3)
+
+    def test_create_lead_uses_crm_mcp_tool(self):
+        import crm_mcp
+        import httpx
+
+        crm_mcp.reset_run_batch()
+        calls = []
+
+        def fake_post(url, headers=None, json=None, timeout=None):
+            calls.append({"json": json, "headers": headers, "url": url})
+            method = (json or {}).get("method")
+            if method == "notifications/initialized":
+                return httpx.Response(202)
+            return httpx.Response(
+                200,
+                json={"jsonrpc": "2.0", "id": (json or {}).get("id"), "result": {}},
+            )
+
+        with patch("crm_mcp.httpx.post", side_effect=fake_post):
+            client = crm_mcp.CrmMcpClient(api_key="test-key", venture="web-dev-mv-software-iq3x")
+            client.create_lead({
+                "business_name": "Test Biz",
+                "category": "landscaping-leads",
+                "score": 85,
+                "email": "",
+            })
+
+        self.assertEqual(calls[0]["url"], crm_mcp.CRM_MCP_URL)
+        self.assertEqual(calls[0]["headers"]["Authorization"], "Bearer test-key")
+        self.assertEqual(calls[0]["json"]["method"], "initialize")
+        tool_calls = [item["json"] for item in calls if item["json"].get("method") == "tools/call"]
+        self.assertEqual(
+            [item["params"]["name"] for item in tool_calls],
+            ["create_batch", "create_lead"],
+        )
+        lead_args = tool_calls[1]["params"]["arguments"]
+        self.assertEqual(lead_args["business_name"], "Test Biz")
+        self.assertEqual(lead_args["score"], 85)
+        self.assertEqual(lead_args["venture"], "web-dev-mv-software-iq3x")
+        self.assertEqual(lead_args["batch"], crm_mcp.run_batch_name())
+        self.assertIn("category: landscaping-leads", lead_args["notes"])
+        self.assertNotIn("email", lead_args)
+        self.assertNotIn("category", lead_args)
 
     def test_persist_lead_batch_keeps_json_when_upload_fails(self):
         rows = [{"business_name": "A", "place_id": "pid1", "lead_score": 80}]

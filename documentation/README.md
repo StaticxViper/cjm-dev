@@ -10,6 +10,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 |--------|-----|
 | Blog automation (Chikara Realms) | [scripts/blog_automation.md](scripts/blog_automation.md) |
 | Lead generation | [scripts/leadgen.md](scripts/leadgen.md) |
+| New-business sources | [scripts/new_business_sources.md](scripts/new_business_sources.md) |
 | Niche lead search | [scripts/niche_search.md](scripts/niche_search.md) |
 | Lead enrichment (Facebook) | [scripts/leadenrich.md](scripts/leadenrich.md) |
 | Lead enrichment (Playwright / Google) | [scripts/leadenrich_playwright.md](scripts/leadenrich_playwright.md) |
@@ -49,7 +50,7 @@ flowchart LR
   enrichFb --> leads
   enrichPw --> leads
   leads --> ingest[lead_automation.py]
-  ingest --> supabase[Supabase leads-ingest]
+  ingest --> crm[CRM MCP create_lead]
   leadfilter[leadfilter.py] -.-> leadgen
 ```
 
@@ -61,7 +62,9 @@ flowchart LR
 | `PERPLEXITY_API_KEY` | `blog_automation`, `stock_analyzer`, `api_manager` |
 | `CHIKARA_REALMS_SECRET` | `blog_automation`, `api_manager` |
 | `GOOGLE_API_KEY` | `leadgen`, `api_manager` |
-| `LEAD_INGEST_KEY` | `lead_automation`, `leadenrich`, `leadenrich_playwright`, `api_manager` |
+| `LEAD_INGEST_KEY` | `leadenrich_playwright` (`--from-crm` export), `api_manager` |
+| `CRM_MCP_MV_LLC` | `leadgen`, `lead_automation`, `leadenrich`, `leadenrich_playwright` (CRM upload) |
+| `CRM_MCP_VENTURE` | CRM upload venture id, slug, or name (optional; default Web Dev - MV Software) |
 | `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `property_listing_gen`, `api_manager` |
 | `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
 | `APIFY_USER_ID` | `api_manager` |

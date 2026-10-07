@@ -1,0 +1,12 @@
+[
+  {
+    "match_name": "Smith Landscaping LLC",
+    "business_name": "Smith Landscaping LLC",
+    "phone_google": "(215) 555-0100",
+    "place_id": "EXAMPLE",
+    "profile_url": "https://www.google.com/maps/place/?q=place_id:EXAMPLE",
+    "category": "landscaping",
+    "user_ratings_total": 2,
+    "business_status": "OPERATIONAL"
+  }
+]

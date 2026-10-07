@@ -8,6 +8,8 @@ Discovers local business leads via either **Playwright** (browser-based Google M
 
 The discovery provider is selected with `leadgen_type` (`playwright` or `api_manager`). Objectives, filters, enrichment, and CRM/output behavior are shared — only the initial business discovery path changes.
 
+`--mode new-business` is a separate search on the same menu (option 6). It looks for newly registered or newly licensed businesses instead of keyword × Maps results. Standard mode (`--mode standard`, the default, and menu option 1) is unchanged. See [New-business discovery](#new-business-discovery) and [new_business_sources.md](new_business_sources.md).
+
 The `email` objective (and `either`/`both` when email is still missing) uses [email_discovery.py](../../scripts/lead_automation/email_discovery.py): Playwright Google searches plus a bounded website crawl. That path is slower by design; accuracy matters more than speed.
 
 ## Prerequisites
@@ -16,7 +18,7 @@ The `email` objective (and `either`/`both` when email is still missing) uses [em
 - `requests`, `beautifulsoup4`, `python-dotenv`, `playwright`
 - `playwright install chromium` (needed for `--objective email`, Playwright discovery, and Playwright enrichment)
 - `GOOGLE_API_KEY` in repo-root `.env` (API Manager discovery)
-- `LEAD_INGEST_KEY` in repo-root `.env` (required for dashboard output mode)
+- `CRM_MCP_MV_LLC` in repo-root `.env` (required for dashboard output; bearer token for the CRM MCP server)
 - `APIFY_API_KEY` in repo-root `.env` (required for Facebook enrichment in API Manager mode)
 
 ## Configuration
@@ -24,7 +26,7 @@ The `email` objective (and `either`/`both` when email is still missing) uses [em
 | File | Description |
 |------|-------------|
 | `keywords.json` | Search keywords (keys used as categories) |
-| `coords.json` | Lat/lng for search center |
+| `coords.json` | Lat/lng for search center. Cherry Hill is `39.9526,-75.1652`, which is the same point as Philadelphia (`39.952584,-75.165222`). Coordinate searches for Cherry Hill are centered on Philadelphia. Text queries (`{keyword} near {city}, {state}`) still say Cherry Hill. |
 | `franchises.json` | Franchise/chain name and domain blocklists |
 | `leadgen_settings.json` | Persisted run defaults (leadgen type, Playwright page limits, area expansion, skip-searched, history path, min score, reviews, franchise filter, `objective`, require website, lead enrichment, output, JSON path) |
 | `leadgen_search_history.json` | Completed keyword×location×mode searches; used to skip repeat work |
@@ -95,12 +97,14 @@ python leadgen.py --objective both
 3) High-volume preset (Playwright, area expansion, no Facebook enrich)
 4) Exit
 5) Lead Search (micro-niche intent search)
+6) New-business discovery
 ```
 
-- **Option 1** — load `leadgen_settings.json` (or hardcoded defaults), prompt for keywords and locations with numbered submenus, show a volume estimate, then confirm (`Y` run, `n` cancel, `s` tweak settings).
+- **Option 1** — keyword discovery. Forces `discovery_mode` to `standard` for that run, even if a saved setting says `new-business`. Load `leadgen_settings.json` (or hardcoded defaults), prompt for keywords and locations with numbered submenus, show a volume estimate, then confirm (`Y` run, `n` cancel, `s` tweak settings).
 - **Option 2** — numbered settings menu (enter a number to change one value, Enter to save). Writes `leadgen_settings.json` and returns to the menu without running. Keywords and locations are never persisted.
 - **Option 3** — apply a high-volume Playwright preset (20 pages, 400 results/search, light area expansion, phone objective, min reviews 0, Facebook enrichment off) and optionally run.
 - **Option 5** — [Niche Lead Search](niche_search.md): pick a micro-niche, search multiple queries, score website-prospect intent, then review/filter/export. Does not replace option 1.
+- **Option 6** — new-business discovery. Prompts for locations, max age, and minimum new-business score, then searches enabled public registration and license sources. Does not run the keyword Maps search. Dashboard output is refused.
 
 **Keywords** — choose all, an industry group (home exterior, auto, professional, …), numbers/ranges (`1-8,12`), or a name search.
 
@@ -128,7 +132,7 @@ The confirm screen estimates search count and typical unique-business yield so i
 | `--require-website` / `--no-require-website` | Require website URL (default off) |
 | `--require-email` / `--no-require-email` | Legacy alias; combined with `--require-phone` and normalized to `objective` |
 | `--lead-enrichment` / `--no-lead-enrichment` | Post-scrape enrichment: Facebook in API mode, Google/Playwright in Playwright mode (default on) |
-| `--output {json,dashboard,both}` | Output destination |
+| `--output {json,csv,dashboard,both}` | Output destination. Standard mode: `both` is JSON + dashboard; `csv` warns and writes JSON. New-business mode: `both` is JSON + CSV; `dashboard` warns and writes JSON + CSV |
 | `--json-path PATH` | JSON output path |
 | `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
 | `--city "City Name"` | Filter to specific cities (repeatable) |
@@ -142,8 +146,26 @@ The confirm screen estimates search count and typical unique-business yield so i
 | `--website-requirement {any,none,weak_or_none,issue}` | Niche website filter |
 | `--exclude-strong-websites` | Drop niche leads with a strong current website |
 | `--extra-keywords ...` | Additional niche search queries |
+| `--mode {standard,new-business}` | `standard` (default) is today's keyword discovery. `new-business` searches registration and license sources |
+| `--max-age-days N` | New-business window (default 365) |
+| `--very-new-days N` | Top newness tier (default 90) |
+| `--sources a,b` | Source ids from `new_business_sources.json` (default: enabled verified sources) |
+| `--list-sources` | Print id, category, coverage, status, enabled, and `check_access()`, then exit |
+| `--county NAME` | Repeatable. Keep records whose source county matches |
+| `--region NAME` | Repeatable. Select a region from `geo_regions.json` |
+| `--regions-file PATH` | Region file (default `geo_regions.json`) |
+| `--min-new-business-score N` | Minimum `new_business_score` (default 50) |
+| `--score-rules PATH` | Path to `new_business_score_rules.json` |
+| `--website-check {none,cheap,deep}` | Website classification depth (default `deep`). `none` leaves `website_status` as `unknown` |
+| `--refresh-enrichment` | Ignore the email-enrichment cache TTL |
+| `--include-seen` | Re-output businesses already written on a previous run |
+| `--csv-path PATH` | New-business CSV path (default `new_business_leads.csv`) |
+| `--max-records-per-source N` | Cap per source (default 200) |
+| `--dry-run` | New-business fixtures only; no network |
+| `--headful` | Show the browser for Playwright adapters |
+| `--no-artifacts` | Do not write block/error captures under `new_business_artifacts/` |
 
-CLI flags override values from `leadgen_settings.json`. Niche jobs write `niche_leads_output.json` by default and add `high-pri-lead` only for niches marked `high_pri_lead` in `niches.json`.
+CLI flags override values from `leadgen_settings.json`. Niche jobs write `niche_leads_output.json` by default and add `high-pri-lead` only for niches marked `high_pri_lead` in `niches.json`. `--zip` and `--radius` also apply in new-business mode (ZIP geocoding reuses niche search and needs `GOOGLE_API_KEY`, except `--dry-run`).
 
 ## How it works
 
@@ -169,7 +191,7 @@ flowchart LR
   filters --> enrich[leadenrich.py or leadenrich_playwright.py]
   enrich --> jsonOut[leads_output.json]
   filters --> jsonOut
-  filters --> supabase[Supabase leads-ingest-bulk]
+  filters --> crm[CRM MCP create_lead]
   leadfilter[leadfilter.py] -.-> filters
 ```
 
@@ -260,12 +282,94 @@ Notes:
 | Mode | Behavior |
 |------|----------|
 | `json` | Append qualifying leads to `leads_output.json` |
-| `dashboard` | Bulk POST to `/leads-ingest-bulk` via `APIManager` |
-| `both` | JSON save and dashboard ingest |
+| `dashboard` | Create each lead in the CRM with the MCP `create_lead` tool |
+| `both` | JSON save and CRM upload |
 
-Playwright discovery writes each finished city/state immediately (`persist_lead_batch`). A later crash during another city does not lose the leads already qualified. Dashboard ingest retries transient DNS/connect errors and then continues the run; JSON is kept even when the upload misses.
+Dashboard upload calls `https://bvkgatxfefnsfstwihxu.supabase.co/functions/v1/mcp-crm` with `Authorization: Bearer` from `CRM_MCP_MV_LLC`. Leads go to the Web Dev - MV Software venture (`web-dev-mv-software-iq3x`, override with `CRM_MCP_VENTURE`). One batch is created per process, named `Leadgen YYYY-MM-DD HH:MM`. Fields the CRM does not store (category, rating, review count, niche) are appended to the lead notes. Google Places discovery still uses API Manager; only the upload path changed.
+
+Playwright discovery writes each finished city/state immediately (`persist_lead_batch`). A later crash during another city does not lose the leads already qualified. Each CRM create retries three times; JSON is kept when an upload misses.
 
 Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sample.json).
+
+## New-business discovery
+
+Menu option 6, or:
+
+```bash
+python leadgen.py --mode new-business --defaults --state PA --city Philadelphia
+python leadgen.py --list-sources
+python leadgen.py --mode new-business --dry-run --defaults --state PA --city Philadelphia --output both
+```
+
+This mode does not call keyword Maps discovery and does not append to `leads_output.json`. It does not send anything to the dashboard and does not draft or send outreach.
+
+### Geography
+
+State and city come from `--state`, `--city`, and `coords.json`. ZIP and radius reuse `--zip` and `--radius` (`niche_search.expand_locations`). `--county` filters a county the source itself provided. `--region` reads `geo_regions.json`, which ships with an empty `regions` object:
+
+```json
+{
+  "regions": {
+    "example": {
+      "state": "NJ",
+      "counties": [],
+      "cities": [],
+      "zips": []
+    }
+  }
+}
+```
+
+An empty `cities` list selects the whole state. No region is pre-filled. Records outside the selection are counted as `out_of_geography`. Records without enough location data to decide are kept with `geo_unverified: true`.
+
+Cherry Hill in `coords.json` is `39.9526,-75.1652`. Philadelphia is `39.952584,-75.165222`. Maps and Places searches that use those coordinates are centered on Philadelphia. The text query still names Cherry Hill. The coordinates were left as they are.
+
+### Sources
+
+Adapters live in `scripts/lead_automation/new_business_sources/` and are listed in `new_business_sources.json`. Only sources with `enabled: true` and `status: "verified"` run by default. Candidates stay off until a public, free, robots-allowed endpoint with a real date is confirmed. Google Search is disabled because `robots.txt` disallows `/search`. Google Maps is used to verify phone, website, and status, not as proof that a business is new. A low review count is not a newness signal.
+
+Per-source findings, terms, and how to add an adapter: [new_business_sources.md](new_business_sources.md).
+
+### Scoring
+
+`lead_score` is still the existing `score_lead` result. Ranking uses `new_business_score` from `new_business_scoring.py`. Points are in `new_business_score_rules.json`. The score is the sum of the breakdown, clamped to 0–100. Missing data adds 0. `--very-new-days`, `--max-age-days`, and `--min-new-business-score` override the day window and the cutoff. Point values stay in the rules file.
+
+| `score_reasons` entry | Default points | Meaning |
+|-----------------------|----------------|---------|
+| `new_business_registered_90d` | +35 | Registration, formation, or filing date within `--very-new-days` (default 90). A license date does not use this tier |
+| `new_business_registered` | +25 | Registration, formation, filing, license, or opening date within `--max-age-days` (default 365) |
+| `recently_opened_signal` | +15 | Soft signal only (grand opening, now open, ribbon cutting, new chamber member, new license notice) |
+| `no_website` | +30 | No business-owned site after the website search, or the URL is social/directory only |
+| `broken_website` | +25 | Broken, placeholder, parked, or domain/hosting error |
+| `poor_website` | +15 | Reachable site whose quality score is at least `poor_website_min_quality_score` (default 41) |
+| `business_email_found` | +15 | Email accepted at HIGH or MEDIUM confidence |
+| `public_phone_found` | +5 | Valid public US phone |
+| `local_service_category` | +10 | Category matches a `keywords.json` key or `local_categories` in the rules file |
+| `established_business` | −25 | Oldest reliable date is older than `established_after_days` (default 1095), or `user_ratings_total` is at least 50 |
+| `good_website` | −15 | Reachable site with quality score 40 or below |
+| `no_contact_info` | drop, or −20 | No accepted email, valid phone, or contact form. Dropped while `require_contact` is true |
+
+`score_reasons` is ordered by points, highest first. `new_business_score` equals the clamped sum of `score_breakdown`.
+
+Worked examples (as of 2026-10-05): registered 45 days ago with no website, an accepted email, a phone, and a keyword category scores 95. Registered 200 days ago with no website, phone only, and a category scores 70. A soft signal plus a poor site, phone, and category scores 45 and is dropped at the default cutoff of 50.
+
+### Website status
+
+Exactly one of `no_website`, `website_found`, `poor_website`, `good_website`, `unknown`. A registry row with no website field stays `unknown` until a website search runs. Social-only is `no_website` with `website_issues` containing `social_only`. `--website-check none` leaves the status `unknown`.
+
+### Email
+
+Enrichment runs when `lead_enrichment` is on, including when `objective` is `phone`. Order: source record, business website (contact, about, footer, mailto), then Google query templates capped at the existing five searches. Addresses are kept only when `score_email_confidence` is HIGH or MEDIUM. Nothing is guessed or SMTP-probed. `email_source` is one of `source_record`, `website_contact`, `website_about`, `website_footer`, `website_mailto`, `directory`, `google_result`, `social_profile`, `other`, with `email_source_url` and `email_evidence`. Results are cached in `new_business_enrichment_cache.json` for `nb_enrichment_ttl_days` (default 30) unless `--refresh-enrichment` is set. A lead with no email is kept when it has a valid phone or a public contact-form URL.
+
+### Deduplication and output
+
+The same business from a registry, Maps, and a website is one row. Matching uses entity id, place id, Maps URL, or website domain (exact), or phone plus a similar name, or the same normalized name plus ZIP or street (strong). Same name in the same city only is flagged with `possible_duplicate_of` and not merged. Name alone never merges. `new_business_seen.json` suppresses businesses already output unless `--include-seen` is set. Rows already in `leads_output.json` or `contacted.txt` are skipped.
+
+JSON default: `new_business_leads.json` (`--json-path`). CSV default: `new_business_leads.csv` (`--csv-path`). Lists in the CSV are joined with ` | `. `score_breakdown`, `newness_evidence`, and `sources` are JSON strings. A sidecar `new_business_run_<timestamp>.json` records per-source status and drop counts (`franchise`, `inactive_or_closed`, `no_contact_info`, `below_min_score`, `out_of_geography`, `already_seen`, `established_business`).
+
+### Politeness
+
+Sources run one at a time, one request per host, with a random delay (default 3–7 seconds). `robots.txt` is checked before an HTTP or Playwright fetch; a disallow sets `robots_disallowed` and skips the source. A CAPTCHA, block, or login page stops that source for the rest of the run and writes `new_business_artifacts/<run_ts>/<source_id>/`. Network errors, HTTP 429, and 5xx retry up to twice. Paid records and logins are not used. One source failing does not abort the run.
 
 ## Related scripts
 
@@ -273,4 +377,5 @@ Sample bulk-ingest body: [leadgen_dashboard_sample.json](leadgen_dashboard_sampl
 - [leadenrich.md](leadenrich.md) — fill in missing emails from Facebook Pages (API Manager mode)
 - [leadenrich_playwright.md](leadenrich_playwright.md) — Google/Playwright research and SEO audit (Playwright mode)
 - [lead_automation.md](lead_automation.md) — re-ingest existing CSV to Supabase
+- [new_business_sources.md](new_business_sources.md) — new-business source verification and how to add an adapter
 - [testing/unittests.md](../testing/unittests.md) — unit tests for scoring and parsing

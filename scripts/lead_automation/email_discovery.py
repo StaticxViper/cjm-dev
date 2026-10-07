@@ -10,8 +10,11 @@ Playwright is used only for Google result pages. Website fetches use requests
 from html import unescape
 from urllib.parse import parse_qs, quote_plus, urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from pathlib import Path
 import asyncio
 import json
+import os
 import random
 import re
 import time
@@ -341,8 +344,29 @@ def parse_address_parts(address, city=None, state=None):
     return parts
 
 
-def build_google_queries(lead, city=None, state=None, max_queries=MAX_GOOGLE_SEARCHES_PER_LEAD):
-    """Targeted queries using as much known business data as possible."""
+NEW_BUSINESS_EMAIL_TEMPLATES = (
+    '"{name}" email',
+    '"{name}" contact',
+    '"{name}" "@gmail.com"',
+    '"{name}" "@outlook.com"',
+    '"{name}" {phone}',
+    '"{name}" {city}',
+    '"{name}" owner',
+)
+
+
+def build_google_queries(
+    lead,
+    city=None,
+    state=None,
+    max_queries=MAX_GOOGLE_SEARCHES_PER_LEAD,
+    templates=None,
+):
+    """Targeted queries using as much known business data as possible.
+
+    templates, when passed, are rendered first and consume the cap before the
+    default queries. The default list is unchanged when templates is omitted.
+    """
     name = (lead.get("business_name") or "").strip()
     if not name:
         return []
@@ -351,10 +375,32 @@ def build_google_queries(lead, city=None, state=None, max_queries=MAX_GOOGLE_SEA
     state = addr.get("state") or state
     street = addr.get("street")
     zipc = addr.get("zip")
-    phone = (lead.get("phone_google") or "").strip()
+    phone = (lead.get("phone_google") or lead.get("phone") or "").strip()
     quoted = f'"{name}"'
 
     queries = []
+    for template in templates or []:
+        required = {
+            "phone": phone,
+            "city": city or "",
+            "state": state or "",
+        }
+        missing = False
+        for key, value in required.items():
+            if "{" + key + "}" in template and not value:
+                missing = True
+        if missing:
+            continue
+        rendered = template.format(
+            name=name,
+            city=city or "",
+            state=state or "",
+            phone=phone,
+            quoted=quoted,
+        )
+        rendered = " ".join(rendered.split())
+        if rendered:
+            queries.append(rendered)
     if city and state:
         queries.append(f'{quoted} "{city}" {state} email')
         queries.append(f'{quoted} "{city}" {state} contact')
@@ -705,7 +751,7 @@ class EmailDiscoverySession:
     `sync_playwright().start()` does not raise.
     """
 
-    def __init__(self, delay=None):
+    def __init__(self, delay=None, cache_path=None, ttl_days=30, refresh=False):
         self.google_blocked = False
         self.cache = {}
         self._playwright = None
@@ -714,6 +760,84 @@ class EmailDiscoverySession:
         self._searches_done = 0
         self._delay = delay
         self._worker = None
+        self.cache_path = cache_path
+        self.ttl_days = ttl_days
+        self.refresh = refresh
+        self.persistent = {}
+        if cache_path:
+            self.load_cache()
+
+    def load_cache(self):
+        """Load enrichment results written by a previous run. In-memory cache stays authoritative."""
+        self.persistent = {}
+        if self.refresh or not self.cache_path or not os.path.exists(self.cache_path):
+            return self.persistent
+        try:
+            with open(self.cache_path, encoding="utf-8") as handle:
+                payload = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            return self.persistent
+        entries = payload.get("entries") if isinstance(payload, dict) else None
+        if not isinstance(entries, dict):
+            return self.persistent
+        now = datetime.now(timezone.utc)
+        for key, entry in entries.items():
+            if not isinstance(entry, dict):
+                continue
+            searched_at = entry.get("searched_at") or ""
+            try:
+                stamp = datetime.fromisoformat(searched_at.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            age_days = (now - stamp).total_seconds() / 86400
+            if age_days > float(self.ttl_days or 0):
+                continue
+            self.persistent[key] = entry
+            result = entry.get("result") or {}
+            if key.startswith("key:") and isinstance(result, dict):
+                self.cache[key[4:]] = result
+        return self.persistent
+
+    def save_cache(self):
+        if not self.cache_path:
+            return
+        path = Path(self.cache_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump({"entries": self.persistent}, handle, indent=2)
+            handle.write("\n")
+
+    def persistent_result(self, lead, city=None, state=None):
+        lead_id = (lead or {}).get("lead_id")
+        if lead_id and f"id:{lead_id}" in self.persistent:
+            return (self.persistent[f"id:{lead_id}"].get("result") or {})
+        key = cache_key(lead, city, state)
+        if f"key:{key}" in self.persistent:
+            return self.persistent[f"key:{key}"].get("result") or {}
+        return None
+
+    def remember_result(self, lead, city=None, state=None):
+        key = cache_key(lead, city, state)
+        snapshot = {
+            field: lead.get(field)
+            for field in (
+                "email", "has_email", "email_source", "email_confidence",
+                "email_source_url", "email_evidence", "website", "phone_website",
+                "https", "has_viewport", "html_length", "has_cta",
+            )
+            if field in lead
+        }
+        self.cache[key] = snapshot
+        entry = {
+            "searched_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "result": snapshot,
+        }
+        self.persistent[f"key:{key}"] = entry
+        lead_id = (lead or {}).get("lead_id")
+        if lead_id:
+            self.persistent[f"id:{lead_id}"] = entry
+        self.save_cache()
+        return snapshot
 
     def __enter__(self):
         return self
@@ -839,11 +963,25 @@ def _accept_confidence(confidence):
     return confidence in (CONFIDENCE_HIGH, CONFIDENCE_MEDIUM)
 
 
-def _apply_email(lead, email, source, confidence, website=None, phones=None, analysis=None):
+def _apply_email(
+    lead,
+    email,
+    source,
+    confidence,
+    website=None,
+    phones=None,
+    analysis=None,
+    source_url=None,
+    evidence=None,
+):
     lead["email"] = email
     lead["has_email"] = True
     lead["email_source"] = source
     lead["email_confidence"] = confidence
+    if source_url:
+        lead["email_source_url"] = source_url
+    if evidence:
+        lead["email_evidence"] = evidence
     if website and not (lead.get("website") or "").strip():
         lead["website"] = website
     if phones and not lead_has_valid_phone(lead):
