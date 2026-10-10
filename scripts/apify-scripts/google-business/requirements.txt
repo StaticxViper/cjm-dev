@@ -1,0 +1,7 @@
+# playwright is installed in apify/actor-python-playwright. Do not pin it here.
+apify>=2.7,<4
+apify-client>=2.5,<4
+beautifulsoup4
+requests
+python-dotenv
+httpx

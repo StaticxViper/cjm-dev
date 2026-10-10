@@ -1,0 +1,21 @@
+{
+  "title": "Actor template input",
+  "description": "Shared knobs. Real Actors add their own fields and keep these two.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Run Chromium headless. Default true, including on the Apify platform.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Accepted by the form and ignored. This Actor does not rotate proxies, IPs, or user agents.",
+      "editor": "proxy"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Template rows",
+    "fields": {
+      "sourceStatus": {"type": "string"},
+      "decision": {"type": "string"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["sourceStatus", "decision", "error", "scrapedAt"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}

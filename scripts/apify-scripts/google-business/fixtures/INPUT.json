@@ -1,0 +1,16 @@
+{
+  "queries": [
+    {
+      "name": "Northwind Customs LLC",
+      "city": "Olean",
+      "county": "Cattaraugus",
+      "state": "NY",
+      "maxResults": 3
+    }
+  ],
+  "minConfidence": 80,
+  "lowConfidenceFloor": 60,
+  "maxSearches": 1,
+  "headless": true,
+  "includeEmails": false
+}

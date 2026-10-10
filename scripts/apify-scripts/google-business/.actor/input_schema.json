@@ -1,0 +1,131 @@
+{
+  "title": "Google Maps business input",
+  "description": "Named businesses with a required state. Results are matched, not taken from the first Maps card.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "queries": {
+      "title": "Queries",
+      "type": "array",
+      "description": "Objects with name, state, and optional city, county, and maxResults.",
+      "editor": "json",
+      "prefill": [
+        {
+          "name": "Northwind Customs LLC",
+          "city": "Olean",
+          "county": "Cattaraugus",
+          "state": "NY",
+          "maxResults": 3
+        }
+      ]
+    },
+    "name": {
+      "title": "Business name",
+      "type": "string",
+      "description": "Single-query name, used when queries is empty.",
+      "editor": "textfield"
+    },
+    "city": {
+      "title": "City",
+      "type": "string",
+      "description": "Optional city for the single-query form.",
+      "editor": "textfield"
+    },
+    "county": {
+      "title": "County",
+      "type": "string",
+      "description": "Optional county for the single-query form. Do not include the word County.",
+      "editor": "textfield"
+    },
+    "state": {
+      "title": "State",
+      "type": "string",
+      "description": "Required two-letter state code for the single-query form.",
+      "editor": "textfield"
+    },
+    "maxResults": {
+      "title": "Max Maps results",
+      "type": "integer",
+      "description": "Listings to open per query. Default 5, maximum 20.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 20
+    },
+    "minConfidence": {
+      "title": "Minimum confidence",
+      "type": "integer",
+      "description": "Score required for a match. Default 80.",
+      "editor": "number",
+      "default": 80,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "lowConfidenceFloor": {
+      "title": "Low-confidence floor",
+      "type": "integer",
+      "description": "Scores at or above this floor and below the minimum are low_confidence. Default 60.",
+      "editor": "number",
+      "default": 60,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "maxSearches": {
+      "title": "Max searches",
+      "type": "integer",
+      "description": "How many queries to run. Default 10, maximum 50.",
+      "editor": "number",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 50
+    },
+    "includeEmails": {
+      "title": "Visit website for emails",
+      "type": "boolean",
+      "description": "When true, emails are read only from the website of a match. Addresses are validated. Nothing is guessed.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "searchDelayMin": {
+      "title": "Search delay minimum (seconds)",
+      "type": "number",
+      "description": "Optional override. Default range is 2.0 to 4.5.",
+      "editor": "number",
+      "minimum": 0
+    },
+    "searchDelayMax": {
+      "title": "Search delay maximum (seconds)",
+      "type": "number",
+      "description": "Optional override. Default range is 2.0 to 4.5.",
+      "editor": "number",
+      "minimum": 0
+    },
+    "detailDelayMin": {
+      "title": "Detail delay minimum (seconds)",
+      "type": "number",
+      "description": "Optional override. Default range is 1.2 to 2.8.",
+      "editor": "number",
+      "minimum": 0
+    },
+    "detailDelayMax": {
+      "title": "Detail delay maximum (seconds)",
+      "type": "number",
+      "description": "Optional override. Default range is 1.2 to 2.8.",
+      "editor": "number",
+      "minimum": 0
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Run Chromium headless. Default true.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Ignored. This Actor does not rotate proxies, IPs, or user agents.",
+      "editor": "proxy"
+    }
+  }
+}

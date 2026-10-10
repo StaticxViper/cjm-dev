@@ -1,0 +1,33 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "City profiles",
+    "fields": {
+      "city": {"type": "string"},
+      "state": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "sourceStatus": {"type": "string"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["city", "state", "ok", "sourceStatus", "error", "scrapedAt"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "city": {"label": "City", "format": "text"},
+          "state": {"label": "State", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}

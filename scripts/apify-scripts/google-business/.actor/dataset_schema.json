@@ -1,0 +1,29 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Maps match rows",
+    "fields": {
+      "decision": {"type": "string"},
+      "score": {"type": "number"},
+      "sourceStatus": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["decision", "score", "sourceStatus", "scrapedAt"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "decision": {"label": "Decision", "format": "text"},
+          "score": {"label": "Score", "format": "number"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}
