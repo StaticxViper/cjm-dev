@@ -23,6 +23,9 @@ __pycache__/
 *leads_output*
 *property_urls.json
 
+# Local Apify CLI storage (apify run)
+scripts/apify-scripts/**/storage/
+
 # New-business discovery runtime output
 new_business_artifacts/
 new_business_seen.json

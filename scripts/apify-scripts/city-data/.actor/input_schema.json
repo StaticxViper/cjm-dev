@@ -1,0 +1,84 @@
+{
+  "title": "City-Data input",
+  "description": "One city or a list. Field groups match the local city-data scraper.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "cities": {
+      "title": "Cities",
+      "type": "array",
+      "description": "Objects with city, state, and optional slug. Overrides city + state when set.",
+      "editor": "json",
+      "prefill": [
+        {"city": "Clementon", "state": "NJ"}
+      ]
+    },
+    "city": {
+      "title": "City",
+      "type": "string",
+      "description": "Single city name, used when cities is empty.",
+      "editor": "textfield",
+      "prefill": "Clementon"
+    },
+    "state": {
+      "title": "State",
+      "type": "string",
+      "description": "Two-letter state code for the single-city form.",
+      "editor": "textfield",
+      "prefill": "NJ"
+    },
+    "slug": {
+      "title": "Slug override",
+      "type": "string",
+      "description": "Optional city-data path token for the single-city form.",
+      "editor": "textfield"
+    },
+    "fields": {
+      "title": "Field groups",
+      "type": "array",
+      "description": "population, income, housing, cost_of_living, education, crime. crime fetches the crime page.",
+      "editor": "json",
+      "default": ["population", "income", "housing", "cost_of_living", "education", "crime"],
+      "items": {
+        "type": "string",
+        "enum": ["population", "income", "housing", "cost_of_living", "education", "crime"]
+      }
+    },
+    "delaySeconds": {
+      "title": "Delay between requests (seconds)",
+      "type": "number",
+      "description": "Pause between page loads. Default 1.5, same as the local CLI.",
+      "editor": "number",
+      "default": 1.5,
+      "minimum": 0
+    },
+    "timeoutMs": {
+      "title": "Navigation timeout (ms)",
+      "type": "integer",
+      "description": "Playwright navigation timeout.",
+      "editor": "number",
+      "default": 30000,
+      "minimum": 1000
+    },
+    "maxCities": {
+      "title": "Max cities",
+      "type": "integer",
+      "description": "Optional cap on how many cities from the list are scraped.",
+      "editor": "number",
+      "minimum": 1
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Run Chromium headless. Default true.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Ignored. This Actor does not rotate proxies or IPs.",
+      "editor": "proxy"
+    }
+  }
+}

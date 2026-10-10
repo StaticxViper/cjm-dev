@@ -1,0 +1,19 @@
+{
+  "actorSpecification": 1,
+  "name": "actor-template",
+  "title": "Actor template (do not publish)",
+  "description": "Skeleton for Playwright Python Actors. Copy this folder; do not publish it.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "dockerContextDir": "../../../..",
+  "readme": "../README.md",
+  "changelog": "./CHANGELOG.md",
+  "input": "./input_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "minMemoryMbytes": 1024,
+  "maxMemoryMbytes": 4096,
+  "defaultMemoryMbytes": 2048
+}

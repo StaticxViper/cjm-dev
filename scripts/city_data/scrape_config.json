@@ -1,0 +1,10 @@
+{
+  "delay_seconds": 1.5,
+  "headless": true,
+  "timeout_ms": 30000,
+  "cities": [
+    {"city": "Cherry Hill", "state": "NJ"},
+    {"city": "Cinnaminson", "state": "NJ"}
+  ],
+  "fields": ["population", "income", "housing", "cost_of_living", "education", "crime"]
+}
