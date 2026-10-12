@@ -51,12 +51,33 @@ _SCRIPT_KEYS = {
     "schedule",
     "docs",
     "issue",
+    "menu",
+    "prompts",
 }
 _ENTRY_KEYS = {"type", "path", "module"}
 _ENV_KEYS = {"required", "optional", "conditional"}
 _COND_KEYS = {"when_args_any", "require"}
 _DEPS_KEYS = {"requirements", "extras", "system"}
 _SCHEDULE_KEYS = {"cron", "tz", "note"}
+_MENU_KINDS = {"leadgen", "opp-finder", "clip-generator", "montage-builder", "flags", "confirm"}
+_PROMPT_KINDS = {"str", "int", "float", "bool", "choice"}
+_PROMPT_KEYS = {"arg", "prompt", "kind", "optional", "choices", "split"}
+# Main entry points. validate checks these only against the packaged registry.
+MENU_REQUIRED = {
+    "leadgen": "leadgen",
+    "leadenrich": "flags",
+    "leadenrich-playwright": "flags",
+    "stock-analyzer": "confirm",
+    "property-listing-gen": "flags",
+    "clip-generator": "clip-generator",
+    "montage-builder": "montage-builder",
+    "source-recruiters": "confirm",
+    "draft-emails": "confirm",
+    "city-data": "flags",
+    "grocery": "flags",
+    "grocery-cli": "flags",
+    "opp-finder-v2": "opp-finder",
+}
 
 
 class RegistryError(Exception):
@@ -100,6 +121,8 @@ class Script:
     schedule: dict | None = None
     docs: str | None = None
     issue: str | None = None
+    menu: str | None = None
+    prompts: list[dict] = field(default_factory=list)
 
     def copy(self) -> Script:
         return Script(
@@ -136,6 +159,8 @@ class Script:
             schedule=dict(self.schedule) if self.schedule else None,
             docs=self.docs,
             issue=self.issue,
+            menu=self.menu,
+            prompts=[dict(item) for item in self.prompts],
         )
 
     def entry_dict(self) -> dict:
@@ -334,6 +359,9 @@ def _resolve_alias(name, by_raw, by_script, resolved, stack, errors, source):
         script.tags = list(base.tags)
     if "schedule" in raw:
         script.schedule = dict(base.schedule) if base.schedule else None
+    # Menus are per entry point. An alias does not inherit the target's menu.
+    script.menu = base.menu if "menu" in raw else None
+    script.prompts = [dict(item) for item in base.prompts] if "prompts" in raw else []
     if script.needs_playwright == "conditional" and not script.playwright_when_args_any:
         errors.append(
             f"{source}: {name}: playwright_when_args_any is required when needs_playwright is conditional"
@@ -411,6 +439,11 @@ def _parse_script(raw: dict, label: str) -> tuple[Script | None, list[str]]:
     if issue is not None and not isinstance(issue, str):
         errors.append(f"{label}: issue must be a string")
         issue = None
+    menu = raw.get("menu")
+    if "menu" in raw and menu not in _MENU_KINDS:
+        errors.append(f"{label}: menu must be one of {sorted(_MENU_KINDS)}")
+        menu = None
+    prompts = _parse_prompts(raw, label, errors)
     if any(err.startswith(f"{label}: name must") for err in errors):
         return None, errors
     script = Script(
@@ -447,6 +480,8 @@ def _parse_script(raw: dict, label: str) -> tuple[Script | None, list[str]]:
         schedule=schedule,
         docs=docs,
         issue=issue,
+        menu=menu if isinstance(menu, str) else None,
+        prompts=prompts,
     )
     return script, errors
 
@@ -521,6 +556,61 @@ def _parse_deps(deps, label, errors):
     extras = _string_list(deps, "extras", f"{label}.deps", errors) or []
     system = _string_list(deps, "system", f"{label}.deps", errors) or []
     return requirements, extras, system
+
+
+def _parse_prompts(raw, label, errors):
+    if "prompts" not in raw:
+        return []
+    value = raw.get("prompts")
+    if not isinstance(value, list):
+        errors.append(f"{label}: prompts must be a list")
+        return []
+    prompts = []
+    for index, item in enumerate(value):
+        item_label = f"{label}.prompts[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{item_label}: must be an object")
+            continue
+        _unknown(item, _PROMPT_KEYS, item_label, errors)
+        arg = item.get("arg")
+        prompt = item.get("prompt")
+        kind = item.get("kind", "str")
+        if not isinstance(arg, str) or not arg.strip():
+            errors.append(f"{item_label}: arg must be a non-empty string")
+            arg = ""
+        if not isinstance(prompt, str) or not prompt.strip():
+            errors.append(f"{item_label}: prompt must be a non-empty string")
+            prompt = arg or "value"
+        if kind not in _PROMPT_KINDS:
+            errors.append(f"{item_label}: kind must be one of {sorted(_PROMPT_KINDS)}")
+            kind = "str"
+        choices = item.get("choices", [])
+        if "choices" in item and (
+            not isinstance(choices, list) or not all(isinstance(choice, str) for choice in choices)
+        ):
+            errors.append(f"{item_label}: choices must be a list of strings")
+            choices = []
+        if kind == "choice" and not choices:
+            errors.append(f"{item_label}: choice prompts need a non-empty choices list")
+        split = item.get("split", False)
+        if not isinstance(split, bool):
+            errors.append(f"{item_label}: split must be a boolean")
+            split = False
+        optional = item.get("optional", True)
+        if not isinstance(optional, bool):
+            errors.append(f"{item_label}: optional must be a boolean")
+            optional = True
+        prompts.append(
+            {
+                "arg": arg,
+                "prompt": prompt,
+                "kind": kind,
+                "optional": optional,
+                "choices": list(choices or []),
+                "split": bool(split),
+            }
+        )
+    return prompts
 
 
 def _parse_schedule(schedule, label, errors):

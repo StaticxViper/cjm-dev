@@ -2207,7 +2207,7 @@ def interactive_main_menu():
         print("Invalid choice. Please select 1, 2, 3, 4, 5, or 6.")
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Local business lead generation")
     parser.add_argument(
         "--defaults",
@@ -2472,7 +2472,7 @@ def parse_args():
     parser.add_argument("--dry-run", action="store_true", help="New-business fixtures only; no network")
     parser.add_argument("--headful", action="store_true", help="Show the browser for Playwright new-business adapters")
     parser.add_argument("--no-artifacts", action="store_true", help="Do not write new_business_artifacts on errors")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def _has_cli_overrides(args):
@@ -2635,12 +2635,14 @@ def config_from_args(args):
 
 
 def resolve_config(args):
-    """Resolve final config from CLI flags and/or interactive menu."""
-    if args.defaults:
-        return config_from_args(args)
+    """Resolve final config from CLI flags. The script manager owns the menu."""
     if _has_cli_overrides(args):
         return config_from_args(args)
-    return interactive_main_menu()
+    print(
+        "Leadgen no longer opens a menu. Run: python -m scripts.script_manager menu",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
 
 
 def _print_playwright_mode_banner(config):

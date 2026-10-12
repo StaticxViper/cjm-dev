@@ -1,6 +1,6 @@
 # Script manager
 
-One command that knows every runnable script in this repo. It sets the working directory, `PYTHONPATH`, and environment, then runs the script. The scripts themselves are unchanged: each one still runs on its own the same way it does today.
+One command that knows every runnable script in this repo. It sets the working directory, `PYTHONPATH`, and environment, then runs the script. Flagged standalone commands still work. Startup menus for the main scripts live here, not in those scripts.
 
 From the repo root:
 
@@ -10,6 +10,7 @@ python -m scripts.script_manager info leadgen
 python -m scripts.script_manager run leadgen -- --defaults --leadgen-type playwright --state NJ
 python -m scripts.script_manager run stock-analyzer
 python -m scripts.script_manager validate
+python -m scripts.script_manager menu
 ```
 
 From any directory, the repo-root shim does the same thing:
@@ -18,7 +19,7 @@ From any directory, the repo-root shim does the same thing:
 python path/to/cjm-dev/manage.py list
 ```
 
-`python -m scripts.script_manager` has to be started with the repo root on `PYTHONPATH` (that is what a shell sitting in the repo root does). The manager then finds the repo from its own file location, so the child script gets the right working directory even if your shell is somewhere else inside the repo.
+`python -m scripts.script_manager` has to be started with the repo root on `PYTHONPATH` (that is what a shell sitting in the repo root does). The manager then finds the repo from its own file location, so the child script gets the right working directory even if your shell is somewhere else inside the repo. On a terminal, that command with no subcommand opens the menu.
 
 ## Commands
 
@@ -31,6 +32,26 @@ Every command accepts `--registry PATH` and `--json`. Human logs go to stderr wi
 | `help <name>` | The script's own `--help` when it has argparse. Otherwise the registry description, docs path, and an example. |
 | `run <name> [options] [-- args...]` | Everything after `--` is passed through unchanged. |
 | `validate [--strict] [--smoke]` | Schema, paths, docs, unregistered `__main__` files, and the env-name table in [the docs index](../README.md). |
+| `menu` | Pick a main script, fill in its menu, and queue several runs. The queue runs one script after another. |
+
+With no subcommand, a terminal opens `menu`. A pipe still prints usage and exits 2.
+
+## Menu
+
+`menu` is the only place that asks which script to run and which flags to use. Each main script has its own screen:
+
+- Leadgen keeps keyword, location, settings, niche search, new-business, and niche-review choices. A run is queued as normal leadgen flags. Settings still write `scripts/lead_automation/leadgen_settings.json`.
+- Opp finder keeps search, presets, and skill toggles. A run is queued as `--preset` or `--employment` / `--keywords` flags. The registry status stays planned, so the queue asks before it runs.
+- Clip generator lists ride folders. Montage builder asks for a theme and a count.
+- Other main scripts get a flag menu from the registry, or a confirm screen when they take no arguments. Blank answers skip a flag. An extra-args line is there for anything the prompts do not list.
+
+The home screen can add several scripts, remove one, then run the queue. A non-zero exit asks whether to continue. Scripts that require confirmation, and scripts that are not active, ask before they are queued.
+
+These scripts do not get a menu: broken scripts, `api-manager-selftest`, the `leadgen-new-business` alias (it is a leadgen choice), `grocery-sync` (same program as `grocery-cli`), and `opp-finder` (not in this checkout).
+
+`python leadgen.py` with no flags, and the same for opp finder, the clip generator, and the montage builder, exits 2 and points at this menu. `python leadgen.py --defaults ...` and every other flagged command still run on their own.
+
+The ShopRite store picker still waits inside the grocery child after the browser opens. The grocery menu only queues `--set-shoprite-store`.
 
 `info --json` is the shape a workflow can consume:
 

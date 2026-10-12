@@ -35,7 +35,8 @@
       ],
       "ci_allowed": false,
       "tags": ["leads"],
-      "docs": "documentation/scripts/leadgen.md"
+      "docs": "documentation/scripts/leadgen.md",
+      "menu": "leadgen"
     },
     {
       "name": "leadenrich",
@@ -55,7 +56,19 @@
       "outputs": ["scripts/lead_automation/*leads_output*.json", "logs/**"],
       "side_effects": ["external_api", "external_post"],
       "tags": ["leads"],
-      "docs": "documentation/scripts/leadenrich.md"
+      "docs": "documentation/scripts/leadenrich.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--json-path", "prompt": "Leads JSON path", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--limit", "prompt": "Max leads (0 = no limit)", "kind": "int"},
+        {"arg": "--min-similarity", "prompt": "Minimum name similarity", "kind": "float"},
+        {"arg": "--max-search-results", "prompt": "Facebook results per lead", "kind": "int"},
+        {"arg": "--max-workers", "prompt": "Concurrent searches", "kind": "int"},
+        {"arg": "--retry-all", "prompt": "Re-attempt leads already checked?", "kind": "bool"},
+        {"arg": "--dry-run", "prompt": "Dry run?", "kind": "bool"},
+        {"arg": "--dashboard", "prompt": "Upload enriched leads to the dashboard?", "kind": "bool"}
+      ]
     },
     {
       "name": "leadenrich-playwright",
@@ -76,7 +89,24 @@
       "outputs": ["scripts/lead_automation/*leads_output*.json", "logs/**"],
       "side_effects": ["external_api", "external_post"],
       "tags": ["leads"],
-      "docs": "documentation/scripts/leadenrich_playwright.md"
+      "docs": "documentation/scripts/leadenrich_playwright.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--json-path", "prompt": "Leads JSON path", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--limit", "prompt": "Max leads (0 = no limit)", "kind": "int"},
+        {"arg": "--from-crm", "prompt": "Pull leads from the CRM instead of a JSON file?", "kind": "bool"},
+        {"arg": "--dashboard", "prompt": "Upload enriched leads to the dashboard?", "kind": "bool"},
+        {"arg": "--dry-run", "prompt": "Dry run?", "kind": "bool"},
+        {"arg": "--retry-all", "prompt": "Re-attempt leads already researched?", "kind": "bool"},
+        {"arg": "--max-queries", "prompt": "Google searches per lead", "kind": "int"},
+        {"arg": "--status", "prompt": "CRM status filter (repeat by entering one at a time in extra args)", "kind": "str"},
+        {"arg": "--category", "prompt": "CRM category filter", "kind": "str"},
+        {"arg": "--search", "prompt": "CRM text search", "kind": "str"},
+        {"arg": "--since", "prompt": "CRM created-since date (YYYY-MM-DD)", "kind": "str"},
+        {"arg": "--min-score", "prompt": "CRM minimum score", "kind": "int"},
+        {"arg": "--max-score", "prompt": "CRM maximum score", "kind": "int"}
+      ]
     },
     {
       "name": "lead-ingest",
@@ -119,7 +149,8 @@
         "note": "matches stock_analyzer-Automation.yml"
       },
       "tags": ["stocks", "scheduled"],
-      "docs": "documentation/scripts/stock_analyzer.md"
+      "docs": "documentation/scripts/stock_analyzer.md",
+      "menu": "confirm"
     },
     {
       "name": "blog-automation",
@@ -154,7 +185,25 @@
       "outputs": ["scripts/zillow_automation/property_urls.json", "logs/**"],
       "side_effects": ["external_api"],
       "tags": ["listings"],
-      "docs": "documentation/scripts/property_listing_gen.md"
+      "docs": "documentation/scripts/property_listing_gen.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--input", "prompt": "Actor input JSON", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--zip-codes", "prompt": "ZIP codes", "kind": "str", "split": true},
+        {"arg": "--price-min", "prompt": "Minimum price", "kind": "int"},
+        {"arg": "--price-max", "prompt": "Maximum price", "kind": "int"},
+        {"arg": "--days-on-zillow", "prompt": "Max days on Zillow", "kind": "str"},
+        {"arg": "--results-limit", "prompt": "Max properties per ZIP", "kind": "int"},
+        {"arg": "--for-sale-by-agent", "prompt": "Include agent listings?", "kind": "bool"},
+        {"arg": "--no-for-sale-by-agent", "prompt": "Exclude agent listings?", "kind": "bool"},
+        {"arg": "--for-sale-by-owner", "prompt": "Include owner listings?", "kind": "bool"},
+        {"arg": "--no-for-sale-by-owner", "prompt": "Exclude owner listings?", "kind": "bool"},
+        {"arg": "--for-rent", "prompt": "Include rentals?", "kind": "bool"},
+        {"arg": "--no-for-rent", "prompt": "Exclude rentals?", "kind": "bool"},
+        {"arg": "--sold", "prompt": "Include sold listings?", "kind": "bool"},
+        {"arg": "--no-sold", "prompt": "Exclude sold listings?", "kind": "bool"}
+      ]
     },
     {
       "name": "lovable-automation",
@@ -187,7 +236,8 @@
       "needs_playwright": false,
       "local_only": true,
       "tags": ["video"],
-      "docs": "documentation/scripts/clip_generator.md"
+      "docs": "documentation/scripts/clip_generator.md",
+      "menu": "clip-generator"
     },
     {
       "name": "montage-builder",
@@ -202,7 +252,8 @@
       "needs_playwright": false,
       "local_only": true,
       "tags": ["video"],
-      "docs": "documentation/scripts/montage_builder.md"
+      "docs": "documentation/scripts/montage_builder.md",
+      "menu": "montage-builder"
     },
     {
       "name": "json-formatter",
@@ -243,7 +294,8 @@
       "needs_playwright": false,
       "outputs": ["scripts/operation_learn/output/**", "logs/**"],
       "side_effects": ["external_api", "writes_repo_files"],
-      "tags": ["outreach"]
+      "tags": ["outreach"],
+      "menu": "confirm"
     },
     {
       "name": "draft-emails",
@@ -254,7 +306,8 @@
       "needs_playwright": false,
       "outputs": ["scripts/operation_learn/output/**"],
       "side_effects": ["writes_repo_files"],
-      "tags": ["outreach"]
+      "tags": ["outreach"],
+      "menu": "confirm"
     },
     {
       "name": "api-manager-selftest",
@@ -294,7 +347,18 @@
       "outputs": ["scripts/city_data/city_data_output.json", "logs/**"],
       "side_effects": ["external_api", "writes_repo_files"],
       "tags": ["data"],
-      "docs": "documentation/scripts/city_data_scraper.md"
+      "docs": "documentation/scripts/city_data_scraper.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--input", "prompt": "Scrape config JSON", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--cities", "prompt": "Cities as City,ST", "kind": "str", "split": true},
+        {"arg": "--fields", "prompt": "Field groups", "kind": "str", "split": true},
+        {"arg": "--delay", "prompt": "Seconds between requests", "kind": "float"},
+        {"arg": "--timeout-ms", "prompt": "Navigation timeout in milliseconds", "kind": "int"},
+        {"arg": "--headless", "prompt": "Run headless?", "kind": "bool"},
+        {"arg": "--no-headless", "prompt": "Show the browser?", "kind": "bool"}
+      ]
     },
     {
       "name": "grocery",
@@ -318,7 +382,14 @@
       "timeout_seconds": 86400,
       "side_effects": ["external_api"],
       "tags": ["grocery"],
-      "docs": "documentation/scripts/grocery.md"
+      "docs": "documentation/scripts/grocery.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--listen", "prompt": "Poll for pending items?", "kind": "bool"},
+        {"arg": "--all", "prompt": "Re-check every linked item?", "kind": "bool"},
+        {"arg": "--item", "prompt": "shopping_items id", "kind": "str"},
+        {"arg": "--set-shoprite-store", "prompt": "Open ShopRite and save the store session?", "kind": "bool"}
+      ]
     },
     {
       "name": "grocery-sync",
@@ -362,7 +433,17 @@
       "needs_playwright": true,
       "side_effects": ["external_api", "external_post"],
       "tags": ["grocery"],
-      "docs": "documentation/scripts/grocery.md"
+      "docs": "documentation/scripts/grocery.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--all", "prompt": "Sync every linked item?", "kind": "bool"},
+        {"arg": "--store", "prompt": "Store", "kind": "choice", "choices": ["shoprite", "costco", "amazon"]},
+        {"arg": "--search", "prompt": "Search text", "kind": "str"},
+        {"arg": "--test-url", "prompt": "Scrape one product URL", "kind": "str"},
+        {"arg": "--dry-run", "prompt": "Skip the push?", "kind": "bool"},
+        {"arg": "--force", "prompt": "Overwrite flagged outliers?", "kind": "bool"},
+        {"arg": "--set-shoprite-store", "prompt": "Open ShopRite and save the store session?", "kind": "bool"}
+      ]
     },
     {
       "name": "opp-finder",
@@ -393,7 +474,8 @@
       "side_effects": ["external_api", "external_post"],
       "confirm_required": true,
       "tags": ["jobs"],
-      "docs": "documentation/scripts/opp_finder_v2.md"
+      "docs": "documentation/scripts/opp_finder_v2.md",
+      "menu": "opp-finder"
     },
     {
       "name": "leadgen-new-business",

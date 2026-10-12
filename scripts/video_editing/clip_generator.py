@@ -550,10 +550,11 @@ def main() -> None:
 
     folder = args.folder.strip()
     if not folder:
-        picked = gen.interactive_pick_folder()
-        if not picked:
-            return
-        folder = picked
+        print(
+            "Clip generator no longer asks for a folder. Run: python -m scripts.script_manager menu",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
 
     gen.process_date_folder(
         folder,

@@ -18,7 +18,9 @@ from scripts.script_manager.envcheck import (
     playwright_needed,
 )
 from scripts.script_manager.envcheck import EnvFileError
+from scripts.script_manager.menus.session import run_session
 from scripts.script_manager.registry import (
+    MENU_REQUIRED,
     Registry,
     RegistryError,
     Script,
@@ -40,7 +42,7 @@ from scripts.script_manager.runner import (
 
 logger = logging.getLogger("script_manager")
 
-_COMMANDS = {"list", "info", "help", "run", "validate"}
+_COMMANDS = {"list", "info", "help", "run", "validate", "menu"}
 _GLOBAL_FLAGS = {"--json"}
 _GLOBAL_VALUES = {"--registry", "--log-file"}
 
@@ -57,6 +59,7 @@ CONDITIONAL_NOTE = (
 def main(argv: list[str] | None = None) -> int:
     raw = list(sys.argv[1:] if argv is None else argv)
     manager_argv, passthrough = _split_passthrough(raw)
+    manager_argv = _open_menu_when_tty(manager_argv)
     manager_argv = _normalize_globals(manager_argv)
     parser = _build_parser()
     try:
@@ -83,6 +86,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_run(registry, args, passthrough)
         if args.command == "validate":
             return _cmd_validate(registry, args)
+        if args.command == "menu":
+            return run_session(registry, repo=repo_root())
     except KeyboardInterrupt:
         logger.error("interrupted")
         return exit_codes.INTERRUPTED
@@ -339,6 +344,10 @@ def validate_inventory(repo, registry: Registry, *, smoke: bool, check_unregiste
             warnings.append(f"unregistered script: {path.relative_to(repo).as_posix()}")
     if check_env_docs:
         warnings.extend(_env_doc_warnings(repo, registry))
+        for name, kind in MENU_REQUIRED.items():
+            script = registry.get(name)
+            if script is None or script.menu != kind:
+                errors.append(f"{name}: menu must be {kind!r}")
     smoke_results = _run_smoke(repo, registry) if smoke else []
     for item in smoke_results:
         if not item["ok"]:
@@ -517,6 +526,19 @@ def _configure_logging(log_file) -> None:
         log.addHandler(handle)
 
 
+def _open_menu_when_tty(argv: list[str]) -> list[str]:
+    """No subcommand on a terminal opens the menu. A pipe still gets a usage error."""
+    if any(token in _COMMANDS for token in argv):
+        return argv
+    try:
+        interactive = sys.stdin is not None and sys.stdin.isatty()
+    except Exception:
+        interactive = False
+    if interactive:
+        return ["menu", *argv]
+    return argv
+
+
 def _split_passthrough(argv: list[str]) -> tuple[list[str], list[str]]:
     if "--" not in argv:
         return argv, []
@@ -595,6 +617,8 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--github-summary", action="store_true")
     run_parser.add_argument("--ci", action="store_true", help="Refuse scripts that are not ci_allowed")
     run_parser.add_argument("--env-scope", choices=["declared", "inherit"])
+
+    sub.add_parser("menu", parents=[common], help="Pick scripts, queue them, and run the queue")
 
     validate_parser = sub.add_parser("validate", parents=[common], help="Check the registry, paths, and unregistered scripts")
     validate_parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")

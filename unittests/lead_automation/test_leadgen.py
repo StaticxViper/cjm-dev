@@ -241,19 +241,26 @@ class TestSettingsPersistence(unittest.TestCase):
             self.assertEqual(rebuilt.objective, "email")
 
     def test_interactive_customize_saves_without_running(self):
-        fake_cfg = LEADGEN.LeadgenConfig(min_score=65, output_mode="dashboard")
+        from scripts.script_manager.menus.leadgen import configure
+
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "leadgen_settings.json"
-            with patch.object(LEADGEN, "SETTINGS_PATH", path), \
-                    patch.object(LEADGEN, "interactive_customize_config", return_value=fake_cfg), \
-                    patch.object(LEADGEN, "interactive_run_config") as mock_run, \
-                    patch("builtins.input", side_effect=["2", "4"]):
-                result = LEADGEN.interactive_main_menu()
+            answers = iter(["2", "7", "65", "", "4"])
+            result = configure(
+                reader=lambda _prompt="": next(answers),
+                writer=lambda *_args, **_kwargs: None,
+                settings_path=path,
+            )
             self.assertIsNone(result)
-            mock_run.assert_not_called()
             saved = LEADGEN.load_saved_settings(path=path)
             self.assertEqual(saved["min_score"], 65)
-            self.assertEqual(saved["output_mode"], "dashboard")
+            self.assertEqual(saved["output_mode"], "json")
+
+    def test_no_args_does_not_open_menu(self):
+        with patch("builtins.input", side_effect=AssertionError("menu prompt")):
+            with self.assertRaises(SystemExit) as caught:
+                LEADGEN.resolve_config(LEADGEN.parse_args([]))
+        self.assertEqual(caught.exception.code, 2)
 
 
 @SKIP

@@ -317,19 +317,13 @@ def main() -> None:
 
     theme = args.theme.strip()
     if not theme:
-        theme = input("Enter theme folder: ").strip()
-    if not theme:
-        print("Theme name required.")
-        return
+        print(
+            "Montage builder no longer asks for a theme. Run: python -m scripts.script_manager menu",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
 
-    montage_count = args.count
-    if args.test:
-        montage_count = 1
-    elif not args.theme:
-        try:
-            montage_count = int(input("How many montages?: ").strip())
-        except ValueError:
-            montage_count = 3
+    montage_count = 1 if args.test else args.count
 
     builder.build_montages(
         theme,

@@ -66,7 +66,14 @@
         "tags": {"type": "array", "items": {"type": "string"}},
         "schedule": {"$ref": "#/$defs/schedule"},
         "docs": {"type": "string"},
-        "issue": {"type": "string"}
+        "issue": {"type": "string"},
+        "menu": {
+          "enum": ["leadgen", "opp-finder", "clip-generator", "montage-builder", "flags", "confirm"]
+        },
+        "prompts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/prompt"}
+        }
       }
     },
     "entry": {
@@ -116,6 +123,19 @@
         "cron": {"type": "string"},
         "tz": {"type": "string"},
         "note": {"type": "string"}
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arg", "prompt"],
+      "properties": {
+        "arg": {"type": "string"},
+        "prompt": {"type": "string"},
+        "kind": {"enum": ["str", "int", "float", "bool", "choice"]},
+        "optional": {"type": "boolean"},
+        "choices": {"type": "array", "items": {"type": "string"}},
+        "split": {"type": "boolean"}
       }
     }
   }
