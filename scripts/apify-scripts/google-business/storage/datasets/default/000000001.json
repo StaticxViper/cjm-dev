@@ -1,0 +1,31 @@
+{
+  "query": {
+    "name": "Wegmans Food Markets",
+    "city": "Rochester",
+    "county": "Monroe",
+    "state": "NY",
+    "maxResults": 3
+  },
+  "decision": "match",
+  "score": 90,
+  "breakdown": {
+    "name": 50,
+    "location": 35,
+    "category": 0,
+    "corroboration": 5
+  },
+  "hardRejects": [],
+  "candidate": {
+    "business_name": "Wegmans",
+    "phone": "(585) 244-7950",
+    "website": "https://www.wegmans.com/stores/east-ave-ny/?cid=GMB_Wegmans_2024:aw:ow:gb:gb:ao::",
+    "address": "1750 East Ave, Rochester, NY 14610",
+    "rating": 4.5,
+    "user_ratings_total": 4754,
+    "category": "Grocery store",
+    "mapsUrl": "https://www.google.com/maps/place/Wegmans/data=!4m7!3m6!1s0x89d6ca813cc00387:0xd1ac7d3eab0f9324!8m2!3d43.1461766!4d-77.5560309!16s%2Fg%2F1hc2sly7x!19sChIJhwPAPIHK1okRJJMPqz59rNE?authuser=0&hl=en&g_ep=EgoyMDI2MTAwNy4wIJJjKgBIAVAD&rclk=1",
+    "placeId": "ChIJhwPAPIHK1okRJJMPqz59rNE"
+  },
+  "sourceStatus": "ok",
+  "scrapedAt": "2026-10-12T13:49:33.625520+00:00"
+}

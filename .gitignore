@@ -23,6 +23,9 @@ __pycache__/
 *leads_output*
 *property_urls.json
 
+# ShopRite browser session (cookies)
+scripts/grocery/.shoprite_storage.json
+
 # New-business discovery runtime output
 new_business_artifacts/
 new_business_seen.json

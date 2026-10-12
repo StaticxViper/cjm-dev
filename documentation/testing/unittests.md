@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), [niche search](../scripts/niche_search.md) config, intent scoring, filters, and CSV export, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out). New-business discovery is covered by `test_new_business_scoring`, `test_new_business_dedupe`, `test_new_business_website`, `test_new_business_email`, `test_new_business_sources`, and `test_new_business_cli` (the CLI dry run uses fixtures and does not call the network).
+Validates core logic in automation scripts without calling live APIs. Currently covers [leadgen](../scripts/leadgen.md) scoring, Google Places parsing, JSON export, website analysis, and contact `objective` checks, plus [email discovery](../scripts/leadgen.md) extraction/confidence (mocked Google/Playwright), [leadenrich](../scripts/leadenrich.md) Facebook URL handling, name matching, and merge logic, [leadenrich_playwright](../scripts/leadenrich_playwright.md) SERP classification, SEO audit, and CRM mapping (Google/CRM patched out), [niche search](../scripts/niche_search.md) config, intent scoring, filters, and CSV export, and [property listing gen](../scripts/property_listing_gen.md) ZIP-search input validation and URL extraction (Apify patched out). New-business discovery is covered by `test_new_business_scoring`, `test_new_business_dedupe`, `test_new_business_website`, `test_new_business_email`, `test_new_business_sources`, and `test_new_business_cli` (the CLI dry run uses fixtures and does not call the network). Grocery price sync is covered by `unittests/grocery/` (quantity and currency parsing, store HTML fixtures, and push batching with Supabase and Playwright mocked).
 
 ## Prerequisites
 
@@ -26,6 +26,7 @@ python -m unittest unittests.lead_automation.test_leadenrich_playwright
 python -m unittest unittests.lead_automation.test_niche_search
 python -m unittest discover unittests/lead_automation
 python -m unittest unittests.zillow_automation.test_property_listing_gen
+python -m unittest discover unittests/grocery
 ```
 
 Run all tests in the package:
@@ -185,6 +186,16 @@ Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_aut
 | `TestResolveSearchInput` | CLI flags overlay file values without changing unspecified fields |
 | `TestGenerateListings` | Actor called as `Zillow ZIP Search`; URLs written; missing `APIFY_API_KEY` skips the run |
 
+## Test file: `unittests/grocery/`
+
+Imports `grocery` with `scripts/` on `sys.path`. HTML fixtures stand in for live store pages. Supabase HTTP and Playwright launches are not used.
+
+| Test module | What it checks |
+|-------------|----------------|
+| `test_parser.py` | Currency bounds, unit aliases, and multipack totals (`Pack of 2, 32 oz each` → 64 oz) |
+| `test_scrapers.py` | Amazon one-time price (Subscribe & Save ignored), Costco size and member-only pages, ShopRite ZIP/session gate, block detection |
+| `test_sync.py` | Batches of 20, flagged outliers, dry-run skip, pull/push headers, CLI usage |
+
 ## Related documentation
 
 - [leadgen.md](../scripts/leadgen.md) — script under test
@@ -192,4 +203,5 @@ Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_aut
 - [leadenrich.md](../scripts/leadenrich.md) — script under test
 - [leadenrich_playwright.md](../scripts/leadenrich_playwright.md) — script under test
 - [property_listing_gen.md](../scripts/property_listing_gen.md) — script under test
+- [grocery.md](../scripts/grocery.md) — script under test
 - [setup.md](../setup.md) — environment setup
