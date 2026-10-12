@@ -1,0 +1,480 @@
+"""Build a child command and run it in its own process group."""
+
+from __future__ import annotations
+
+import glob
+import json
+import logging
+import os
+import shutil
+import signal
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+
+from scripts.script_manager import exit_codes
+from scripts.script_manager.envcheck import (
+    EnvFileError,
+    build_child_env,
+    env_scope_mode,
+    is_set,
+    load_dotenv_file,
+    merged_env,
+    missing_names,
+    playwright_needed,
+    triggered_rules,
+)
+from scripts.script_manager.registry import Script, entry_file
+
+logger = logging.getLogger("script_manager")
+
+_PLAYWRIGHT_OK: tuple[bool, str] | None = None
+_INSTALL_HINT = "python -m playwright install chromium"
+
+
+@dataclass
+class RunOptions:
+    passthrough: list[str] = field(default_factory=list)
+    dry_run: bool = False
+    timeout: int | None = None
+    env_file: Path | None = None
+    no_dotenv: bool = False
+    non_interactive: bool | None = None
+    yes: bool = False
+    force: bool = False
+    no_defaults: bool = False
+    summary_json: Path | None = None
+    github_summary: bool = False
+    ci: bool = False
+    env_scope: str | None = None
+    skip_env_check: bool = False
+    skip_playwright: bool = False
+    skip_system_deps: bool = False
+    skip_confirm: bool = False
+    process_env: dict[str, str] | None = None
+
+
+def decide_noninteractive(explicit_noninteractive: bool, explicit_interactive: bool, process: dict | None = None) -> bool:
+    if explicit_interactive:
+        return False
+    if explicit_noninteractive:
+        return True
+    source = os.environ if process is None else process
+    if str(source.get("CI", "")).strip().lower() in {"1", "true", "yes"}:
+        return True
+    try:
+        return not sys.stdin.isatty()
+    except Exception:
+        return True
+
+
+def command_args(script: Script, passthrough: list[str], *, no_defaults: bool, non_interactive: bool) -> list[str]:
+    """Args after the interpreter and entry, including defaults when requested."""
+    defaults = [] if no_defaults else list(script.default_args)
+    extra = list(passthrough)
+    if non_interactive and not extra and script.non_interactive_args:
+        extra = list(script.non_interactive_args)
+    return defaults + extra
+
+
+def would_prompt(script: Script, passthrough: list[str], non_interactive: bool) -> bool:
+    if not non_interactive or not script.interactive:
+        return False
+    if passthrough or script.non_interactive_args:
+        return False
+    return True
+
+
+def build_argv(repo: Path, script: Script, args: list[str]) -> list[str]:
+    if script.entry_type == "module":
+        prefix = [sys.executable, "-m", script.entry_module or ""]
+    else:
+        path = (repo / (script.entry_path or "")).resolve()
+        prefix = [sys.executable, str(path)]
+    return prefix + list(args)
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(microsecond=0)
+
+
+def format_time(value: datetime) -> str:
+    return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def blank_summary(name: str, status: str | None, started: datetime) -> dict:
+    finished = started
+    return {
+        "name": name,
+        "status": status,
+        "argv": [],
+        "cwd": None,
+        "started_at": format_time(started),
+        "finished_at": format_time(finished),
+        "duration_s": 0.0,
+        "exit_code": None,
+        "failure_kind": None,
+        "env_missing": [],
+        "outputs": [],
+        "timed_out": False,
+        "dry_run": False,
+    }
+
+
+def finish_summary(summary: dict, started: datetime, exit_code: int, *, child_finished: bool, finished: datetime | None = None) -> dict:
+    finished = finished or utc_now()
+    summary["finished_at"] = format_time(finished)
+    summary["duration_s"] = float((finished - started).total_seconds())
+    summary["exit_code"] = exit_code
+    summary["failure_kind"] = exit_codes.failure_kind_for(exit_code, child_finished=child_finished)
+    return summary
+
+
+def expand_outputs(repo: Path, patterns: list[str]) -> list[str]:
+    found: list[str] = []
+    for pattern in patterns:
+        matches = glob.glob(str(repo / pattern), recursive=True)
+        for match in matches:
+            path = Path(match)
+            if path.is_file():
+                found.append(path.resolve().relative_to(repo.resolve()).as_posix())
+    return sorted(set(found))
+
+
+def system_dep_status(names: list[str]) -> list[tuple[str, bool]]:
+    return [(name, shutil.which(name) is not None) for name in names]
+
+
+def playwright_status() -> tuple[bool, str]:
+    """Return whether Playwright can launch its installed Chromium build."""
+    global _PLAYWRIGHT_OK
+    if _PLAYWRIGHT_OK is not None:
+        return _PLAYWRIGHT_OK
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        _PLAYWRIGHT_OK = (False, f"playwright is not installed. Run: {_INSTALL_HINT}")
+        return _PLAYWRIGHT_OK
+    try:
+        with sync_playwright() as playwright:
+            executable = Path(playwright.chromium.executable_path)
+    except Exception as exc:
+        _PLAYWRIGHT_OK = (False, f"Playwright Chromium is not available ({exc}). Run: {_INSTALL_HINT}")
+        return _PLAYWRIGHT_OK
+    if not executable.is_file():
+        _PLAYWRIGHT_OK = (False, f"Playwright Chromium is not installed. Run: {_INSTALL_HINT}")
+        return _PLAYWRIGHT_OK
+    _PLAYWRIGHT_OK = (True, "")
+    return _PLAYWRIGHT_OK
+
+
+def _popen(argv: list[str], cwd: Path, env: dict[str, str], *, stdin):
+    kwargs = {
+        "cwd": str(cwd),
+        "env": env,
+        "stdin": stdin,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["start_new_session"] = True
+    return subprocess.Popen(argv, **kwargs)
+
+
+def _signal_group(proc: subprocess.Popen, kill: bool) -> None:
+    if proc.poll() is not None:
+        return
+    if os.name == "nt":
+        flags = ["/F"] if kill else []
+        subprocess.run(
+            ["taskkill", *flags, "/PID", str(proc.pid), "/T"],
+            capture_output=True,
+            check=False,
+        )
+        return
+    sig = signal.SIGKILL if kill else signal.SIGTERM
+    try:
+        os.killpg(proc.pid, sig)
+    except OSError:
+        if kill:
+            proc.kill()
+        else:
+            proc.terminate()
+
+
+def _wait_with_timeout(proc: subprocess.Popen, timeout: int) -> tuple[int, bool, bool]:
+    """Return (exit_code, timed_out, interrupted)."""
+    try:
+        code = proc.wait(timeout=timeout)
+        return int(code), False, False
+    except subprocess.TimeoutExpired:
+        _signal_group(proc, kill=False)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            _signal_group(proc, kill=True)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+        return exit_codes.TIMEOUT, True, False
+    except KeyboardInterrupt:
+        _signal_group(proc, kill=False)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            _signal_group(proc, kill=True)
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+        return exit_codes.INTERRUPTED, False, True
+
+
+def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
+    started = utc_now()
+    summary = blank_summary(script.name, script.status, started)
+    summary["dry_run"] = options.dry_run
+    if options.non_interactive is None:
+        non_interactive = decide_noninteractive(False, False, options.process_env)
+    else:
+        non_interactive = options.non_interactive
+
+    args = command_args(
+        script,
+        options.passthrough,
+        no_defaults=options.no_defaults,
+        non_interactive=non_interactive,
+    )
+    argv = build_argv(repo, script, args)
+    cwd = (repo / script.cwd).resolve()
+    summary["argv"] = argv
+    summary["cwd"] = str(cwd)
+    logger.info("command: %s", " ".join(_quote(part) for part in argv))
+    logger.info("cwd: %s", cwd)
+
+    def done(code: int, *, child_finished: bool = False, expand: bool = False, finished: datetime | None = None) -> dict:
+        finish_summary(summary, started, code, child_finished=child_finished, finished=finished)
+        if expand:
+            summary["outputs"] = expand_outputs(repo, script.outputs)
+        _emit_summary(summary, options)
+        return summary
+
+    if script.status != "active" and not options.force:
+        logger.error(
+            "%s: status is %s (%s). Pass --force to run it anyway.",
+            script.name,
+            script.status,
+            script.status_reason or "no reason recorded",
+        )
+        return done(exit_codes.NOT_RUNNABLE)
+    if script.status == "planned" and entry_file(repo, script) is None and script.entry_type == "path":
+        missing = script.entry_path or script.entry_module
+        logger.error("%s: planned entry is not in this checkout (%s).", script.name, missing)
+        return done(exit_codes.NOT_RUNNABLE)
+    if script.status == "planned" and script.entry_type == "module" and entry_file(repo, script) is None:
+        logger.error("%s: planned module %s is not in this checkout.", script.name, script.entry_module)
+        return done(exit_codes.NOT_RUNNABLE)
+    if script.entry_type == "path" and not (repo / (script.entry_path or "")).is_file():
+        logger.error("%s: entry file does not exist: %s", script.name, script.entry_path)
+        return done(exit_codes.NOT_RUNNABLE)
+    if script.entry_type == "module" and entry_file(repo, script) is None:
+        logger.error("%s: module %s was not found from cwd %s", script.name, script.entry_module, script.cwd)
+        return done(exit_codes.NOT_RUNNABLE)
+    if not cwd.is_dir():
+        logger.error("%s: working directory does not exist: %s", script.name, script.cwd)
+        return done(exit_codes.NOT_RUNNABLE)
+    if options.ci and not script.ci_allowed:
+        logger.error("%s: ci_allowed is false. Refusing --ci.", script.name)
+        return done(exit_codes.CONFIRMATION_REQUIRED)
+    if script.confirm_required and not options.yes and not options.skip_confirm:
+        logger.error("%s: this script requires --yes before it runs.", script.name)
+        return done(exit_codes.CONFIRMATION_REQUIRED)
+    if would_prompt(script, options.passthrough, non_interactive):
+        logger.error(
+            "%s: this script prompts on stdin. Pass script args after -- , or add non_interactive_args.",
+            script.name,
+        )
+        return done(exit_codes.WOULD_PROMPT)
+
+    try:
+        dotenv = load_dotenv_file(repo, options.env_file, options.no_dotenv)
+    except EnvFileError as exc:
+        logger.error("%s", exc)
+        return done(exit_codes.USAGE)
+    report_env = merged_env(options.process_env, dotenv)
+    report = missing_names(script, args, report_env)
+    summary["env_missing"] = report["required_missing"] + report["conditional_missing"]
+    if summary["env_missing"] and not options.skip_env_check:
+        logger.error(
+            "%s: missing required env: %s (set them in .env or the environment).",
+            script.name,
+            ", ".join(summary["env_missing"]),
+        )
+        return done(exit_codes.MISSING_ENV)
+    if not options.skip_system_deps:
+        missing_deps = [name for name, found in system_dep_status(script.deps_system) if not found]
+        if missing_deps:
+            logger.error("%s: missing system dependency: %s", script.name, ", ".join(missing_deps))
+            return done(exit_codes.NOT_RUNNABLE)
+    needs_browser = playwright_needed(script, args)
+    if needs_browser and not options.skip_playwright:
+        ok, detail = playwright_status()
+        if not ok:
+            logger.error("%s: %s", script.name, detail)
+            return done(exit_codes.NOT_RUNNABLE)
+
+    scope = env_scope_mode(options.env_scope, options.process_env)
+    logger.info("env scope: %s", scope)
+    if options.dry_run:
+        for line in describe_env(script, args, report_env):
+            logger.info("%s", line)
+        logger.info("dry-run: not started")
+        return done(0)
+
+    child_env = build_child_env(
+        repo,
+        script,
+        env_file=options.env_file,
+        no_dotenv=options.no_dotenv,
+        env_scope=options.env_scope,
+        process=options.process_env,
+    )
+    stdin = subprocess.DEVNULL if non_interactive else None
+    timeout = options.timeout if options.timeout is not None else script.timeout_seconds
+    try:
+        proc = _popen(argv, cwd, child_env, stdin=stdin)
+    except OSError as exc:
+        logger.error("%s: failed to start: %s", script.name, exc)
+        return done(exit_codes.NOT_RUNNABLE)
+    code, timed_out, interrupted = _wait_with_timeout(proc, timeout)
+    summary["timed_out"] = timed_out
+    if timed_out:
+        logger.error("%s: timed out after %ss", script.name, timeout)
+    if interrupted:
+        logger.error("%s: interrupted", script.name)
+    return done(
+        code,
+        child_finished=not timed_out and not interrupted,
+        expand=True,
+        finished=utc_now(),
+    )
+
+
+def smoke_import(repo: Path, script: Script, *, timeout: int = 30) -> tuple[int, str]:
+    """Import a script without executing its ``__main__`` block.
+
+    Broken scripts fail while importing the logger. Skipping ``__main__`` keeps
+    a side-effect entry point (webhook POST, apt-get) from running if the
+    import is later fixed.
+    """
+    path = entry_file(repo, script)
+    if path is None and script.entry_type == "path" and script.entry_path:
+        path = (repo / script.entry_path).resolve()
+    if path is None:
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: entry is missing"
+    code = (
+        "import runpy, sys\n"
+        f"sys.path.insert(0, {str(repo)!r})\n"
+        f"runpy.run_path({str(path)!r}, run_name='script_manager_smoke')\n"
+    )
+    cwd = (repo / script.cwd).resolve()
+    if not cwd.is_dir():
+        cwd = repo
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    env["PYTHONUNBUFFERED"] = "1"
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=str(cwd),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return exit_codes.TIMEOUT, f"{script.name}: import probe timed out"
+    detail = (proc.stderr or proc.stdout or "").strip()
+    return proc.returncode, detail
+
+
+def _quote(part: str) -> str:
+    if part == "" or any(char.isspace() for char in part):
+        return '"' + part.replace('"', '\\"') + '"'
+    return part
+
+
+def _emit_summary(summary: dict, options: RunOptions) -> None:
+    if options.summary_json is not None:
+        path = Path(options.summary_json)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_summary_json(summary), encoding="utf-8")
+    if options.github_summary:
+        _append_github_summary(summary)
+
+
+def _summary_json(summary: dict) -> str:
+    return json.dumps(summary, indent=2) + "\n"
+
+
+def _append_github_summary(summary: dict) -> None:
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        logger.info("GITHUB_STEP_SUMMARY is not set; skipping job summary")
+        return
+    missing = ", ".join(summary.get("env_missing") or []) or "none"
+    failure = summary.get("failure_kind")
+    text = (
+        f"### script-manager: {summary.get('name')}\n\n"
+        f"- exit_code: {summary.get('exit_code')}\n"
+        f"- failure_kind: {failure}\n"
+        f"- duration_s: {summary.get('duration_s')}\n"
+        f"- timed_out: {summary.get('timed_out')}\n"
+        f"- env_missing: {missing}\n\n"
+    )
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(text)
+
+
+def describe_env(script: Script, args: list[str], env: dict[str, str]) -> list[str]:
+    """Human lines of env name status. Values are never included."""
+    lines = []
+    report = missing_names(script, args, env)
+    missing_required = set(report["required_missing"])
+    missing_optional = set(report["optional_missing"])
+    lines.append("env required:")
+    if script.env_required:
+        for name in script.env_required:
+            state = "missing" if name in missing_required else "present"
+            lines.append(f"  {name}: {state}")
+    else:
+        lines.append("  (none)")
+    lines.append("env optional:")
+    if script.env_optional:
+        for name in script.env_optional:
+            state = "missing" if name in missing_optional else "present"
+            lines.append(f"  {name}: {state}")
+    else:
+        lines.append("  (none)")
+    lines.append("env conditional (explicit args only; saved settings and script defaults are not inferred):")
+    if not script.env_conditional:
+        lines.append("  (none)")
+    active = triggered_rules(script, args)
+    active_ids = {id(rule) for rule in active}
+    for rule in script.env_conditional:
+        tokens = ", ".join(rule.get("when_args_any", []))
+        if id(rule) not in active_ids:
+            lines.append(f"  when {tokens}: not triggered")
+            continue
+        for name in rule.get("require", []):
+            state = "present" if _present(env, name) else "missing"
+            lines.append(f"  when {tokens}: {name}: {state}")
+    return lines
+
+
+def _present(env, name) -> bool:
+    return is_set(env, name)

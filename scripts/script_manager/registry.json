@@ -1,0 +1,494 @@
+{
+  "version": 1,
+  "ignore_paths": [
+    "scripts/video_editing/deprecated/**",
+    "helper_scripts/utils/update_manager/**",
+    "helper_scripts/utils/logger/import_log_example.py",
+    "scripts/script_manager/**"
+  ],
+  "scripts": [
+    {
+      "name": "leadgen",
+      "description": "Local business lead generation (Google Places API or Playwright Maps)",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/lead_automation/leadgen.py"},
+      "cwd": "scripts/lead_automation",
+      "interactive": true,
+      "non_interactive_args": ["--defaults"],
+      "help_supported": true,
+      "env": {
+        "required": [],
+        "optional": ["GOOGLE_API_KEY", "APIFY_API_KEY", "MVLLC_LOGS_KEY", "CRM_MCP_VENTURE"],
+        "conditional": [
+          {"when_args_any": ["--output=dashboard", "--output=both"], "require": ["CRM_MCP_MV_LLC"]},
+          {"when_args_any": ["--leadgen-type=api_manager"], "require": ["GOOGLE_API_KEY"]}
+        ]
+      },
+      "needs_playwright": "conditional",
+      "playwright_when_args_any": ["--leadgen-type=playwright"],
+      "timeout_seconds": 14400,
+      "outputs": ["scripts/lead_automation/*leads_output*.json", "logs/**"],
+      "side_effects": ["external_api", "external_post"],
+      "stateful_files": [
+        "scripts/lead_automation/leadgen_search_history.json",
+        "scripts/lead_automation/leadgen_settings.json"
+      ],
+      "ci_allowed": false,
+      "tags": ["leads"],
+      "docs": "documentation/scripts/leadgen.md",
+      "menu": "leadgen"
+    },
+    {
+      "name": "leadenrich",
+      "description": "Facebook email enrichment for leads via Apify",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/lead_automation/leadenrich.py"},
+      "cwd": "scripts/lead_automation",
+      "help_supported": true,
+      "env": {
+        "required": ["APIFY_API_KEY"],
+        "optional": ["MVLLC_LOGS_KEY", "CRM_MCP_VENTURE"],
+        "conditional": [
+          {"when_args_any": ["--dashboard"], "require": ["CRM_MCP_MV_LLC"]}
+        ]
+      },
+      "needs_playwright": false,
+      "outputs": ["scripts/lead_automation/*leads_output*.json", "logs/**"],
+      "side_effects": ["external_api", "external_post"],
+      "tags": ["leads"],
+      "docs": "documentation/scripts/leadenrich.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--json-path", "prompt": "Leads JSON path", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--limit", "prompt": "Max leads (0 = no limit)", "kind": "int"},
+        {"arg": "--min-similarity", "prompt": "Minimum name similarity", "kind": "float"},
+        {"arg": "--max-search-results", "prompt": "Facebook results per lead", "kind": "int"},
+        {"arg": "--max-workers", "prompt": "Concurrent searches", "kind": "int"},
+        {"arg": "--retry-all", "prompt": "Re-attempt leads already checked?", "kind": "bool"},
+        {"arg": "--dry-run", "prompt": "Dry run?", "kind": "bool"},
+        {"arg": "--dashboard", "prompt": "Upload enriched leads to the dashboard?", "kind": "bool"}
+      ]
+    },
+    {
+      "name": "leadenrich-playwright",
+      "description": "Google and website enrichment for leads using Playwright",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/lead_automation/leadenrich_playwright.py"},
+      "cwd": "scripts/lead_automation",
+      "help_supported": true,
+      "env": {
+        "required": [],
+        "optional": ["MVLLC_LOGS_KEY", "CRM_MCP_VENTURE"],
+        "conditional": [
+          {"when_args_any": ["--dashboard"], "require": ["CRM_MCP_MV_LLC"]},
+          {"when_args_any": ["--from-crm"], "require": ["LEAD_INGEST_KEY"]}
+        ]
+      },
+      "needs_playwright": true,
+      "outputs": ["scripts/lead_automation/*leads_output*.json", "logs/**"],
+      "side_effects": ["external_api", "external_post"],
+      "tags": ["leads"],
+      "docs": "documentation/scripts/leadenrich_playwright.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--json-path", "prompt": "Leads JSON path", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--limit", "prompt": "Max leads (0 = no limit)", "kind": "int"},
+        {"arg": "--from-crm", "prompt": "Pull leads from the CRM instead of a JSON file?", "kind": "bool"},
+        {"arg": "--dashboard", "prompt": "Upload enriched leads to the dashboard?", "kind": "bool"},
+        {"arg": "--dry-run", "prompt": "Dry run?", "kind": "bool"},
+        {"arg": "--retry-all", "prompt": "Re-attempt leads already researched?", "kind": "bool"},
+        {"arg": "--max-queries", "prompt": "Google searches per lead", "kind": "int"},
+        {"arg": "--status", "prompt": "CRM status filter (repeat by entering one at a time in extra args)", "kind": "str"},
+        {"arg": "--category", "prompt": "CRM category filter", "kind": "str"},
+        {"arg": "--search", "prompt": "CRM text search", "kind": "str"},
+        {"arg": "--since", "prompt": "CRM created-since date (YYYY-MM-DD)", "kind": "str"},
+        {"arg": "--min-score", "prompt": "CRM minimum score", "kind": "int"},
+        {"arg": "--max-score", "prompt": "CRM maximum score", "kind": "int"}
+      ]
+    },
+    {
+      "name": "lead-ingest",
+      "description": "Upload leads_output.csv to the CRM",
+      "status": "broken",
+      "status_reason": "from helper_scripts.utils.logger import setup_logger fails (no __init__.py in helper_scripts/utils/logger)",
+      "entry": {"type": "path", "path": "scripts/lead_automation/lead_automation.py"},
+      "cwd": "scripts/lead_automation",
+      "help_supported": true,
+      "env": {
+        "required": ["CRM_MCP_MV_LLC"],
+        "optional": ["CRM_MCP_VENTURE", "MVLLC_LOGS_KEY"]
+      },
+      "needs_playwright": false,
+      "outputs": ["logs/**"],
+      "side_effects": ["external_post"],
+      "tags": ["leads"],
+      "docs": "documentation/scripts/lead_automation.md"
+    },
+    {
+      "name": "stock-analyzer",
+      "description": "Daily stock data and Perplexity analysis to the dashboard",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/stock_analyzer/stock_analyzer.py"},
+      "cwd": ".",
+      "help_supported": false,
+      "env": {
+        "required": ["STOCK_INGEST_TOKEN", "APIFY_API_KEY", "PERPLEXITY_API_KEY"],
+        "optional": ["MVLLC_LOGS_KEY"]
+      },
+      "needs_playwright": false,
+      "timeout_seconds": 1800,
+      "outputs": ["logs/**"],
+      "side_effects": ["external_api", "external_post"],
+      "stateful_files": ["scripts/stock_analyzer/previous_run_date.txt"],
+      "ci_allowed": true,
+      "schedule": {
+        "cron": "0 14 * * 1-5",
+        "tz": "UTC",
+        "note": "matches stock_analyzer-Automation.yml"
+      },
+      "tags": ["stocks", "scheduled"],
+      "docs": "documentation/scripts/stock_analyzer.md",
+      "menu": "confirm"
+    },
+    {
+      "name": "blog-automation",
+      "description": "Generate the next Chikara Realms blog post from topic files",
+      "status": "broken",
+      "status_reason": "from helper_scripts.utils.logger import setup_logger fails (no __init__.py in helper_scripts/utils/logger)",
+      "entry": {"type": "path", "path": "scripts/chikara_realms/blog_automation.py"},
+      "cwd": "scripts/chikara_realms",
+      "env": {
+        "required": ["CHATGPT_API_KEY", "PERPLEXITY_API_KEY", "CHIKARA_REALMS_SECRET"],
+        "optional": ["MVLLC_LOGS_KEY"]
+      },
+      "needs_playwright": false,
+      "outputs": ["logs/**"],
+      "side_effects": ["external_api", "writes_repo_files"],
+      "stateful_files": ["scripts/chikara_realms/*_topics.json"],
+      "tags": ["content"],
+      "docs": "documentation/scripts/blog_automation.md"
+    },
+    {
+      "name": "property-listing-gen",
+      "description": "Collect Zillow listing URLs for ZIP codes via Apify",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/zillow_automation/property_listing_gen.py"},
+      "cwd": "scripts/zillow_automation",
+      "help_supported": true,
+      "env": {
+        "required": ["APIFY_API_KEY"],
+        "optional": ["MVLLC_LOGS_KEY"]
+      },
+      "needs_playwright": false,
+      "outputs": ["scripts/zillow_automation/property_urls.json", "logs/**"],
+      "side_effects": ["external_api"],
+      "tags": ["listings"],
+      "docs": "documentation/scripts/property_listing_gen.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--input", "prompt": "Actor input JSON", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--zip-codes", "prompt": "ZIP codes", "kind": "str", "split": true},
+        {"arg": "--price-min", "prompt": "Minimum price", "kind": "int"},
+        {"arg": "--price-max", "prompt": "Maximum price", "kind": "int"},
+        {"arg": "--days-on-zillow", "prompt": "Max days on Zillow", "kind": "str"},
+        {"arg": "--results-limit", "prompt": "Max properties per ZIP", "kind": "int"},
+        {"arg": "--for-sale-by-agent", "prompt": "Include agent listings?", "kind": "bool"},
+        {"arg": "--no-for-sale-by-agent", "prompt": "Exclude agent listings?", "kind": "bool"},
+        {"arg": "--for-sale-by-owner", "prompt": "Include owner listings?", "kind": "bool"},
+        {"arg": "--no-for-sale-by-owner", "prompt": "Exclude owner listings?", "kind": "bool"},
+        {"arg": "--for-rent", "prompt": "Include rentals?", "kind": "bool"},
+        {"arg": "--no-for-rent", "prompt": "Exclude rentals?", "kind": "bool"},
+        {"arg": "--sold", "prompt": "Include sold listings?", "kind": "bool"},
+        {"arg": "--no-sold", "prompt": "Exclude sold listings?", "kind": "bool"}
+      ]
+    },
+    {
+      "name": "lovable-automation",
+      "description": "Create and publish a Lovable site from a prompt",
+      "status": "broken",
+      "status_reason": "from helper_scripts.utils.logger import setup_logger fails (no __init__.py in helper_scripts/utils/logger)",
+      "entry": {"type": "path", "path": "scripts/lovable_automation/lovable_automation.py"},
+      "cwd": "scripts/lovable_automation",
+      "help_supported": true,
+      "env": {
+        "required": ["LOVABLE_API_KEY"],
+        "optional": ["LOVABLE_WORKSPACE_ID", "LOVABLE_CREDIT_THRESHOLD"]
+      },
+      "needs_playwright": false,
+      "side_effects": ["external_api", "spends_money"],
+      "confirm_required": true,
+      "tags": ["sites"],
+      "docs": "documentation/scripts/lovable_automation.md"
+    },
+    {
+      "name": "clip-generator",
+      "description": "Cut highlight clips from local motorcycle footage with FFmpeg",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/video_editing/clip_generator.py"},
+      "cwd": "scripts/video_editing",
+      "interactive": true,
+      "help_supported": true,
+      "env": {"optional": ["MOTO_VIDS_BASE"]},
+      "deps": {"system": ["ffmpeg"]},
+      "needs_playwright": false,
+      "local_only": true,
+      "tags": ["video"],
+      "docs": "documentation/scripts/clip_generator.md",
+      "menu": "clip-generator"
+    },
+    {
+      "name": "montage-builder",
+      "description": "Build montages from local motorcycle clips with FFmpeg",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/video_editing/montage_builder.py"},
+      "cwd": "scripts/video_editing",
+      "interactive": true,
+      "help_supported": true,
+      "env": {"optional": ["MOTO_VIDS_BASE"]},
+      "deps": {"system": ["ffmpeg"]},
+      "needs_playwright": false,
+      "local_only": true,
+      "tags": ["video"],
+      "docs": "documentation/scripts/montage_builder.md",
+      "menu": "montage-builder"
+    },
+    {
+      "name": "json-formatter",
+      "description": "Rewrite a JSON file as a compact structural schema",
+      "status": "broken",
+      "status_reason": "from helper_scripts.utils.logger import setup_logger fails (no __init__.py in helper_scripts/utils/logger)",
+      "entry": {"type": "path", "path": "scripts/json_formatter/json_formatter.py"},
+      "cwd": "scripts/json_formatter",
+      "needs_playwright": false,
+      "outputs": ["scripts/json_formatter/output/json_structure.json", "logs/**"],
+      "side_effects": ["writes_repo_files"],
+      "tags": ["dev"],
+      "docs": "documentation/scripts/json_formatter.md"
+    },
+    {
+      "name": "webhook-manager",
+      "description": "Send a test email payload through the Make.com webhook",
+      "status": "broken",
+      "status_reason": "from helper_scripts.utils.logger import setup_logger fails (no __init__.py in helper_scripts/utils/logger)",
+      "entry": {"type": "path", "path": "scripts/webhook_manager/webhook_manager.py"},
+      "cwd": "scripts/webhook_manager",
+      "needs_playwright": false,
+      "side_effects": ["external_post", "sends_messages"],
+      "confirm_required": true,
+      "tags": ["outreach"],
+      "docs": "documentation/scripts/webhook_manager.md"
+    },
+    {
+      "name": "source-recruiters",
+      "description": "Pull recruiter profiles for companies.json through Apify",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/operation_learn/source_recruiters.py"},
+      "cwd": "scripts/operation_learn",
+      "env": {
+        "required": ["APIFY_API_KEY"],
+        "optional": ["MVLLC_LOGS_KEY"]
+      },
+      "needs_playwright": false,
+      "outputs": ["scripts/operation_learn/output/**", "logs/**"],
+      "side_effects": ["external_api", "writes_repo_files"],
+      "tags": ["outreach"],
+      "menu": "confirm"
+    },
+    {
+      "name": "draft-emails",
+      "description": "Write recruiter email drafts from the latest CSV and resume. Sends nothing",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/operation_learn/draft_emails.py"},
+      "cwd": "scripts/operation_learn",
+      "needs_playwright": false,
+      "outputs": ["scripts/operation_learn/output/**"],
+      "side_effects": ["writes_repo_files"],
+      "tags": ["outreach"],
+      "menu": "confirm"
+    },
+    {
+      "name": "api-manager-selftest",
+      "description": "Smoke-test API Manager against httpbin. APIFY_TOKEN is listed only so the README env table stays in sync; this selftest does not read it",
+      "status": "active",
+      "entry": {"type": "path", "path": "helper_scripts/api_manager/api_manager.py"},
+      "cwd": ".",
+      "env": {
+        "optional": [
+          "CHATGPT_API_KEY",
+          "PERPLEXITY_API_KEY",
+          "CHIKARA_REALMS_SECRET",
+          "GOOGLE_API_KEY",
+          "LEAD_INGEST_KEY",
+          "APIFY_API_KEY",
+          "APIFY_TOKEN",
+          "APIFY_USER_ID",
+          "MVLLC_LOGS_KEY",
+          "STOCK_INGEST_TOKEN"
+        ]
+      },
+      "needs_playwright": false,
+      "timeout_seconds": 120,
+      "side_effects": ["external_api"],
+      "tags": ["setup"],
+      "docs": "documentation/helper_scripts/api_manager.md"
+    },
+    {
+      "name": "city-data",
+      "description": "Scrape city-data.com city and crime pages into JSON",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/city_data/city_data_scraper.py"},
+      "cwd": "scripts/city_data",
+      "help_supported": true,
+      "env": {"optional": ["MVLLC_LOGS_KEY"]},
+      "needs_playwright": true,
+      "outputs": ["scripts/city_data/city_data_output.json", "logs/**"],
+      "side_effects": ["external_api", "writes_repo_files"],
+      "tags": ["data"],
+      "docs": "documentation/scripts/city_data_scraper.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--input", "prompt": "Scrape config JSON", "kind": "str"},
+        {"arg": "--output-path", "prompt": "Output JSON path", "kind": "str"},
+        {"arg": "--cities", "prompt": "Cities as City,ST", "kind": "str", "split": true},
+        {"arg": "--fields", "prompt": "Field groups", "kind": "str", "split": true},
+        {"arg": "--delay", "prompt": "Seconds between requests", "kind": "float"},
+        {"arg": "--timeout-ms", "prompt": "Navigation timeout in milliseconds", "kind": "int"},
+        {"arg": "--headless", "prompt": "Run headless?", "kind": "bool"},
+        {"arg": "--no-headless", "prompt": "Show the browser?", "kind": "bool"}
+      ]
+    },
+    {
+      "name": "grocery",
+      "description": "Look up ShopRite, Costco, and Amazon prices and write them to Supabase",
+      "status": "active",
+      "entry": {"type": "module", "module": "grocery.scraper"},
+      "cwd": "scripts",
+      "help_supported": true,
+      "env": {
+        "required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+        "optional": [
+          "SUPABASE_ANON_KEY",
+          "DEFAULT_SHOPRITE_ZIP",
+          "GROCERY_MIN_DELAY_SECONDS",
+          "GROCERY_TIMEOUT_MS",
+          "GROCERY_BATCH_SIZE",
+          "GROCERY_POLL_SECONDS"
+        ]
+      },
+      "needs_playwright": true,
+      "timeout_seconds": 86400,
+      "side_effects": ["external_api"],
+      "tags": ["grocery"],
+      "docs": "documentation/scripts/grocery.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--listen", "prompt": "Poll for pending items?", "kind": "bool"},
+        {"arg": "--all", "prompt": "Re-check every linked item?", "kind": "bool"},
+        {"arg": "--item", "prompt": "shopping_items id", "kind": "str"},
+        {"arg": "--set-shoprite-store", "prompt": "Open ShopRite and save the store session?", "kind": "bool"}
+      ]
+    },
+    {
+      "name": "grocery-sync",
+      "description": "Push grocery price batches to the grocery-lookup edge function",
+      "status": "active",
+      "entry": {"type": "module", "module": "grocery.sync"},
+      "cwd": "scripts",
+      "help_supported": true,
+      "env": {
+        "required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"],
+        "optional": [
+          "DEFAULT_SHOPRITE_ZIP",
+          "GROCERY_MIN_DELAY_SECONDS",
+          "GROCERY_TIMEOUT_MS",
+          "GROCERY_BATCH_SIZE",
+          "GROCERY_POLL_SECONDS"
+        ]
+      },
+      "needs_playwright": true,
+      "side_effects": ["external_api", "external_post"],
+      "tags": ["grocery"],
+      "docs": "documentation/scripts/grocery.md"
+    },
+    {
+      "name": "grocery-cli",
+      "description": "Package entry for python -m grocery. Runs the same sync CLI as grocery-sync",
+      "status": "active",
+      "entry": {"type": "module", "module": "grocery"},
+      "cwd": "scripts",
+      "help_supported": true,
+      "env": {
+        "required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"],
+        "optional": [
+          "DEFAULT_SHOPRITE_ZIP",
+          "GROCERY_MIN_DELAY_SECONDS",
+          "GROCERY_TIMEOUT_MS",
+          "GROCERY_BATCH_SIZE",
+          "GROCERY_POLL_SECONDS"
+        ]
+      },
+      "needs_playwright": true,
+      "side_effects": ["external_api", "external_post"],
+      "tags": ["grocery"],
+      "docs": "documentation/scripts/grocery.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--all", "prompt": "Sync every linked item?", "kind": "bool"},
+        {"arg": "--store", "prompt": "Store", "kind": "choice", "choices": ["shoprite", "costco", "amazon"]},
+        {"arg": "--search", "prompt": "Search text", "kind": "str"},
+        {"arg": "--test-url", "prompt": "Scrape one product URL", "kind": "str"},
+        {"arg": "--dry-run", "prompt": "Skip the push?", "kind": "bool"},
+        {"arg": "--force", "prompt": "Overwrite flagged outliers?", "kind": "bool"},
+        {"arg": "--set-shoprite-store", "prompt": "Open ShopRite and save the store session?", "kind": "bool"}
+      ]
+    },
+    {
+      "name": "opp-finder",
+      "description": "Opportunity finder (planned)",
+      "status": "planned",
+      "status_reason": "not on main yet",
+      "issue": "#119",
+      "entry": {"type": "path", "path": "scripts/opp_finder/main.py"},
+      "cwd": "scripts/opp_finder",
+      "help_supported": true,
+      "needs_playwright": true,
+      "deps": {"extras": ["PyYAML"]},
+      "tags": ["jobs"]
+    },
+    {
+      "name": "opp-finder-v2",
+      "description": "Remote and contract opportunity finder (planned)",
+      "status": "planned",
+      "status_reason": "not on main yet. playwright_when_args_any is a placeholder; only Playwright-mode sites need a browser",
+      "issue": "#121",
+      "entry": {"type": "module", "module": "opp_finder_v2"},
+      "cwd": "scripts",
+      "interactive": true,
+      "help_supported": true,
+      "env": {"optional": ["CRM_MCP_MV_LLC"]},
+      "needs_playwright": "conditional",
+      "playwright_when_args_any": ["--sites"],
+      "side_effects": ["external_api", "external_post"],
+      "confirm_required": true,
+      "tags": ["jobs"],
+      "docs": "documentation/scripts/opp_finder_v2.md",
+      "menu": "opp-finder"
+    },
+    {
+      "name": "leadgen-new-business",
+      "description": "Leadgen alias that starts in new-business mode (planned)",
+      "status": "planned",
+      "status_reason": "not on main yet",
+      "issue": "#122",
+      "alias_of": "leadgen",
+      "default_args": ["--mode", "new-business"],
+      "needs_playwright": "conditional",
+      "playwright_when_args_any": ["--headful", "--leadgen-type=playwright"],
+      "tags": ["leads"],
+      "docs": "documentation/scripts/new_business_sources.md"
+    }
+  ]
+}

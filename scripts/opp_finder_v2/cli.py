@@ -12,7 +12,7 @@ from opp_finder_v2.config import (
     load_criteria,
     load_sites,
 )
-from opp_finder_v2.menu import load_skills, run_menu
+from opp_finder_v2.menu import load_skills
 from opp_finder_v2.models import RunOptions
 from opp_finder_v2.pipeline import run
 from opp_finder_v2.presets import find_preset, load_presets, setup_from_preset
@@ -22,7 +22,7 @@ from opp_finder_v2.search_setup import EMPLOYMENT_TYPES, apply_setup
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="opp_finder_v2",
-        description="Find job listings from configured boards. With no flags, opens a menu.",
+        description="Find job listings from configured boards. Use the script manager menu to pick options.",
     )
     parser.add_argument("--config", default=str(PACKAGE_DIR / "sites.json"))
     parser.add_argument("--criteria", default=str(PACKAGE_DIR / "criteria.json"))
@@ -39,7 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--list-sites", action="store_true")
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--menu", action="store_true", help="Open the search menu")
+    parser.add_argument(
+        "--menu",
+        action="store_true",
+        help="Ignored. The script manager owns the menu.",
+    )
     parser.add_argument(
         "--run",
         action="store_true",
@@ -123,19 +127,15 @@ def _explicit_search(args: argparse.Namespace) -> bool:
     )
 
 
-def _open_menu(args: argparse.Namespace) -> bool:
-    if args.list_sites or args.validate:
-        return False
-    if args.menu:
-        return True
-    if _explicit_search(args):
-        return False
-    return sys.stdin.isatty()
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if not _explicit_search(args):
+        print(
+            "Opp finder no longer opens a menu. Run: python -m scripts.script_manager menu",
+            file=sys.stderr,
+        )
+        return 2
     from helper_scripts.utils.logger.logger import setup_logger
 
     levels = ["INFO", "ERROR", "CRITICAL"]
@@ -157,11 +157,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"valid: {options.criteria_path}")
             return 0
         criteria = load_criteria(options.criteria_path)
-        if _open_menu(args):
-            setup = run_menu()
-            if setup is None:
-                return 0
-        elif args.preset:
+        if args.preset:
             setup = setup_from_preset(find_preset(load_presets(), args.preset))
         if setup is not None:
             if setup.keyword_mode == "skills" and not setup.skill_ids:

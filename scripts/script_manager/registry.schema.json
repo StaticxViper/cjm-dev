@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cjm-dev.local/script-manager/registry.schema.json",
+  "title": "Script manager registry",
+  "description": "Documented shape of scripts/script_manager/registry.json. The manager validates this with a hand-written checker in registry.py (stdlib only). This file is not loaded at runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "scripts"],
+  "properties": {
+    "version": {"const": 1},
+    "ignore_paths": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "scripts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/script"}
+    }
+  },
+  "$defs": {
+    "script": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "status"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+        "description": {"type": "string", "minLength": 1},
+        "status": {"enum": ["active", "broken", "legacy", "planned"]},
+        "status_reason": {"type": "string"},
+        "entry": {"$ref": "#/$defs/entry"},
+        "cwd": {"type": "string"},
+        "pythonpath": {"type": "array", "items": {"type": "string"}},
+        "alias_of": {"type": "string"},
+        "default_args": {"type": "array", "items": {"type": "string"}},
+        "non_interactive_args": {"type": "array", "items": {"type": "string"}},
+        "interactive": {"type": "boolean"},
+        "help_supported": {"type": "boolean"},
+        "env": {"$ref": "#/$defs/env"},
+        "deps": {"$ref": "#/$defs/deps"},
+        "needs_playwright": {
+          "oneOf": [
+            {"type": "boolean"},
+            {"const": "conditional"}
+          ]
+        },
+        "playwright_when_args_any": {"type": "array", "items": {"type": "string"}},
+        "timeout_seconds": {"type": "integer", "minimum": 1},
+        "outputs": {"type": "array", "items": {"type": "string"}},
+        "side_effects": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "external_api",
+              "external_post",
+              "sends_messages",
+              "spends_money",
+              "writes_repo_files",
+              "host_changes"
+            ]
+          }
+        },
+        "confirm_required": {"type": "boolean"},
+        "ci_allowed": {"type": "boolean"},
+        "local_only": {"type": "boolean"},
+        "stateful_files": {"type": "array", "items": {"type": "string"}},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "schedule": {"$ref": "#/$defs/schedule"},
+        "docs": {"type": "string"},
+        "issue": {"type": "string"},
+        "menu": {
+          "enum": ["leadgen", "opp-finder", "clip-generator", "montage-builder", "flags", "confirm"]
+        },
+        "prompts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/prompt"}
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {"enum": ["path", "module"]},
+        "path": {"type": "string"},
+        "module": {"type": "string"}
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {"type": "array", "items": {"type": "string"}},
+        "optional": {"type": "array", "items": {"type": "string"}},
+        "conditional": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["when_args_any", "require"],
+            "properties": {
+              "when_args_any": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+              "require": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+            }
+          }
+        }
+      }
+    },
+    "deps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirements": {"type": "string"},
+        "extras": {"type": "array", "items": {"type": "string"}},
+        "system": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cron"],
+      "properties": {
+        "cron": {"type": "string"},
+        "tz": {"type": "string"},
+        "note": {"type": "string"}
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arg", "prompt"],
+      "properties": {
+        "arg": {"type": "string"},
+        "prompt": {"type": "string"},
+        "kind": {"enum": ["str", "int", "float", "bool", "choice"]},
+        "optional": {"type": "boolean"},
+        "choices": {"type": "array", "items": {"type": "string"}},
+        "split": {"type": "boolean"}
+      }
+    }
+  }
+}

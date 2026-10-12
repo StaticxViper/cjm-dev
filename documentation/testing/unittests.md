@@ -32,6 +32,7 @@ python -m unittest unittests.lead_automation.test_crm_enrich_match
 python -m unittest unittests.lead_automation.test_crm_enrich_robots
 python -m unittest unittests.apify_scripts.test_city_data_actor
 python -m unittest unittests.apify_scripts.test_google_business_actor
+python -m unittest discover unittests/script_manager
 ```
 
 Run all tests in the package:
@@ -212,8 +213,17 @@ Offline checks for the Apify Actor packages. They do not open Chromium or call c
 
 GitHub Actions workflow `.github/workflows/apify_scripts.yml` runs both modules on Python 3.12. It does not install Chromium or call the live sites.
 
+## Test package: `unittests/script_manager/`
+
+Loads fixture scripts and the real `scripts/script_manager/registry.json`. The fixture runs cover passthrough args, working directory, timeouts, env names (never values), and the manager exit codes. `test_real_registry_validates` runs `validate` and `validate --strict` against the packaged registry.
+
+```bash
+python -m unittest discover unittests/script_manager
+```
+
 ## Related documentation
 
+- [script manager](../scripts/script_manager.md) — registry and runner under test
 - [leadgen.md](../scripts/leadgen.md) — script under test
 - [niche_search.md](../scripts/niche_search.md) — script under test
 - [leadenrich.md](../scripts/leadenrich.md) — script under test

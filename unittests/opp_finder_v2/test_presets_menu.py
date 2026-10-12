@@ -5,14 +5,19 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "scripts")]
 
 from opp_finder_v2.cli import main  # noqa: E402
 from opp_finder_v2.config import PACKAGE_DIR, load_criteria  # noqa: E402
-from opp_finder_v2.menu import configure_search, load_skills, run_menu  # noqa: E402
-from opp_finder_v2.menu import _toggle_skills  # noqa: E402
+from opp_finder_v2.menu import load_skills  # noqa: E402
+from scripts.script_manager.menus.opp_finder import (  # noqa: E402
+    _toggle_skills,
+    configure_search,
+    run_menu,
+)
 from opp_finder_v2.presets import (  # noqa: E402
     delete_preset,
     find_preset,
@@ -104,6 +109,11 @@ class TestPresetsAndMenu(unittest.TestCase):
 
     def test_menu_exit(self):
         self.assertIsNone(run_menu(reader=_reader(["4"]), writer=lambda *_a, **_k: None))
+
+    def test_no_args_does_not_open_menu(self):
+        with patch("builtins.input", side_effect=AssertionError("menu prompt")):
+            code = main([])
+        self.assertEqual(code, 2)
 
     def test_preset_dry_run_and_unknown_preset(self):
         with tempfile.TemporaryDirectory() as tmp:

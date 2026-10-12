@@ -20,7 +20,7 @@ Core repository for projects, automation, and game-mod development by Chris Moul
 3. **Create a virtual environment:** `python -m venv .venv`, then activate it (`.venv\Scripts\Activate.ps1` on Windows, `source .venv/bin/activate` on macOS/Linux).
 4. **Install dependencies:** `pip install -r requirements/requirements.txt`
 5. **Create a `.env` file** at the repo root with API keys for the scripts you plan to run (see [documentation/README.md](documentation/README.md#environment-variables)). The file is gitignored—never commit secrets.
-6. **Run scripts from the correct directory**—some require their script folder, others (like stock analyzer) require the repo root. See the [working directory cheat sheet](documentation/README.md#working-directory-cheat-sheet).
+6. **Run scripts from the correct directory**—some require their script folder, others (like stock analyzer) require the repo root. See the [working directory cheat sheet](documentation/README.md#working-directory-cheat-sheet). To list every registered script and run one without changing directories, use `python -m scripts.script_manager list` and `python -m scripts.script_manager run <name>`. Details: [documentation/scripts/script_manager.md](documentation/scripts/script_manager.md).
 7. **Optional:** Install [FFmpeg](https://ffmpeg.org/download.html) for video editing scripts (`clip_generator`, `montage_builder`).
 8. **Verify setup:** `python helper_scripts/api_manager/api_manager.py` (test mode) or `python -m unittest unittests.lead_automation.test_leadgen`
 

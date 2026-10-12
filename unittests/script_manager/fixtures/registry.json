@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "ignore_paths": [
+    "scripts/video_editing/deprecated/**"
+  ],
+  "scripts": [
+    {
+      "name": "echo",
+      "description": "Print argv, cwd, and PYTHONPATH",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/echo_args.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "needs_playwright": false,
+      "tags": ["demo"],
+      "outputs": ["unittests/script_manager/fixtures/touched.txt"]
+    },
+    {
+      "name": "echo-defaults",
+      "description": "Echo with default args",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/echo_args.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "default_args": ["--from-default"],
+      "needs_playwright": false
+    },
+    {
+      "name": "exits",
+      "description": "Exit with the given code",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/exit_code.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "needs_playwright": false
+    },
+    {
+      "name": "sleeper",
+      "description": "Sleep",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/sleep.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "timeout_seconds": 30,
+      "needs_playwright": false
+    },
+    {
+      "name": "env-required",
+      "description": "Requires REQUIRE_ME",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/env_names.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "env": {"required": ["REQUIRE_ME"], "optional": ["OPT_KEY"]},
+      "needs_playwright": false
+    },
+    {
+      "name": "env-conditional",
+      "description": "Requires DASH_KEY when output is dashboard",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/env_names.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "env": {
+        "conditional": [
+          {"when_args_any": ["--output=dashboard"], "require": ["DASH_KEY"]}
+        ]
+      },
+      "needs_playwright": false
+    },
+    {
+      "name": "env-scope",
+      "description": "Optional OPT_KEY only",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/env_names.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "env": {"optional": ["OPT_KEY"]},
+      "needs_playwright": false
+    },
+    {
+      "name": "env-foo",
+      "description": "Checks that FOO came from the process",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/env_names.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "env": {"optional": ["FOO"]},
+      "needs_playwright": false
+    },
+    {
+      "name": "prompter",
+      "description": "Reads stdin",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/prompt.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "interactive": true,
+      "needs_playwright": false
+    },
+    {
+      "name": "needs-yes",
+      "description": "Requires confirmation",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/echo_args.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "confirm_required": true,
+      "needs_playwright": false
+    },
+    {
+      "name": "broken-echo",
+      "description": "Broken fixture",
+      "status": "broken",
+      "status_reason": "fixture",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/echo_args.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "needs_playwright": false
+    }
+  ]
+}

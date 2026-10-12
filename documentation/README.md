@@ -8,6 +8,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 
 | Script | Doc |
 |--------|-----|
+| Script manager | [scripts/script_manager.md](scripts/script_manager.md) |
 | Blog automation (Chikara Realms) | [scripts/blog_automation.md](scripts/blog_automation.md) |
 | Lead generation | [scripts/leadgen.md](scripts/leadgen.md) |
 | New-business sources | [scripts/new_business_sources.md](scripts/new_business_sources.md) |
@@ -25,6 +26,8 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 | Email manager (library) | [scripts/email_manager.md](scripts/email_manager.md) |
 | Zillow property listing | [scripts/property_listing_gen.md](scripts/property_listing_gen.md) |
 | City-data scraper | [scripts/city_data_scraper.md](scripts/city_data_scraper.md) |
+| Grocery price sync | [scripts/grocery.md](scripts/grocery.md) |
+| Opportunity finder v2 | [scripts/opp_finder_v2.md](scripts/opp_finder_v2.md) |
 | Apify Actors (city-data, Google Maps) | [../scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
 
 ## Helper scripts
@@ -76,6 +79,14 @@ flowchart LR
 | `LOVABLE_WORKSPACE_ID` | `lovable_automation` (optional) |
 | `LOVABLE_CREDIT_THRESHOLD` | `lovable_automation` (optional, default `5`) |
 | `MOTO_VIDS_BASE` | `clip_generator`, `montage_builder` (optional) |
+| `SUPABASE_URL` | `grocery`, `grocery-sync` |
+| `SUPABASE_SERVICE_ROLE_KEY` | `grocery`, `grocery-sync` |
+| `SUPABASE_ANON_KEY` | `grocery` (optional), `grocery-sync` |
+| `DEFAULT_SHOPRITE_ZIP` | `grocery`, `grocery-sync` (optional) |
+| `GROCERY_MIN_DELAY_SECONDS` | `grocery`, `grocery-sync` (optional, default 2) |
+| `GROCERY_TIMEOUT_MS` | `grocery`, `grocery-sync` (optional) |
+| `GROCERY_BATCH_SIZE` | `grocery-sync` (optional, default 20) |
+| `GROCERY_POLL_SECONDS` | `grocery` (optional, default 10) |
 
 ## Working directory cheat sheet
 
@@ -91,3 +102,6 @@ flowchart LR
 | `scripts/webhook_manager/` | `webhook_manager.py` |
 | `scripts/video_editing/` | `clip_generator.py`, `montage_builder.py` |
 | **Repo root** | `scripts/stock_analyzer/stock_analyzer.py` |
+| `scripts/` | `python -m grocery.scraper`, `python -m grocery.sync`, `python -m opp_finder_v2` |
+
+The script manager sets the working directory for you. From the repo root, `python -m scripts.script_manager run <name>` uses the cwd in the registry, including when your shell is not already in that folder. See [scripts/script_manager.md](scripts/script_manager.md).
