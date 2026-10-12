@@ -26,6 +26,9 @@ __pycache__/
 # Local Apify CLI storage (apify run)
 scripts/apify-scripts/**/storage/
 
+# ShopRite browser session (cookies)
+scripts/grocery/.shoprite_storage.json
+
 # New-business discovery runtime output
 new_business_artifacts/
 new_business_seen.json

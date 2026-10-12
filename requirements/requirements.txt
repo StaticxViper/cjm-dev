@@ -8,5 +8,6 @@ apify-client>=2.5,<4
 openai
 perplexityai
 playwright
+supabase>=2.9,<3
 jsonschema
 pytest

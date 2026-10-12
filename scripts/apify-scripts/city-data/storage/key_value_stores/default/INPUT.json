@@ -1,0 +1,9 @@
+{
+  "city": "Clementon",
+  "state": "NJ",
+  "fields": ["population", "crime"],
+  "delaySeconds": 1.5,
+  "timeoutMs": 30000,
+  "headless": true,
+  "maxCities": 1
+}

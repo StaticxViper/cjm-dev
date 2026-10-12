@@ -1,0 +1,189 @@
+{
+  "city": "Clementon",
+  "state": "NJ",
+  "urls": {
+    "city": "https://www.city-data.com/city/Clementon-New-Jersey.html",
+    "crime": "https://www.city-data.com/crime/crime-Clementon-New-Jersey.html"
+  },
+  "ok": true,
+  "population": {
+    "year": 2024,
+    "total": 5600,
+    "urban_pct": 100.0,
+    "rural_pct": 0.0,
+    "change_since_2000_pct": 12.3,
+    "median_age": 42.5,
+    "males": 2974,
+    "females": 2626
+  },
+  "crime": {
+    "officers_per_1000": 2.65,
+    "by_year": [
+      {
+        "year": 2024,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 2,
+        "assaults": 11,
+        "burglaries": 16,
+        "thefts": 97,
+        "auto_thefts": 5,
+        "arson": 1,
+        "crime_index": 145.7
+      },
+      {
+        "year": 2023,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 5,
+        "assaults": 12,
+        "burglaries": 16,
+        "thefts": 55,
+        "auto_thefts": 3,
+        "arson": 0,
+        "crime_index": 139.4
+      },
+      {
+        "year": 2022,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 9,
+        "assaults": 5,
+        "burglaries": 32,
+        "thefts": 92,
+        "auto_thefts": 1,
+        "arson": 0,
+        "crime_index": 182.4
+      },
+      {
+        "year": 2021,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 8,
+        "assaults": 6,
+        "burglaries": 23,
+        "thefts": 47,
+        "auto_thefts": 2,
+        "arson": 0,
+        "crime_index": 140.6
+      },
+      {
+        "year": 2020,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 1,
+        "assaults": 3,
+        "burglaries": 22,
+        "thefts": 53,
+        "auto_thefts": 1,
+        "arson": 0,
+        "crime_index": 93.7
+      },
+      {
+        "year": 2019,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 8,
+        "assaults": 5,
+        "burglaries": 43,
+        "thefts": 83,
+        "auto_thefts": 6,
+        "arson": 0,
+        "crime_index": 207.6
+      },
+      {
+        "year": 2018,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 8,
+        "assaults": 3,
+        "burglaries": 45,
+        "thefts": 87,
+        "auto_thefts": 7,
+        "arson": 0,
+        "crime_index": 208.5
+      },
+      {
+        "year": 2017,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 9,
+        "assaults": 8,
+        "burglaries": 54,
+        "thefts": 105,
+        "auto_thefts": 11,
+        "arson": 0,
+        "crime_index": 266.6
+      },
+      {
+        "year": 2016,
+        "murders": 0,
+        "rapes": 1,
+        "robberies": 9,
+        "assaults": 4,
+        "burglaries": 59,
+        "thefts": 104,
+        "auto_thefts": 6,
+        "arson": 1,
+        "crime_index": 266.0
+      },
+      {
+        "year": 2015,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 10,
+        "assaults": 10,
+        "burglaries": 66,
+        "thefts": 112,
+        "auto_thefts": 4,
+        "arson": 0,
+        "crime_index": 293.2
+      },
+      {
+        "year": 2014,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 4,
+        "assaults": 7,
+        "burglaries": 49,
+        "thefts": 129,
+        "auto_thefts": 4,
+        "arson": 3,
+        "crime_index": 231.2
+      },
+      {
+        "year": 2013,
+        "murders": 0,
+        "rapes": 1,
+        "robberies": 8,
+        "assaults": 11,
+        "burglaries": 54,
+        "thefts": 164,
+        "auto_thefts": 8,
+        "arson": 3,
+        "crime_index": 326.8
+      },
+      {
+        "year": 2012,
+        "murders": 0,
+        "rapes": 0,
+        "robberies": 12,
+        "assaults": 10,
+        "burglaries": 85,
+        "thefts": 170,
+        "auto_thefts": 8,
+        "arson": 6,
+        "crime_index": 378.2
+      }
+    ],
+    "index": 146.0,
+    "index_year": 2024,
+    "homicides": 0,
+    "vs_us_average": "1.6 times lower",
+    "yoy_change_pct": 4.0,
+    "violent_crime_rate": 115.5,
+    "property_crime_rate": 156.3
+  },
+  "scrapedAt": "2026-10-10T18:55:48.003606+00:00",
+  "sourceStatus": "ok"
+}
