@@ -1,0 +1,10 @@
+{
+  "actorChargeEvents": {
+    "result": {
+      "eventTitle": "City profile",
+      "eventDescription": "Charged when a city page is fetched and the row is ok. Robots skips, missing pages, and errors are saved and not billed.",
+      "eventPriceUsd": 0.01,
+      "isPrimaryEvent": true
+    }
+  }
+}

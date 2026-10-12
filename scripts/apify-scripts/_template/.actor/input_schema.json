@@ -1,0 +1,15 @@
+{
+  "title": "Actor template input",
+  "description": "Shared knobs. Real Actors add their own fields and keep headless.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Run Chromium headless. Default true, including on the Apify platform.",
+      "editor": "checkbox",
+      "default": true
+    }
+  }
+}

@@ -26,6 +26,11 @@ python -m unittest unittests.lead_automation.test_leadenrich_playwright
 python -m unittest unittests.lead_automation.test_niche_search
 python -m unittest discover unittests/lead_automation
 python -m unittest unittests.zillow_automation.test_property_listing_gen
+python -m unittest unittests.city_data.test_city_data_scraper
+python -m unittest unittests.lead_automation.test_crm_enrich_match
+python -m unittest unittests.lead_automation.test_crm_enrich_robots
+python -m unittest unittests.apify_scripts.test_city_data_actor
+python -m unittest unittests.apify_scripts.test_google_business_actor
 ```
 
 Run all tests in the package:
@@ -185,6 +190,17 @@ Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_aut
 | `TestResolveSearchInput` | CLI flags overlay file values without changing unspecified fields |
 | `TestGenerateListings` | Actor called as `Zillow ZIP Search`; URLs written; missing `APIFY_API_KEY` skips the run |
 
+## Test file: `unittests/apify_scripts/`
+
+Offline checks for the Apify Actor packages. They do not open Chromium or call city-data or Google.
+
+| Test module | What it checks |
+|-------------|----------------|
+| `test_city_data_actor` | Clementon input mapping, dataset fields, robots skip, longest-match Allow over a shorter Disallow |
+| `test_google_business_actor` | State required, Maps URL only, STRIKER and B&B Basecamp stay `no_match` with no candidate, Wegmans in Rochester matches and Whole Foods or a Williamsville Wegmans is omitted, a place-page redirect uses the heading, block flag skips enrichment |
+
+GitHub Actions workflow `.github/workflows/apify_scripts.yml` runs both modules on Python 3.12. It does not install Chromium or call the live sites.
+
 ## Related documentation
 
 - [leadgen.md](../scripts/leadgen.md) — script under test
@@ -193,3 +209,4 @@ Imports `property_listing_gen` the same way (CWD switched to `scripts/zillow_aut
 - [leadenrich_playwright.md](../scripts/leadenrich_playwright.md) — script under test
 - [property_listing_gen.md](../scripts/property_listing_gen.md) — script under test
 - [setup.md](../setup.md) — environment setup
+- [apify-scripts README](../../scripts/apify-scripts/README.md) — Actor packages under test

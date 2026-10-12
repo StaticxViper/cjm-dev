@@ -24,6 +24,8 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 | JSON formatter | [scripts/json_formatter.md](scripts/json_formatter.md) |
 | Email manager (library) | [scripts/email_manager.md](scripts/email_manager.md) |
 | Zillow property listing | [scripts/property_listing_gen.md](scripts/property_listing_gen.md) |
+| City-data scraper | [scripts/city_data_scraper.md](scripts/city_data_scraper.md) |
+| Apify Actors (city-data, Google Maps) | [../scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
 
 ## Helper scripts
 
@@ -65,7 +67,8 @@ flowchart LR
 | `LEAD_INGEST_KEY` | `leadenrich_playwright` (`--from-crm` export), `api_manager` |
 | `CRM_MCP_MV_LLC` | `leadgen`, `lead_automation`, `leadenrich`, `leadenrich_playwright` (CRM upload) |
 | `CRM_MCP_VENTURE` | CRM upload venture id, slug, or name (optional; default Web Dev - MV Software) |
-| `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `property_listing_gen`, `api_manager` |
+| `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `property_listing_gen`, `api_manager` (call Store Actors) |
+| `APIFY_TOKEN` | Apify CLI `apify login` / `apify push` for Actors under `scripts/apify-scripts/` |
 | `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
 | `APIFY_USER_ID` | `api_manager` |
 | `STOCK_INGEST_TOKEN` | `stock_analyzer`, `api_manager` |
@@ -81,6 +84,8 @@ flowchart LR
 | `scripts/chikara_realms/` | `blog_automation.py` |
 | `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `leadenrich_playwright.py`, `lead_automation.py` |
 | `scripts/zillow_automation/` | `property_listing_gen.py` |
+| `scripts/city_data/` | `city_data_scraper.py` |
+| `scripts/apify-scripts/<actor>/` | `apify run` (see [apify-scripts README](../scripts/apify-scripts/README.md)) |
 | `scripts/lovable_automation/` | `lovable_automation.py` |
 | `scripts/json_formatter/` | `json_formatter.py` |
 | `scripts/webhook_manager/` | `webhook_manager.py` |

@@ -1,0 +1,10 @@
+{
+  "actorChargeEvents": {
+    "result": {
+      "eventTitle": "Accepted match",
+      "eventDescription": "Charged when a Maps listing is an accepted match. low_confidence, no_match, blocked, and error rows are saved and not billed.",
+      "eventPriceUsd": 0.05,
+      "isPrimaryEvent": true
+    }
+  }
+}
