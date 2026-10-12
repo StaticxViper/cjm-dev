@@ -27,6 +27,11 @@ python -m unittest unittests.lead_automation.test_niche_search
 python -m unittest discover unittests/lead_automation
 python -m unittest unittests.zillow_automation.test_property_listing_gen
 python -m unittest discover unittests/grocery
+python -m unittest unittests.city_data.test_city_data_scraper
+python -m unittest unittests.lead_automation.test_crm_enrich_match
+python -m unittest unittests.lead_automation.test_crm_enrich_robots
+python -m unittest unittests.apify_scripts.test_city_data_actor
+python -m unittest unittests.apify_scripts.test_google_business_actor
 ```
 
 Run all tests in the package:
@@ -196,6 +201,16 @@ Imports `grocery` with `scripts/` on `sys.path`. HTML fixtures stand in for live
 | `test_scrapers.py` | Amazon one-time price (Subscribe & Save ignored), Costco size and member-only pages, ShopRite ZIP/session gate, block detection |
 | `test_sync.py` | Batches of 20, flagged outliers, dry-run skip, pull/push headers, CLI usage |
 | `test_lookup.py` | Local outlier guard, search fallback, pending-row writes, history insert, 10 second poll |
+## Test file: `unittests/apify_scripts/`
+
+Offline checks for the Apify Actor packages. They do not open Chromium or call city-data or Google.
+
+| Test module | What it checks |
+|-------------|----------------|
+| `test_city_data_actor` | Clementon input mapping, dataset fields, robots skip, longest-match Allow over a shorter Disallow |
+| `test_google_business_actor` | State required, Maps URL only, STRIKER and B&B Basecamp stay `no_match` with no candidate, Wegmans in Rochester matches and Whole Foods or a Williamsville Wegmans is omitted, a place-page redirect uses the heading, block flag skips enrichment |
+
+GitHub Actions workflow `.github/workflows/apify_scripts.yml` runs both modules on Python 3.12. It does not install Chromium or call the live sites.
 
 ## Related documentation
 
@@ -206,3 +221,4 @@ Imports `grocery` with `scripts/` on `sys.path`. HTML fixtures stand in for live
 - [property_listing_gen.md](../scripts/property_listing_gen.md) — script under test
 - [grocery.md](../scripts/grocery.md) — script under test
 - [setup.md](../setup.md) — environment setup
+- [apify-scripts README](../../scripts/apify-scripts/README.md) — Actor packages under test

@@ -467,6 +467,40 @@ class BusinessDiscoverySession:
             listings.append(entry)
         return listings
 
+    def _direct_place_listing(self, page):
+        """One listing when Maps redirects a search onto a place page.
+
+        With no results feed, every ``/maps/place/`` link on the page is a
+        related business. The heading is the place the search opened.
+        """
+        url = page.url or ""
+        if "/maps/place/" not in url:
+            return None
+        try:
+            if page.locator('div[role="feed"]').count():
+                return None
+        except Exception:
+            return None
+        try:
+            info = page.evaluate(
+                """() => {
+                  const h1 = document.querySelector('h1');
+                  const name = h1 ? (h1.innerText || '').trim() : '';
+                  return {name, url: location.href};
+                }"""
+            ) or {}
+        except Exception:
+            return None
+        name = str(info.get("name") or "").strip()
+        if not name:
+            return None
+        profile = str(info.get("url") or url).strip() or url
+        return {
+            "business_name": name,
+            "profile_url": profile,
+            "place_id": extract_place_id_from_url(profile),
+        }
+
     def _scroll_feed(self, page):
         try:
             feed = page.locator('div[role="feed"]')
@@ -624,6 +658,16 @@ class BusinessDiscoverySession:
             self.google_blocked = True
             self.stats["errors"] += 1
             return []
+
+        direct = self._direct_place_listing(page)
+        if direct is not None:
+            logger.critical(
+                "[Playwright] Maps opened a place page directly: %s",
+                direct.get("business_name"),
+            )
+            self.stats["pages_processed"] += 1
+            self.stats["businesses_discovered"] += 1
+            return [direct]
 
         collected = []
         seen_keys = set()

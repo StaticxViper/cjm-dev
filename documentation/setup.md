@@ -65,9 +65,13 @@ CHATGPT_API_KEY=
 # Google
 GOOGLE_API_KEY=
 
-# Apify
+# Apify consumer: calling Store Actors from api_manager.
+# APIFY_TOKEN is separate. It is only for the Apify CLI (apify login / apify push)
+# when publishing Actors in scripts/apify-scripts/. Do not put the publish token
+# in APIFY_API_KEY, and do not point api_manager at APIFY_TOKEN.
 APIFY_USER_ID=
 APIFY_API_KEY=
+APIFY_TOKEN=
 
 # Supabase / ingest tokens
 STOCK_INGEST_TOKEN=
