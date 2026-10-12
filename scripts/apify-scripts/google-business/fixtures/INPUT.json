@@ -1,9 +1,9 @@
 {
   "queries": [
     {
-      "name": "Northwind Customs LLC",
-      "city": "Olean",
-      "county": "Cattaraugus",
+      "name": "Wegmans Food Markets",
+      "city": "Rochester",
+      "county": "Monroe",
       "state": "NY",
       "maxResults": 3
     }

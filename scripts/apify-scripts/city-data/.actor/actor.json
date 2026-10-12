@@ -3,7 +3,7 @@
   "name": "city-data",
   "title": "City-Data City Profiles",
   "description": "Playwright scrape of city-data.com city and crime pages into one JSON row per city.",
-  "version": "0.1",
+  "version": "0.2",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",
   "dockerContextDir": "../../../..",
@@ -15,5 +15,10 @@
   },
   "minMemoryMbytes": 1024,
   "maxMemoryMbytes": 4096,
-  "defaultMemoryMbytes": 2048
+  "defaultMemoryMbytes": 2048,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 600,
+    "memoryMbytes": 2048
+  }
 }

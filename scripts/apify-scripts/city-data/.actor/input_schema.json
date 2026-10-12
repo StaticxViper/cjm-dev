@@ -36,12 +36,13 @@
     "fields": {
       "title": "Field groups",
       "type": "array",
-      "description": "population, income, housing, cost_of_living, education, crime. crime fetches the crime page.",
-      "editor": "json",
+      "description": "Groups to parse. Crime also fetches the crime page.",
+      "editor": "select",
       "default": ["population", "income", "housing", "cost_of_living", "education", "crime"],
       "items": {
         "type": "string",
-        "enum": ["population", "income", "housing", "cost_of_living", "education", "crime"]
+        "enum": ["population", "income", "housing", "cost_of_living", "education", "crime"],
+        "enumTitles": ["Population", "Income", "Housing", "Cost of living", "Education", "Crime"]
       }
     },
     "delaySeconds": {
@@ -73,12 +74,6 @@
       "description": "Run Chromium headless. Default true.",
       "editor": "checkbox",
       "default": true
-    },
-    "proxyConfiguration": {
-      "title": "Proxy configuration",
-      "type": "object",
-      "description": "Ignored. This Actor does not rotate proxies or IPs.",
-      "editor": "proxy"
     }
   }
 }

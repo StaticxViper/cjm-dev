@@ -1,12 +1,13 @@
 """Google Maps business Actor. Sync Playwright runs in a worker thread.
 
 Requests /maps/search/ and /maps/place/ only. A block page stops the run
-with a blocked dataset row and exit 0. proxyConfiguration is ignored.
+with a blocked dataset row and exit 0.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import time
 
@@ -15,6 +16,7 @@ from apify import Actor
 try:
     from .mapping import (
         GOOGLE_ROBOTS_URL,
+        billable_row,
         collect_listings,
         maps_allowed,
         queries_from_input,
@@ -24,10 +26,11 @@ try:
         status_row,
         summarize,
     )
-    from .runtime import fetch_text, prepare_imports, unused_proxy_note
+    from .runtime import fetch_text, prepare_imports, push_charged_rows
 except ImportError:
     from mapping import (
         GOOGLE_ROBOTS_URL,
+        billable_row,
         collect_listings,
         maps_allowed,
         queries_from_input,
@@ -37,7 +40,7 @@ except ImportError:
         status_row,
         summarize,
     )
-    from runtime import fetch_text, prepare_imports, unused_proxy_note
+    from runtime import fetch_text, prepare_imports, push_charged_rows
 
 
 class DelaySession:
@@ -74,9 +77,19 @@ class DelaySession:
         return getattr(self._session, name)
 
 
+def _log_row(row):
+    query = (row or {}).get("query") or {}
+    logging.getLogger("apify").critical(
+        "Google Business: %s, %s %s -> %s",
+        query.get("name") or "",
+        query.get("city") or "",
+        query.get("state") or "",
+        (row or {}).get("decision"),
+    )
+
+
 def run_sync(actor_input):
     actor_input = actor_input or {}
-    note = unused_proxy_note(actor_input)
     settings = read_run_settings(actor_input)
     queries = queries_from_input(actor_input, settings)
     robots_txt = fetch_text(GOOGLE_ROBOTS_URL)
@@ -85,10 +98,9 @@ def run_sync(actor_input):
             status_row(query, "error", "robots_disallowed", error="robots_disallowed")
             for query in queries
         ]
-        summary = summarize(rows)
-        if note:
-            summary["proxy"] = note
-        return rows, summary
+        for row in rows:
+            _log_row(row)
+        return rows, summarize(rows)
 
     zip_county, npa_state = reference_tables()
     session = DelaySession(settings)
@@ -96,19 +108,22 @@ def run_sync(actor_input):
     try:
         for query in queries:
             if session.google_blocked:
-                rows.append(status_row(query, "blocked", "blocked", error="google_blocked"))
+                row = status_row(query, "blocked", "blocked", error="google_blocked")
+                rows.append(row)
+                _log_row(row)
                 break
             listings, blocked = collect_listings(session, query)
             if blocked:
-                rows.append(status_row(query, "blocked", "blocked", error="google_blocked"))
+                row = status_row(query, "blocked", "blocked", error="google_blocked")
+                rows.append(row)
+                _log_row(row)
                 break
-            rows.append(score_query(query, listings, settings, zip_county, npa_state))
+            row = score_query(query, listings, settings, zip_county, npa_state)
+            rows.append(row)
+            _log_row(row)
     finally:
         session.close()
-    summary = summarize(rows)
-    if note:
-        summary["proxy"] = note
-    return rows, summary
+    return rows, summarize(rows)
 
 
 async def main():
@@ -119,6 +134,6 @@ async def main():
         except Exception as exc:
             rows = [status_row(None, "error", "error", error=str(exc))]
             summary = {"status": "error", "pushed": 1, "blocked": 0, "errors": 1, "error": str(exc)}
-        for row in rows:
-            await Actor.push_data(row)
+            logging.getLogger("apify").critical("Google Business failed: %s", exc)
+        await push_charged_rows(rows, billable_row)
         await Actor.set_value("SUMMARY", summary)

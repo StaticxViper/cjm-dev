@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 
 from apify import Actor
 
@@ -10,20 +11,22 @@ try:
     from .mapping import (
         CITY_ROBOTS_URL,
         actor_input_to_config,
+        billable_row,
         error_item,
         scrape_config,
         summarize,
     )
-    from .runtime import fetch_text, prepare_imports, unused_proxy_note
+    from .runtime import fetch_text, prepare_imports, push_charged_rows
 except ImportError:
     from mapping import (
         CITY_ROBOTS_URL,
         actor_input_to_config,
+        billable_row,
         error_item,
         scrape_config,
         summarize,
     )
-    from runtime import fetch_text, prepare_imports, unused_proxy_note
+    from runtime import fetch_text, prepare_imports, push_charged_rows
 
 
 def run_sync(actor_input):
@@ -31,7 +34,6 @@ def run_sync(actor_input):
     from city_data_scraper import CityDataSession
 
     actor_input = actor_input or {}
-    note = unused_proxy_note(actor_input)
     config = actor_input_to_config(actor_input)
     robots_txt = fetch_text(CITY_ROBOTS_URL)
     session = CityDataSession(
@@ -43,10 +45,15 @@ def run_sync(actor_input):
         rows = scrape_config(config, session, robots_txt)
     finally:
         session.close()
-    summary = summarize(rows)
-    if note:
-        summary["proxy"] = note
-    return rows, summary
+    log = logging.getLogger("apify")
+    for row in rows:
+        log.critical(
+            "City-data: %s, %s -> %s",
+            row.get("city"),
+            row.get("state"),
+            row.get("sourceStatus"),
+        )
+    return rows, summarize(rows)
 
 
 async def main():
@@ -57,6 +64,6 @@ async def main():
         except Exception as exc:
             rows = [error_item(str(exc))]
             summary = {"status": "error", "pushed": 1, "blocked": 0, "errors": 1, "error": str(exc)}
-        for row in rows:
-            await Actor.push_data(row)
+            logging.getLogger("apify").critical("City-data failed: %s", exc)
+        await push_charged_rows(rows, billable_row)
         await Actor.set_value("SUMMARY", summary)

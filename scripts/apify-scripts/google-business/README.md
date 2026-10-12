@@ -16,7 +16,9 @@ Each query becomes one dataset item:
 | `blocked` | Google showed a block page. Later queries are not run |
 | `error` | Input, robots, or unexpected failure |
 
-`hardRejects` can include `distinctive_token_missing`, `state_mismatch`, `county_mismatch`, `address_mismatch`, `area_code_state_mismatch`, `permanently_closed`, and `website_is_directory`. Legal suffixes such as LLC are stripped before the name comparison. State on the query is required.
+`hardRejects` can include `brand_token_missing`, `city_mismatch`, `distinctive_token_missing`, `state_mismatch`, `county_mismatch`, `address_mismatch`, `area_code_state_mismatch`, `permanently_closed`, and `website_is_directory`. Legal suffixes such as LLC are stripped before the name comparison. State on the query is required.
+
+A different brand is not returned as the candidate. Retail words (`food`, `market`, `store`, `shop`, `grocery`) do not count as the brand, and every remaining brand token has to match. When the query has a city, a listing in another city is dropped before scoring. A card that already passed that check is scored under the query name, so a Maps title of "Wegmans" can match "Wegmans Food Markets". The row still shows the Maps title. `no_match` leaves `candidate` null.
 
 Known false pairs that stay `no_match`:
 
@@ -33,9 +35,9 @@ Known false pairs that stay `no_match`:
 {
   "queries": [
     {
-      "name": "Northwind Customs LLC",
-      "city": "Olean",
-      "county": "Cattaraugus",
+      "name": "Wegmans Food Markets",
+      "city": "Rochester",
+      "county": "Monroe",
       "state": "NY",
       "maxResults": 3
     }
@@ -48,40 +50,40 @@ Known false pairs that stay `no_match`:
 }
 ```
 
-A single object (`name`, `state`, optional `city` and `county`) works when `queries` is omitted. `maxResults` defaults to 5 and cannot exceed 20. `maxSearches` defaults to 10 and cannot exceed 50. Search delay defaults to a random 2.0–4.5 seconds and detail delay to 1.2–2.8 seconds, same as the local Maps session. Overrides are optional. `proxyConfiguration` is ignored.
+A single object (`name`, `state`, optional `city` and `county`) works when `queries` is omitted. `maxResults` defaults to 5 and cannot exceed 20. `maxSearches` defaults to 10 and cannot exceed 50. Search delay defaults to a random 2.0–4.5 seconds and detail delay to 1.2–2.8 seconds, same as the local Maps session. Overrides are optional. The default run timeout is 900 seconds at 2048 MB.
 
 ## Output
 
 ```json
 {
   "query": {
-    "name": "Northwind Customs LLC",
-    "city": "Olean",
-    "county": "Cattaraugus",
+    "name": "Wegmans Food Markets",
+    "city": "Rochester",
+    "county": "Monroe",
     "state": "NY",
     "maxResults": 3
   },
-  "decision": "no_match",
-  "score": 32,
-  "breakdown": {"name": 17, "location": 10, "category": 5, "corroboration": 0},
-  "hardRejects": ["distinctive_token_missing", "county_mismatch"],
+  "decision": "match",
+  "score": 90,
+  "breakdown": {"name": 50, "location": 35, "category": 0, "corroboration": 5},
+  "hardRejects": [],
   "candidate": {
-    "business_name": "C. Staker Remodeling",
-    "phone": "(631) 821-4921",
-    "website": "http://cstakerremodeling.com/",
-    "address": "100 Main St, Huntington, NY 11743",
-    "rating": null,
-    "user_ratings_total": null,
-    "category": "Remodeler",
-    "mapsUrl": null,
-    "placeId": "ChIJ___LaZ1n6IkRBv6QRmL-qc4"
+    "business_name": "Wegmans",
+    "phone": "(585) 244-7950",
+    "website": "https://www.wegmans.com/stores/east-ave-ny/",
+    "address": "1750 East Ave, Rochester, NY 14610",
+    "rating": 4.5,
+    "user_ratings_total": 4754,
+    "category": "Grocery store",
+    "mapsUrl": "https://www.google.com/maps/place/Wegmans/",
+    "placeId": "ChIJhwPAPIHK1okRJJMPqz59rNE"
   },
   "sourceStatus": "ok",
   "scrapedAt": "2026-10-10T00:00:00+00:00"
 }
 ```
 
-That sample is the rejected STRIKER pairing, not a recommended live query. `sourceStatus` is `ok`, `blocked`, `robots_disallowed`, or `error`. Key-value `SUMMARY` counts pushed, blocked, and error rows.
+A different business, such as Whole Foods Market in the same city, is not attached to that row. A rejected query looks like `decision: "no_match"`, `candidate: null`, and `hardRejects` of `brand_token_missing` or `city_mismatch`. The dataset Overview shows the decision and score. Detail shows the query, breakdown, hard rejects, and candidate. `sourceStatus` is `ok`, `blocked`, `robots_disallowed`, or `error`. Key-value `SUMMARY` counts pushed, blocked, and error rows.
 
 Candidate fields come from the Maps session: phone, website, address, rating, `user_ratings_total`, category, `mapsUrl`, `placeId`.
 
@@ -102,7 +104,7 @@ If Google returns a block page, the current query is pushed as `blocked`, remain
 
 ## Pricing
 
-Placeholder, not a live price: pay per query result, or compute units, after a private one-query run is measured. Default memory is 2048 MB. Do not price this as a bulk crawler.
+Pay per event. The primary event is `result` at $0.05, charged only for `decision: "match"`. `low_confidence`, `no_match`, `blocked`, and `error` rows are stored and not billed. Dataset items are not a charge event, so a rejected business does not cost a result. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. A local run logs that the charge was ignored until the Console pricing model is pay per event; the dataset row is still saved. Default memory is 2048 MB and the default timeout is 900 seconds. Do not price this as a bulk crawler.
 
 ## Categories
 

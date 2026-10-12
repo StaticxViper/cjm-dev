@@ -7,9 +7,11 @@ Run from repo root:
 No live Google requests.
 """
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 _REPO = Path(__file__).resolve().parents[2]
 _SRC = _REPO / "scripts" / "apify-scripts" / "google-business" / "src"
@@ -61,20 +63,20 @@ class TestGoogleInput(unittest.TestCase):
     def test_query_requires_state_and_stays_on_maps(self):
         settings = mapping.read_run_settings({"maxSearches": 1, "includeEmails": False})
         queries = mapping.queries_from_input({
-            "name": "Northwind Customs LLC",
-            "city": "Olean",
-            "county": "Cattaraugus County",
+            "name": "Wegmans Food Markets",
+            "city": "Rochester",
+            "county": "Monroe County",
             "state": "NY",
             "maxResults": 3,
         }, settings)
         self.assertEqual(len(queries), 1)
         self.assertEqual(queries[0]["state"], "NY")
-        self.assertEqual(queries[0]["county"], "Cattaraugus")
+        self.assertEqual(queries[0]["county"], "Monroe")
         self.assertEqual(queries[0]["maxResults"], 3)
         self.assertEqual(settings["min_confidence"], 80)
         self.assertEqual(settings["low_floor"], 60)
         self.assertFalse(settings["include_emails"])
-        url = mapping.maps_query_url("Northwind Customs Olean NY")
+        url = mapping.maps_query_url("Wegmans Food Markets Rochester NY")
         self.assertIn("/maps/search/", url)
         self.assertNotIn("google.com/search?", url)
 
@@ -94,6 +96,21 @@ class TestGoogleInput(unittest.TestCase):
         self.assertIn("search_location", text)
         self.assertIn("enrich_listing", text)
         self.assertIn("select_match", text)
+        self.assertNotIn("proxyConfiguration", text)
+        self.assertNotIn("unused_proxy_note", (_SRC / "runtime.py").read_text(encoding="utf-8"))
+        actor = json.loads((_SRC.parent / ".actor" / "actor.json").read_text(encoding="utf-8"))
+        self.assertEqual(actor["defaultRunOptions"]["timeoutSecs"], 900)
+        form = json.loads((_SRC.parent / ".actor" / "input_schema.json").read_text(encoding="utf-8"))
+        self.assertNotIn("proxyConfiguration", form["properties"])
+        self.assertEqual(form["properties"]["queries"]["prefill"][0]["name"], "Wegmans Food Markets")
+        dataset = json.loads((_SRC.parent / ".actor" / "dataset_schema.json").read_text(encoding="utf-8"))
+        for key in ("query", "decision", "score", "breakdown", "hardRejects", "candidate", "emails"):
+            self.assertIn(key, dataset["fields"]["fields"])
+        self.assertIn("detail", dataset["views"])
+        pricing = json.loads((_SRC.parent / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
+        event = pricing["actorChargeEvents"]["result"]
+        self.assertTrue(event["isPrimaryEvent"])
+        self.assertGreater(event["eventPriceUsd"], 0)
 
 
 class TestGoogleDataset(unittest.TestCase):
@@ -117,8 +134,10 @@ class TestGoogleDataset(unittest.TestCase):
         self.assertEqual(row["decision"], "no_match")
         self.assertNotEqual(row["decision"], "match")
         self.assertIn("distinctive_token_missing", row["hardRejects"])
-        self.assertEqual(row["candidate"]["business_name"], "C. Staker Remodeling")
+        self.assertIsNone(row["candidate"])
+        self.assertNotIn("Staker", json.dumps(row))
         self.assertEqual(selection["decision"], "no_match")
+        self.assertFalse(mapping.billable_row(row))
         for key in ("query", "decision", "score", "breakdown", "hardRejects", "candidate", "sourceStatus", "scrapedAt"):
             self.assertIn(key, row)
 
@@ -128,38 +147,15 @@ class TestGoogleDataset(unittest.TestCase):
         self.assertEqual(row["decision"], "no_match")
         self.assertIsNone(selection["winner"])
         self.assertIn("address_mismatch", row["hardRejects"])
-        self.assertEqual(row["candidate"]["business_name"], "Base Camp at Golden Gate Canyon")
-
-    def test_first_listing_is_not_used_when_a_later_one_matches(self):
-        lead = {
-            "business_name": "NORTHWIND CUSTOMS LLC",
-            "address": "NY",
-            "business_description": "state=NY; county=Cattaraugus; city=;",
-            "tags": ["ny"],
-        }
-        good = {
-            "business_name": "Northwind Customs",
-            "address": "1 Main St, Olean, NY 14760",
-            "phone": "(716) 555-0100",
-        }
-        selection = mapping.score_candidates(
-            lead,
-            [STAKER, good],
-            zip_county=self.zips,
-            npa_state=self.npas,
-        )
-        row = mapping.dataset_from_selection({"name": lead["business_name"], "state": "NY"}, selection)
-        self.assertEqual(row["decision"], "match")
-        self.assertEqual(selection["winner"]["name"], "Northwind Customs")
-        self.assertEqual(row["candidate"]["business_name"], "Northwind Customs")
-        self.assertNotEqual(row["candidate"]["business_name"], STAKER["business_name"])
+        self.assertIsNone(row["candidate"])
+        self.assertNotIn("Golden", json.dumps(row))
 
     def test_empty_listings_are_no_match(self):
         settings = mapping.read_run_settings({"includeEmails": False, "maxSearches": 1})
         query = mapping.queries_from_input({
-            "name": "Northwind Customs LLC",
+            "name": "Wegmans Food Markets",
             "state": "NY",
-            "city": "Olean",
+            "city": "Rochester",
         }, settings)[0]
         row = mapping.score_query(query, [], settings, {}, {})
         self.assertEqual(row["decision"], "no_match")
@@ -170,9 +166,9 @@ class TestGoogleDataset(unittest.TestCase):
     def test_block_stops_before_enrich(self):
         session = FakeMaps(blocked=True)
         query = {
-            "name": "Northwind Customs LLC",
-            "city": "Olean",
-            "county": "Cattaraugus",
+            "name": "Wegmans Food Markets",
+            "city": "Rochester",
+            "county": "Monroe",
             "state": "NY",
             "maxResults": 3,
         }
@@ -184,14 +180,176 @@ class TestGoogleDataset(unittest.TestCase):
         self.assertEqual([call[0] for call in session.calls], ["search"])
 
     def test_collect_enriches_maps_listings(self):
-        session = FakeMaps(listings=[{"business_name": "Northwind Customs", "profile_url": "https://www.google.com/maps/place/x"}])
+        session = FakeMaps(listings=[{"business_name": "Wegmans Food Markets", "profile_url": "https://www.google.com/maps/place/x"}])
         query = {
-            "name": "Northwind Customs LLC",
-            "city": "Olean",
+            "name": "Wegmans Food Markets",
+            "city": "Rochester",
             "state": "NY",
             "maxResults": 3,
         }
         listings, blocked = mapping.collect_listings(session, query)
         self.assertFalse(blocked)
-        self.assertEqual(listings[0]["business_name"], "Northwind Customs")
+        self.assertEqual(listings[0]["business_name"], "Wegmans Food Markets")
         self.assertEqual([call[0] for call in session.calls], ["search", "enrich"])
+
+
+WEGMANS_ROCHESTER = {
+    "business_name": "Wegmans Food Markets",
+    "address": "1750 East Ave, Rochester, NY 14610",
+    "category": "Grocery store",
+    "profile_url": "https://www.google.com/maps/place/Wegmans+Food+Markets/",
+}
+WEGMANS_CARD = {
+    "business_name": "Wegmans",
+    "address": "1750 East Ave, Rochester, NY 14610",
+    "category": "Grocery store",
+}
+WHOLE_FOODS = {
+    "business_name": "Whole Foods Market",
+    "address": "800 Jefferson Rd, Rochester, NY 14623",
+    "category": "Grocery store",
+}
+WEGMANS_WILLIAMSVILLE = {
+    "business_name": "Wegmans",
+    "address": "5275 Main St, Williamsville, NY 14221",
+    "category": "Grocery store",
+}
+
+
+class _Locator:
+    def __init__(self, count):
+        self._count = count
+
+    def count(self):
+        return self._count
+
+    def first(self):
+        return self
+
+    def is_visible(self):
+        return False
+
+
+class _PlacePage:
+    def __init__(self, url, h1, feed=0):
+        self.url = url
+        self.h1 = h1
+        self.feed = feed
+        self.scripts = []
+
+    def goto(self, *args, **kwargs):
+        return None
+
+    def content(self):
+        return "<html><body>maps place</body></html>"
+
+    def locator(self, selector):
+        count = self.feed if 'role="feed"' in selector else 0
+        return _Locator(count)
+
+    def evaluate(self, script, *args):
+        self.scripts.append(script)
+        if "h1" not in script:
+            raise AssertionError(script)
+        return {"name": self.h1, "url": self.url}
+
+
+class TestWegmansMatch(unittest.TestCase):
+    def setUp(self):
+        self.zips = crm_match.load_zip_county()
+        self.npas = crm_match.load_npa_state()
+        self.settings = mapping.read_run_settings({"includeEmails": False, "maxSearches": 1})
+        self.query = mapping.queries_from_input({
+            "name": "Wegmans Food Markets",
+            "city": "Rochester",
+            "county": "Monroe",
+            "state": "NY",
+            "maxResults": 5,
+        }, self.settings)[0]
+
+    def _score(self, listings):
+        return mapping.score_query(self.query, listings, self.settings, self.zips, self.npas)
+
+    def test_full_place_name_matches_the_rochester_store(self):
+        row = self._score([WHOLE_FOODS, WEGMANS_ROCHESTER])
+        self.assertEqual(row["decision"], "match")
+        self.assertGreaterEqual(row["score"], 80)
+        self.assertEqual(row["candidate"]["business_name"], "Wegmans Food Markets")
+        self.assertIn("1750 East Ave", row["candidate"]["address"])
+        self.assertNotIn("Whole Foods", json.dumps(row))
+        self.assertTrue(mapping.billable_row(row))
+
+    def test_short_card_is_kept_when_whole_foods_scores_higher(self):
+        row = self._score([WHOLE_FOODS, WEGMANS_CARD])
+        self.assertEqual(row["decision"], "match")
+        self.assertGreaterEqual(row["score"], 80)
+        self.assertEqual(row["candidate"]["business_name"], "Wegmans")
+        self.assertIn("Rochester", row["candidate"]["address"])
+        self.assertNotIn("Whole Foods", json.dumps(row))
+        self.assertTrue(mapping.billable_row(row))
+
+    def test_whole_foods_alone_is_omitted(self):
+        row = self._score([WHOLE_FOODS])
+        self.assertEqual(row["decision"], "no_match")
+        self.assertIsNone(row["candidate"])
+        self.assertIsNone(row["score"])
+        self.assertIn("brand_token_missing", row["hardRejects"])
+        self.assertNotIn("Whole Foods", json.dumps(row))
+        self.assertFalse(mapping.billable_row(row))
+
+    def test_chain_keeps_rochester_and_drops_williamsville(self):
+        row = self._score([WEGMANS_WILLIAMSVILLE, WHOLE_FOODS, WEGMANS_ROCHESTER])
+        self.assertEqual(row["decision"], "match")
+        self.assertIn("Rochester", row["candidate"]["address"])
+        self.assertNotIn("Williamsville", json.dumps(row))
+        self.assertNotIn("Whole Foods", json.dumps(row))
+
+    def test_wrong_city_chain_store_is_not_a_candidate(self):
+        row = self._score([WEGMANS_WILLIAMSVILLE])
+        self.assertEqual(row["decision"], "no_match")
+        self.assertIsNone(row["candidate"])
+        self.assertIsNone(row["score"])
+        self.assertEqual(row["hardRejects"], ["city_mismatch"])
+        self.assertNotIn("Williamsville", json.dumps(row))
+
+
+class TestDirectPlace(unittest.TestCase):
+    def test_place_redirect_uses_the_heading_only(self):
+        import playwright_discovery as discovery
+
+        page = _PlacePage(
+            "https://www.google.com/maps/place/Wegmans+Food+Markets/@43.1,-77.5,17z",
+            "Wegmans Food Markets",
+            feed=0,
+        )
+        session = discovery.BusinessDiscoverySession()
+        session._page = page
+        with patch.object(discovery.time, "sleep"):
+            found = session.search_listings(
+                "Wegmans Food Markets",
+                "Rochester",
+                "NY",
+                max_pages=1,
+                max_results=5,
+            )
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["business_name"], "Wegmans Food Markets")
+        self.assertIn("/maps/place/", found[0]["profile_url"])
+        self.assertTrue(all("h1" in script for script in page.scripts))
+
+    def test_results_feed_is_not_replaced_by_the_heading(self):
+        import playwright_discovery as discovery
+
+        page = _PlacePage(
+            "https://www.google.com/maps/search/Wegmans",
+            "Wegmans Food Markets",
+            feed=3,
+        )
+        session = discovery.BusinessDiscoverySession()
+        self.assertIsNone(session._direct_place_listing(page))
+        place = _PlacePage(
+            "https://www.google.com/maps/place/Wegmans/@43.1,-77.5,17z",
+            "",
+            feed=0,
+        )
+        self.assertIsNone(session._direct_place_listing(place))

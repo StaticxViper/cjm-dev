@@ -9,10 +9,11 @@ This packaging is issue #128. The city-data CLI is issue #99. Google match rules
 Every Actor is a copy of this folder:
 
 - `.actor/actor.json` sets `dockerContextDir` to the repo root (`../../../..` from `.actor/`) and points at the Actor `Dockerfile`.
-- `.actor/input_schema.json` keeps `headless` (default true) and `proxyConfiguration`. The proxy field is on the form and unused. Do not rotate proxies, IPs, or user agents, and do not add stealth plugins.
-- `.actor/dataset_schema.json` documents dataset columns.
+- `.actor/input_schema.json` keeps `headless` (default true). Do not add a proxy field. Do not rotate proxies, IPs, or user agents, and do not add stealth plugins.
+- `.actor/dataset_schema.json` documents dataset columns, including nested objects, with an Overview and a Detail view.
+- `.actor/actor.json` sets `defaultRunOptions.timeoutSecs`. A published Actor adds `.actor/pay_per_event.json` and charges `result` only for a successful row.
 - `src/__main__.py` runs `asyncio.run(main())`. `src/main.py` uses `async with Actor` and runs sync Playwright inside `asyncio.to_thread`.
-- `src/runtime.py` is the copied helper for repo imports, robots fetches (jittered retry on HTTP 429 / 5xx), timestamps, and the ignored-proxy note. Business logic stays in the local CLIs and is imported, not moved.
+- `src/runtime.py` re-exports `scripts/apify-scripts/runtime.py` (repo imports, robots fetches with jittered retry on HTTP 429 / 5xx, timestamps, and the pay-per-event push). Business logic stays in the local CLIs and is imported, not moved.
 - `Dockerfile` uses `apify/actor-python-playwright:3.12`, user `myuser`, workdir `/home/myuser`, and `COPY --chown=myuser:myuser`. Do not pip-install a different Playwright build. Set `CJM_REPO_ROOT` when the image must import repo modules.
 - `requirements.txt` stays lean. `fixtures/INPUT.json` is the committed sample. Local `apify run` storage is gitignored.
 - `README.md` is the marketplace draft: what it does, input, output sample, limitations, robots / ToS, pricing placeholder.

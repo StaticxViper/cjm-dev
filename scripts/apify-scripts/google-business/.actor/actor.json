@@ -3,7 +3,7 @@
   "name": "google-business",
   "title": "Google Maps Business Match",
   "description": "Low-volume Google Maps lookup with name and location confidence checks. Does not scrape Google web search.",
-  "version": "0.1",
+  "version": "0.2",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",
   "dockerContextDir": "../../../..",
@@ -15,5 +15,10 @@
   },
   "minMemoryMbytes": 1024,
   "maxMemoryMbytes": 4096,
-  "defaultMemoryMbytes": 2048
+  "defaultMemoryMbytes": 2048,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 900,
+    "memoryMbytes": 2048
+  }
 }

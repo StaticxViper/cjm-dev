@@ -122,6 +122,12 @@ def error_item(message):
     }
 
 
+def billable_row(row):
+    """Charge a fetched city profile. Errors and robots skips stay free."""
+    row = row or {}
+    return row.get("ok") is True and row.get("sourceStatus") == "ok"
+
+
 def summarize(rows):
     blocked = sum(1 for row in rows if row.get("sourceStatus") == "robots_disallowed")
     errors = sum(

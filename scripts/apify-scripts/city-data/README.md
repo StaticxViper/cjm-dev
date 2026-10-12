@@ -26,7 +26,7 @@ Sex-offender lists are not scraped.
 }
 ```
 
-A list works too: `cities: [{"city": "Clementon", "state": "NJ", "slug": ""}]`. Optional `slug` overrides the path token. `headless` defaults to true. `proxyConfiguration` is on the form and ignored.
+A list works too: `cities: [{"city": "Clementon", "state": "NJ", "slug": ""}]`. Optional `slug` overrides the path token. `fields` is a multi-select of the six groups. `headless` defaults to true. The default run timeout is 600 seconds at 2048 MB.
 
 ## Output
 
@@ -48,7 +48,7 @@ One dataset item per city, plus key-value `SUMMARY` with pushed / blocked / erro
 }
 ```
 
-The sample numbers match the local scraper docs. A live page will differ. Missing parser keys are omitted. `sourceStatus` is `ok`, `error`, or `robots_disallowed`.
+The sample numbers match a live Clementon fetch. A later page will differ. Missing parser keys are omitted. `sourceStatus` is `ok`, `error`, or `robots_disallowed`. Overview shows the city and status. Detail shows `urls`, `population`, `income`, `housing`, `cost_of_living`, `education`, and `crime`.
 
 ### Field glossary
 
@@ -74,7 +74,7 @@ Checked against the live `https://www.city-data.com/robots.txt` while packaging.
 
 ## Pricing
 
-Placeholder, not a live price: charge per city result (pay-per-result) or by compute units after a private run measures Chromium time. A one-city Clementon run is the sample to measure. Memory default is 2048 MB.
+Pay per event. The primary event is `result` at $0.01, charged only when `ok` is true. A robots skip, a missing page, and any other error are stored and not billed. Dataset items are not a charge event. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. Memory default is 2048 MB and the default timeout is 600 seconds.
 
 ## Categories
 

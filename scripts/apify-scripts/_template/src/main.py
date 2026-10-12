@@ -7,9 +7,9 @@ import asyncio
 from apify import Actor
 
 try:
-    from .runtime import iso_now, unused_proxy_note
+    from .runtime import iso_now
 except ImportError:
-    from runtime import iso_now, unused_proxy_note
+    from runtime import iso_now
 
 
 def run_sync(actor_input):
@@ -25,9 +25,6 @@ def run_sync(actor_input):
         "scrapedAt": iso_now(),
     }
     summary = {"status": "template", "pushed": 1, "blocked": 0, "errors": 1}
-    note = unused_proxy_note(actor_input)
-    if note:
-        summary["proxy"] = note
     return [row], summary
 
 

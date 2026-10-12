@@ -25,6 +25,24 @@ DECISION_LABELS = {
     "no_match": "no_match",
 }
 
+# Retail words that make "Wegmans Food Markets" share a token with
+# "Whole Foods Market". The CRM matcher treats any one distinctive token as
+# enough. This Actor still calls that matcher, and also requires every
+# remaining brand token. Do not change distinctive_token_missing itself.
+RETAIL_TOKENS = frozenset({
+    "food",
+    "foods",
+    "market",
+    "markets",
+    "store",
+    "stores",
+    "shop",
+    "shops",
+    "supermarket",
+    "grocery",
+    "groceries",
+})
+
 
 def _match():
     prepare_imports()
@@ -249,13 +267,14 @@ def dataset_from_selection(query, selection, source_status="ok"):
     best = (selection or {}).get("best")
     raw_decision = (selection or {}).get("decision") or "no_match"
     decision = DECISION_LABELS.get(raw_decision, raw_decision)
+    show_candidate = bool(best) and decision in {"match", "low_confidence"}
     row = {
         "query": query,
         "decision": decision,
         "score": None if not best else best.get("score"),
         "breakdown": None if not best else best.get("breakdown"),
         "hardRejects": [] if not best else list(best.get("hard_rejects") or []),
-        "candidate": candidate_view(best),
+        "candidate": candidate_view(best) if show_candidate else None,
         "sourceStatus": source_status,
         "scrapedAt": iso_now(),
     }
@@ -335,22 +354,112 @@ def collect_listings(session, query):
     return enriched, False
 
 
+def _brand_tokens(name):
+    """Brand words after legal suffixes, CRM generics, and retail words."""
+    match = _match()
+    normalized = match.normalize_match_name(name)
+    tokens = [
+        token for token in match.distinctive_tokens(normalized)
+        if token not in RETAIL_TOKENS
+    ]
+    if tokens:
+        return tokens
+    return match.distinctive_tokens(normalized)
+
+
+def _brand_matches(query_name, candidate_name):
+    """Every brand token has to match. One shared word such as "market" does not."""
+    match = _match()
+    required = _brand_tokens(query_name)
+    if not required:
+        return True
+    candidate_tokens = match.normalize_match_name(candidate_name).split()
+    return all(match._token_matches(token, candidate_tokens) for token in required)
+
+
+def _city_conflicts(query_city, address):
+    """True when both cities are present and they differ."""
+    if not query_city:
+        return False
+    match = _match()
+    found = match.parse_candidate_address(address).get("city")
+    if not found:
+        return False
+    return match._norm_city(found) != match._norm_city(query_city)
+
+
+def listings_for_query(query, listings):
+    """Drop a different brand or a different city before select_match runs."""
+    kept = []
+    reasons = []
+    for listing in listings or []:
+        name = listing.get("business_name") or listing.get("name") or ""
+        brand_ok = _brand_matches(query.get("name"), name)
+        city_bad = _city_conflicts(query.get("city"), listing.get("address"))
+        if brand_ok and not city_bad:
+            kept.append(listing)
+            continue
+        if not brand_ok and "brand_token_missing" not in reasons:
+            reasons.append("brand_token_missing")
+        if city_bad and "city_mismatch" not in reasons:
+            reasons.append("city_mismatch")
+    return kept, reasons
+
+
+def _for_scoring(query_name, listing):
+    """Score a short Maps title as the query once the brand already matched.
+
+    The Rochester card is titled "Wegmans". Comparing that string with
+    "Wegmans Food Markets" stays under 80 even though it is the same store.
+    The dataset still shows the Maps title.
+    """
+    original = listing.get("business_name") or listing.get("name") or ""
+    if not original or not _brand_matches(query_name, original):
+        return listing, original
+    renamed = dict(listing)
+    renamed["business_name"] = query_name
+    return renamed, original
+
+
+def _restore_maps_names(selection, originals):
+    for index, item in enumerate((selection or {}).get("candidates") or []):
+        if index < len(originals) and originals[index]:
+            item["name"] = originals[index]
+
+
 def score_query(query, listings, settings, zip_county, npa_state):
+    kept, dropped = listings_for_query(query, listings)
+    if listings and not kept:
+        row = status_row(query, "no_match", "ok")
+        row["hardRejects"] = dropped
+        return row
+    prepared = []
+    originals = []
+    for listing in kept:
+        renamed, original = _for_scoring(query.get("name"), listing)
+        prepared.append(renamed)
+        originals.append(original)
     lead, location = lead_from_query(query)
     selection = score_candidates(
         lead,
-        listings,
+        prepared,
         min_confidence=settings["min_confidence"],
         low_floor=settings["low_floor"],
         location=location,
         zip_county=zip_county,
         npa_state=npa_state,
     )
+    _restore_maps_names(selection, originals)
     row = dataset_from_selection(query, selection, source_status="ok")
     if settings.get("include_emails") and selection.get("winner") and row["decision"] == "match":
         website = (selection["winner"] or {}).get("website")
         row["emails"] = collect_emails(lead, website)
     return row
+
+
+def billable_row(row):
+    """Charge a match only. low_confidence and no_match stay free."""
+    return (row or {}).get("decision") == "match"
 
 
 def summarize(rows):

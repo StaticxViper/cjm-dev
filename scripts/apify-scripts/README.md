@@ -14,9 +14,9 @@ Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one i
 
 1. Copy `_template/` to `scripts/apify-scripts/<name>/`.
 2. Rename `name` / `title` / `description` in `.actor/actor.json`.
-3. Extend the input and dataset schemas. Keep `headless` and `proxyConfiguration` (the proxy field stays unused).
-4. Replace `src/main.py`. Call the existing scraper inside `asyncio.to_thread`. Import it; do not move or rewrite the CLI.
-5. Add `COPY` lines to the Dockerfile for the modules you import, and set `CJM_REPO_ROOT=/home/myuser/repo`.
+3. Extend the input and dataset schemas. Keep `headless`. Do not add a proxy field. Declare dataset fields for nested objects and add a Detail view next to Overview. Use `editor: "select"` when a field is a list of known values.
+4. Replace `src/main.py`. Call the existing scraper inside `asyncio.to_thread`. Import it; do not move or rewrite the CLI. `src/runtime.py` re-exports `scripts/apify-scripts/runtime.py`.
+5. Add `COPY` lines to the Dockerfile for the modules you import, copy `scripts/apify-scripts/runtime.py`, and set `CJM_REPO_ROOT=/home/myuser/repo`. Set `defaultRunOptions.timeoutSecs`.
 6. Write the marketplace `README.md` from the template headings.
 7. Add unit tests under `unittests/apify_scripts/` for input mapping and dataset shape. No live site calls in those tests.
 
@@ -40,7 +40,7 @@ Do this only when a listing is requested. `APIFY_TOKEN` is the CLI / `apify push
 2. In the Actor directory, `apify push`.
 3. Run the committed `fixtures/INPUT.json` once on the platform (private build). Confirm dataset rows and key-value `SUMMARY`.
 4. Paste the Actor `README.md` into the Store listing. Set categories in the Console (they are not an `actor.json` field). Suggested starting points are in each README.
-5. Leave pricing as a placeholder until a private run shows compute per result. Then pick compute units or pay-per-result.
+5. Set the Console pricing model to pay per event using `.actor/pay_per_event.json`. Charge `result` only for a successful city profile or an accepted Maps match. Do not enable pay per dataset item.
 6. Choose a private listing or a public one. Public Google Business needs the ToS / robots section left intact.
 7. Save a sample dataset export and a screenshot with the listing. Update `.actor/CHANGELOG.md`.
 

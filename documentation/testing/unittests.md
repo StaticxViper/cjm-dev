@@ -197,7 +197,9 @@ Offline checks for the Apify Actor packages. They do not open Chromium or call c
 | Test module | What it checks |
 |-------------|----------------|
 | `test_city_data_actor` | Clementon input mapping, dataset fields, robots skip, longest-match Allow over a shorter Disallow |
-| `test_google_business_actor` | State required, Maps URL only, STRIKER and B&B Basecamp stay `no_match`, a later listing can match when the first one cannot, block flag skips enrichment |
+| `test_google_business_actor` | State required, Maps URL only, STRIKER and B&B Basecamp stay `no_match` with no candidate, Wegmans in Rochester matches and Whole Foods or a Williamsville Wegmans is omitted, a place-page redirect uses the heading, block flag skips enrichment |
+
+GitHub Actions workflow `.github/workflows/apify_scripts.yml` runs both modules on Python 3.12. It does not install Chromium or call the live sites.
 
 ## Related documentation
 

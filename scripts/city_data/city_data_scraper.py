@@ -975,7 +975,7 @@ def scrape_one(city_entry, fields, session):
     if need_crime:
         result["urls"]["crime"] = build_crime_url(city, state, slug)
 
-    logger.info("Fetching city page: %s", city_url)
+    logger.critical("Fetching city page: %s", city_url)
     status, city_html, error = session.fetch(
         city_url,
         wait_for="#crimeTab" if need_crime else None,
@@ -993,7 +993,7 @@ def scrape_one(city_entry, fields, session):
         return result
 
     crime_url = result["urls"]["crime"]
-    logger.info("Fetching crime page: %s", crime_url)
+    logger.critical("Fetching crime page: %s", crime_url)
     crime_status, crime_html, crime_error = session.fetch(crime_url, wait_for="#crimeTab")
     crime_data = {}
     if crime_error and crime_status == 404:

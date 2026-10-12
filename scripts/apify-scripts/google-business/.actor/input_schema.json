@@ -11,9 +11,9 @@
       "editor": "json",
       "prefill": [
         {
-          "name": "Northwind Customs LLC",
-          "city": "Olean",
-          "county": "Cattaraugus",
+          "name": "Wegmans Food Markets",
+          "city": "Rochester",
+          "county": "Monroe",
           "state": "NY",
           "maxResults": 3
         }
@@ -120,12 +120,6 @@
       "description": "Run Chromium headless. Default true.",
       "editor": "checkbox",
       "default": true
-    },
-    "proxyConfiguration": {
-      "title": "Proxy configuration",
-      "type": "object",
-      "description": "Ignored. This Actor does not rotate proxies, IPs, or user agents.",
-      "editor": "proxy"
     }
   }
 }

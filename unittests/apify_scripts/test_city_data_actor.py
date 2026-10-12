@@ -5,6 +5,7 @@ Run from repo root:
     python -m unittest unittests.apify_scripts.test_city_data_actor
 """
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -99,6 +100,7 @@ class TestCityDataset(unittest.TestCase):
         summary = mapping.summarize(rows)
         self.assertEqual(summary["pushed"], 1)
         self.assertEqual(summary["blocked"], 0)
+        self.assertTrue(mapping.billable_row(row))
 
     def test_disallowed_path_skips_the_request(self):
         config = mapping.actor_input_to_config({
@@ -113,6 +115,7 @@ class TestCityDataset(unittest.TestCase):
         self.assertFalse(rows[0]["ok"])
         self.assertEqual(rows[0]["sourceStatus"], "robots_disallowed")
         self.assertEqual(rows[0]["error"], "robots_disallowed")
+        self.assertFalse(mapping.billable_row(rows[0]))
 
     def test_longer_allow_beats_city_disallow(self):
         config = mapping.actor_input_to_config({
@@ -133,3 +136,24 @@ class TestCityDataset(unittest.TestCase):
         self.assertNotIn("crime", session.fetched[0])
         self.assertEqual(rows[0]["crime"]["error"], "robots_disallowed")
         self.assertEqual(rows[0]["sourceStatus"], "ok")
+
+    def test_store_schema_declares_profile_fields(self):
+        actor = json.loads((_SRC.parent / ".actor" / "actor.json").read_text(encoding="utf-8"))
+        self.assertEqual(actor["defaultRunOptions"]["timeoutSecs"], 600)
+        form = json.loads((_SRC.parent / ".actor" / "input_schema.json").read_text(encoding="utf-8"))
+        self.assertNotIn("proxyConfiguration", form["properties"])
+        fields = form["properties"]["fields"]
+        self.assertEqual(fields["editor"], "select")
+        self.assertIn("population", fields["items"]["enum"])
+        dataset = json.loads((_SRC.parent / ".actor" / "dataset_schema.json").read_text(encoding="utf-8"))
+        declared = dataset["fields"]["fields"]
+        for key in ("population", "income", "housing", "cost_of_living", "education", "crime"):
+            self.assertEqual(declared[key]["type"], "object")
+        self.assertIn("detail", dataset["views"])
+        pricing = json.loads((_SRC.parent / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
+        event = pricing["actorChargeEvents"]["result"]
+        self.assertTrue(event["isPrimaryEvent"])
+        self.assertGreater(event["eventPriceUsd"], 0)
+        runtime = (_SRC / "runtime.py").read_text(encoding="utf-8")
+        self.assertNotIn("def fetch_text", runtime)
+        self.assertNotIn("unused_proxy_note", runtime)

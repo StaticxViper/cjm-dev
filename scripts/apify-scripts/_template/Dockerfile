@@ -12,5 +12,8 @@ RUN python -m pip install --no-cache-dir --user -r requirements.txt
 
 COPY --chown=myuser:myuser ${ACTOR_PATH_IN_DOCKER_CONTEXT}/ ./
 
+ENV CJM_REPO_ROOT=/home/myuser/repo
+COPY --chown=myuser:myuser scripts/apify-scripts/runtime.py /home/myuser/repo/scripts/apify-scripts/runtime.py
+
 ENV PYTHONUNBUFFERED=1
 CMD ["python", "-m", "src"]

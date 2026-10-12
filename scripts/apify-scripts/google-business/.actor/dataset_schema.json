@@ -3,9 +3,45 @@
   "fields": {
     "title": "Maps match rows",
     "fields": {
+      "query": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "city": {"type": "string"},
+          "county": {"type": "string"},
+          "state": {"type": "string"},
+          "maxResults": {"type": "number"}
+        }
+      },
       "decision": {"type": "string"},
       "score": {"type": "number"},
+      "breakdown": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "number"},
+          "location": {"type": "number"},
+          "category": {"type": "number"},
+          "corroboration": {"type": "number"}
+        }
+      },
+      "hardRejects": {"type": "array"},
+      "candidate": {
+        "type": "object",
+        "properties": {
+          "business_name": {"type": "string"},
+          "phone": {"type": "string"},
+          "website": {"type": "string"},
+          "address": {"type": "string"},
+          "rating": {"type": "number"},
+          "user_ratings_total": {"type": "number"},
+          "category": {"type": "string"},
+          "mapsUrl": {"type": "string"},
+          "placeId": {"type": "string"}
+        }
+      },
       "sourceStatus": {"type": "string"},
+      "error": {"type": "string"},
+      "emails": {"type": "array"},
       "scrapedAt": {"type": "string"}
     }
   },
@@ -21,6 +57,38 @@
           "decision": {"label": "Decision", "format": "text"},
           "score": {"label": "Score", "format": "number"},
           "sourceStatus": {"label": "Source status", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "query",
+          "decision",
+          "score",
+          "breakdown",
+          "hardRejects",
+          "candidate",
+          "sourceStatus",
+          "error",
+          "emails",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "query": {"label": "Query", "format": "object"},
+          "decision": {"label": "Decision", "format": "text"},
+          "score": {"label": "Score", "format": "number"},
+          "breakdown": {"label": "Breakdown", "format": "object"},
+          "hardRejects": {"label": "Hard rejects", "format": "array"},
+          "candidate": {"label": "Candidate", "format": "object"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "error": {"label": "Error", "format": "text"},
+          "emails": {"label": "Emails", "format": "array"},
           "scrapedAt": {"label": "Scraped at", "format": "text"}
         }
       }

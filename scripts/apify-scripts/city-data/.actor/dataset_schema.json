@@ -8,7 +8,73 @@
       "ok": {"type": "boolean"},
       "sourceStatus": {"type": "string"},
       "error": {"type": "string"},
-      "scrapedAt": {"type": "string"}
+      "scrapedAt": {"type": "string"},
+      "urls": {
+        "type": "object",
+        "properties": {
+          "city": {"type": "string"},
+          "crime": {"type": "string"}
+        }
+      },
+      "population": {
+        "type": "object",
+        "properties": {
+          "year": {"type": "number"},
+          "total": {"type": "number"},
+          "urban_pct": {"type": "number"},
+          "rural_pct": {"type": "number"},
+          "change_since_2000_pct": {"type": "number"},
+          "median_age": {"type": "number"},
+          "males": {"type": "number"},
+          "females": {"type": "number"}
+        }
+      },
+      "income": {
+        "type": "object",
+        "properties": {
+          "year": {"type": "number"},
+          "median_household": {"type": "number"},
+          "per_capita": {"type": "number"},
+          "poverty_rate": {"type": "number"}
+        }
+      },
+      "housing": {
+        "type": "object",
+        "properties": {
+          "median_home_value": {"type": "number"},
+          "median_gross_rent": {"type": "number"},
+          "renter_pct": {"type": "number"}
+        }
+      },
+      "cost_of_living": {
+        "type": "object",
+        "properties": {
+          "index": {"type": "number"},
+          "year": {"type": "number"}
+        }
+      },
+      "education": {
+        "type": "object",
+        "properties": {
+          "hs_or_higher_pct": {"type": "number"},
+          "bachelors_or_higher_pct": {"type": "number"}
+        }
+      },
+      "crime": {
+        "type": "object",
+        "properties": {
+          "index": {"type": "number"},
+          "index_year": {"type": "number"},
+          "homicides": {"type": "number"},
+          "vs_us_average": {"type": "string"},
+          "yoy_change_pct": {"type": "number"},
+          "violent_crime_rate": {"type": "number"},
+          "property_crime_rate": {"type": "number"},
+          "officers_per_1000": {"type": "number"},
+          "error": {"type": "string"},
+          "by_year": {"type": "array"}
+        }
+      }
     }
   },
   "views": {
@@ -26,6 +92,44 @@
           "sourceStatus": {"label": "Source status", "format": "text"},
           "error": {"label": "Error", "format": "text"},
           "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "city",
+          "state",
+          "ok",
+          "sourceStatus",
+          "error",
+          "scrapedAt",
+          "urls",
+          "population",
+          "income",
+          "housing",
+          "cost_of_living",
+          "education",
+          "crime"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "city": {"label": "City", "format": "text"},
+          "state": {"label": "State", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"},
+          "urls": {"label": "URLs", "format": "object"},
+          "population": {"label": "Population", "format": "object"},
+          "income": {"label": "Income", "format": "object"},
+          "housing": {"label": "Housing", "format": "object"},
+          "cost_of_living": {"label": "Cost of living", "format": "object"},
+          "education": {"label": "Education", "format": "object"},
+          "crime": {"label": "Crime", "format": "object"}
         }
       }
     }
