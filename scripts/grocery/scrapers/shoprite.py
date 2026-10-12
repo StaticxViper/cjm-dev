@@ -19,6 +19,7 @@ from grocery.scrapers.extract import (
     product_code,
     product_size_texts,
     size_from_texts,
+    stock_error,
     text_of,
 )
 
@@ -94,7 +95,7 @@ class ShopRiteScraper(BaseScraper):
         if sized:
             record.size_value, record.size_unit = sized
         if record.price is None:
-            record.error = price_error or "no_price"
+            record.error = stock_error(html) or price_error or "no_price"
         return record
 
     def parse_search(self, html: str, url: str) -> list[ProductRecord]:

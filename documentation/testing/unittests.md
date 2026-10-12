@@ -195,6 +195,7 @@ Imports `grocery` with `scripts/` on `sys.path`. HTML fixtures stand in for live
 | `test_parser.py` | Currency bounds, unit aliases, and multipack totals (`Pack of 2, 32 oz each` → 64 oz) |
 | `test_scrapers.py` | Amazon one-time price (Subscribe & Save ignored), Costco size and member-only pages, ShopRite ZIP/session gate, block detection |
 | `test_sync.py` | Batches of 20, flagged outliers, dry-run skip, pull/push headers, CLI usage |
+| `test_lookup.py` | Local outlier guard, search fallback, pending-row writes, history insert, 10 second poll |
 
 ## Related documentation
 

@@ -18,6 +18,7 @@ from grocery.scrapers.extract import (
     product_code,
     product_size_texts,
     size_from_texts,
+    stock_error,
     text_of,
     visible_text,
 )
@@ -80,7 +81,7 @@ class CostcoScraper(BaseScraper):
             record.error = "member_only"
             return record
         if record.price is None:
-            record.error = price_error or "no_price"
+            record.error = stock_error(html) or price_error or "no_price"
         return record
 
     def parse_search(self, html: str, url: str) -> list[ProductRecord]:

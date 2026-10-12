@@ -1,8 +1,8 @@
 # Grocery price sync
 
-Local scraper for public ShopRite, Costco, and Amazon product pages. It reads linked rows from `shopping_item_stores` and posts prices to the `grocery-lookup` edge function (`action: push_prices`). The grocery app itself is not in this repo.
+Local scraper for public ShopRite, Costco, and Amazon product pages. The dashboard "Look Up" button sets `shopping_item_stores.check_status` to `pending`. This script runs on your machine, polls those rows, and writes prices with the Supabase service role. It does not call the `grocery-lookup` edge function.
 
-A run uses one normal desktop browser profile and waits at least 2 seconds between pages. It does not use stealth plugins, proxy rotation, CAPTCHA solving, or a store login. A robot check is recorded as a failed URL. A Costco page that hides the price behind membership is recorded as `member_only`.
+A run uses one normal desktop browser profile and waits at least 2 seconds between pages. It does not use stealth plugins, proxy rotation, CAPTCHA solving, or a store login. A robot check, an out-of-stock page, or a Costco member-only wall is saved as `check_status = failed` and the previous price stays.
 
 ## Run it
 
@@ -13,20 +13,19 @@ source .venv/Scripts/activate
 pip install -r requirements/requirements.txt
 python -m playwright install chromium
 cd scripts
-python -m grocery.sync --all
+python -m grocery.scraper --listen
 ```
 
-`cd scripts` is required. From `scripts/grocery`, `python sync.py --all` does the same thing.
+`cd scripts` is required. From `scripts/grocery`, `python scraper.py --listen` does the same thing.
 
 | Command | What it does |
 |---------|----------------|
-| `python -m grocery.sync --all` | Scrape every linked item and push prices |
-| `python -m grocery.sync --store shoprite` | Scrape one store (`shoprite`, `costco`, or `amazon`) |
-| `python -m grocery.sync --dry-run --store costco` | Scrape and print the payload. Does not POST |
-| `python -m grocery.sync --test-url "https://www.amazon.com/dp/..."` | Scrape one URL. Does not POST |
-| `python -m grocery.sync --search "whole milk" --store costco` | Search and print up to 20 hits. Does not POST |
-| `python -m grocery.sync --set-shoprite-store` | Open ShopRite so you can pick a store, then save the browser session |
-| `--force` | Send `force: true` with `--all` or `--store` so a flagged outlier can overwrite |
+| `python -m grocery.scraper --listen` | Every 10 seconds, scrape rows with `check_status = pending` and write the result |
+| `python -m grocery.scraper --item <item_id>` | Scrape every store link for one master-list item now |
+| `python -m grocery.scraper --all` | Re-check every linked master-list item |
+| `python -m grocery.scraper --set-shoprite-store` | Open ShopRite so you can pick a store, then save the browser session |
+
+`python -m grocery.sync` still posts batches to the `grocery-lookup` edge function. Use `grocery.scraper` for the local queue.
 
 ## Setup
 
@@ -38,20 +37,27 @@ Copy [scripts/grocery/.env.example](../../scripts/grocery/.env.example) values i
 - `DEFAULT_SHOPRITE_ZIP`
 - `GROCERY_MIN_DELAY_SECONDS` (default 2, and never below 2)
 - `GROCERY_TIMEOUT_MS` (default 30000)
-- `GROCERY_BATCH_SIZE` (default 20)
+- `GROCERY_BATCH_SIZE` (default 20, used by `grocery.sync`)
+- `GROCERY_POLL_SECONDS` (default 10)
+
+`SUPABASE_ANON_KEY` is only used by `grocery.sync`. The local queue uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 
 ShopRite prices depend on the store. Run `--set-shoprite-store` once and choose the store in the browser, or set `DEFAULT_SHOPRITE_ZIP`. The ZIP path only works when the site shows a ZIP field. The saved session file is `scripts/grocery/.shoprite_storage.json` and is gitignored.
 
-`--test-url` and `--search` do not need the Supabase keys. `--all`, `--store`, and `--dry-run` do.
+## What a lookup does
 
-## What a sync does
+1. Read `shopping_item_stores` with the item name, brand, UPC, and store provider. `--listen` keeps rows where `check_status` is `pending`.
+2. Open `product_url` when it is set. When it is empty, search `{brand} {name}` and keep the first result whose title shares at least half of those words, then open that page and save the URL.
+3. Read the current price, regular price, and package size. Amazon uses the one-time purchase price. `unit_price` is the pack price divided by `size_value`.
+4. If the last `pack_price` is above 0 and the new price is above 3x or below 0.33x that value, set `check_status` to `flagged`, store `check_error`, and leave `pack_price` unchanged.
+5. Otherwise set `pack_price`, `regular_price`, size, `price_source` to `script`, `check_status` to `ok`, clear `check_error`, and insert `shopping_price_history`.
+6. On a block, out-of-stock page, or missing price, set `check_status` to `failed` and keep the previous price.
 
-1. `GET /rest/v1/shopping_item_stores` with the service role bearer token and the anon `apikey`. `--store` filters on `shopping_stores.provider`.
-2. Skip rows with no `product_url`.
-3. Open the product page and read the current price, regular price, package size, URL, and UPC or ASIN when the page exposes them. Amazon uses the one-time purchase price and ignores Subscribe & Save. Package strings such as `Pack of 2, 32 oz each` become a total size (`64` `oz`).
-4. Drop a price that is missing, not finite, not positive, or above 10000.
-5. `POST /functions/v1/grocery-lookup` in batches of 20 with `source: "script"` and `force: false` unless `--force` is set.
-6. Print OK, flagged outliers, failed URLs, and a skipped count. A flagged row was rejected by the backend's 3x outlier guard and was not written. Exit 1 when any URL failed. Exit 2 when configuration is missing.
+`--listen` prints a line like:
+
+```text
+[11:05:22] Found 1 pending lookup: 'Chicken Breast' @ ShopRite -> Found $4.99/lb ($12.48 total). Updated successfully.
+```
 
 ## Tests
 

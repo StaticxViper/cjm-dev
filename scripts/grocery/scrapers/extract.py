@@ -18,6 +18,13 @@ def visible_text(html: str) -> str:
     return soup.get_text(" ", strip=True)
 
 
+def stock_error(html: str) -> str | None:
+    text = visible_text(html).lower()
+    if "out of stock" in text or "currently unavailable" in text:
+        return "out_of_stock"
+    return None
+
+
 def load_jsonld(html: str) -> list[dict[str, Any]]:
     soup = BeautifulSoup(html or "", "html.parser")
     nodes: list[dict[str, Any]] = []

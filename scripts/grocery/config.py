@@ -27,6 +27,7 @@ class Settings:
     min_delay_s: float
     batch_size: int
     storage_state_path: Path
+    poll_seconds: float = 10.0
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -52,6 +53,19 @@ def _delay_seconds() -> float:
         raise ConfigError("GROCERY_MIN_DELAY_SECONDS must be a number") from exc
     if value < 2:
         return 2.0
+    return value
+
+
+def _poll_seconds() -> float:
+    raw = os.getenv("GROCERY_POLL_SECONDS", "").strip()
+    if not raw:
+        return 10.0
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ConfigError("GROCERY_POLL_SECONDS must be a number") from exc
+    if value < 1:
+        return 10.0
     return value
 
 
@@ -82,4 +96,5 @@ def load_settings(*, require_supabase: bool = False) -> Settings:
         min_delay_s=_delay_seconds(),
         batch_size=_positive_int("GROCERY_BATCH_SIZE", 20),
         storage_state_path=STORAGE_STATE_PATH,
+        poll_seconds=_poll_seconds(),
     )

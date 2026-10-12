@@ -19,6 +19,7 @@ from grocery.scrapers.extract import (
     product_code,
     product_size_texts,
     size_from_texts,
+    stock_error,
     text_of,
     visible_text,
 )
@@ -154,7 +155,7 @@ class AmazonScraper(BaseScraper):
         if unit:
             record.note = "unit_price: " + re.sub(r"\s+", " ", unit.group(0)).strip()
         if record.price is None:
-            record.error = price_error or "no_price"
+            record.error = stock_error(html) or price_error or "no_price"
         return record
 
     def parse_search(self, html: str, url: str) -> list[ProductRecord]:
