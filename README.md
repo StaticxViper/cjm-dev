@@ -40,6 +40,10 @@ Per-script guides (purpose, configuration, usage, and how each tool works) live 
 - Sharpening software engineering fundamentals through consistent project work.
 - Expanding depth in automation, scripting, and clean project structure.
 
+## Portfolio
+
+A personal site is in [`portfolio/`](portfolio/). Edit [`portfolio/content.json`](portfolio/content.json), then build and publish with GitHub Pages. Details: [portfolio/README.md](portfolio/README.md).
+
 ## About Me
 
 Chris "CJ" Moulton  

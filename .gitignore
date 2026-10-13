@@ -29,6 +29,9 @@ scripts/apify-scripts/**/storage/
 # ShopRite browser session (cookies)
 scripts/grocery/.shoprite_storage.json
 
+# Generated portfolio site (source of truth is portfolio/content.json)
+portfolio/dist/
+
 # New-business discovery runtime output
 new_business_artifacts/
 new_business_seen.json
