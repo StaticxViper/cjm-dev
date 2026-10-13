@@ -9,6 +9,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 | Script | Doc |
 |--------|-----|
 | Script manager | [scripts/script_manager.md](scripts/script_manager.md) |
+| Script manager on GitHub Actions | [scripts/script_manager_actions.md](scripts/script_manager_actions.md) |
 | Blog automation (Chikara Realms) | [scripts/blog_automation.md](scripts/blog_automation.md) |
 | Lead generation | [scripts/leadgen.md](scripts/leadgen.md) |
 | New-business sources | [scripts/new_business_sources.md](scripts/new_business_sources.md) |

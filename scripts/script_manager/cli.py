@@ -42,7 +42,7 @@ from scripts.script_manager.runner import (
 
 logger = logging.getLogger("script_manager")
 
-_COMMANDS = {"list", "info", "help", "run", "validate", "menu"}
+_COMMANDS = {"list", "info", "help", "run", "validate", "menu", "contract", "resolve", "sinks", "schedules"}
 _GLOBAL_FLAGS = {"--json"}
 _GLOBAL_VALUES = {"--registry", "--log-file"}
 
@@ -88,6 +88,14 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_validate(registry, args)
         if args.command == "menu":
             return run_session(registry, repo=repo_root())
+        if args.command == "contract":
+            return _cmd_contract(args)
+        if args.command == "resolve":
+            return _cmd_resolve(registry, args)
+        if args.command == "sinks":
+            return _cmd_sinks(registry, args)
+        if args.command == "schedules":
+            return _cmd_schedules(registry, args)
     except KeyboardInterrupt:
         logger.error("interrupted")
         return exit_codes.INTERRUPTED
@@ -159,6 +167,7 @@ def _cmd_info(registry: Registry, args, passthrough: list[str]) -> int:
         "env": report,
         "timeout_seconds": script.timeout_seconds,
         "outputs": script.outputs,
+        "default_outputs": script.effective_default_outputs(),
         "ci_allowed": script.ci_allowed,
         "schedule": script.schedule,
     }
@@ -202,6 +211,7 @@ def _cmd_info(registry: Registry, args, passthrough: list[str]) -> int:
     print("side_effects: " + (", ".join(script.side_effects) if script.side_effects else "(none)"))
     print("tags: " + (", ".join(script.tags) if script.tags else "(none)"))
     print("outputs: " + (", ".join(script.outputs) if script.outputs else "(none)"))
+    print("default_outputs: " + ", ".join(script.effective_default_outputs()))
     if script.docs:
         print(f"docs: {script.docs}")
     if script.schedule:
@@ -239,10 +249,30 @@ def _cmd_help(registry: Registry, args) -> int:
 
 
 def _cmd_run(registry: Registry, args, passthrough: list[str]) -> int:
-    script = registry.get(args.name)
+    contract = None
+    if args.from_contract:
+        try:
+            from scripts.script_manager.contract import read_contract
+
+            contract = read_contract(Path(args.from_contract))
+        except Exception as exc:
+            logger.error("%s", exc)
+            return exit_codes.USAGE
+        if args.name and args.name != contract.script:
+            logger.error("contract script %s does not match %s", contract.script, args.name)
+            return exit_codes.USAGE
+        name = contract.script
+        passthrough = list(contract.argv)
+    else:
+        name = args.name
+    if not name:
+        logger.error("run requires a script name or --from-contract")
+        return exit_codes.USAGE
+    script = registry.get(name)
+    dry_run = bool(args.dry_run or (contract.dry_run if contract else False))
     if script is None:
         summary = {
-            "name": args.name,
+            "name": name,
             "status": None,
             "argv": [],
             "cwd": None,
@@ -254,15 +284,16 @@ def _cmd_run(registry: Registry, args, passthrough: list[str]) -> int:
             "env_missing": [],
             "outputs": [],
             "timed_out": False,
-            "dry_run": args.dry_run,
+            "dry_run": dry_run,
+            "request_id": contract.request_id if contract else None,
         }
-        _unknown(args.name, registry, False)
+        _unknown(name, registry, False)
         _print_run_summary(summary, args.json)
         return exit_codes.UNKNOWN_SCRIPT
     if args.non_interactive and args.interactive:
         logger.error("pass only one of --non-interactive and --interactive")
         return exit_codes.USAGE
-    if args.non_interactive:
+    if args.non_interactive or contract is not None:
         non_interactive = True
     elif args.interactive:
         non_interactive = False
@@ -270,22 +301,184 @@ def _cmd_run(registry: Registry, args, passthrough: list[str]) -> int:
         non_interactive = None
     options = RunOptions(
         passthrough=passthrough,
-        dry_run=args.dry_run,
+        dry_run=dry_run,
         timeout=args.timeout,
         env_file=Path(args.env_file) if args.env_file else None,
         no_dotenv=args.no_dotenv,
         non_interactive=non_interactive,
-        yes=args.yes,
+        yes=bool(args.yes or args.confirm or (contract.confirm if contract else False)),
         force=args.force,
         no_defaults=args.no_defaults,
         summary_json=Path(args.summary_json) if args.summary_json else None,
         github_summary=args.github_summary,
-        ci=args.ci,
-        env_scope=args.env_scope,
+        ci=args.ci or contract is not None,
+        env_scope=args.env_scope or ("declared" if contract is not None else None),
+        request_id=contract.request_id if contract else None,
     )
     summary = run_script(repo_root(), script, options)
     _print_run_summary(summary, args.json)
     return int(summary["exit_code"])
+
+
+def _cmd_contract(args) -> int:
+    from scripts.script_manager.contract import ContractError, build_contract, contract_b64, write_contract, write_github_output
+
+    try:
+        contract = build_contract()
+    except ContractError as exc:
+        logger.error("%s", exc)
+        return exit_codes.USAGE
+    if args.out:
+        write_contract(Path(args.out), contract)
+    if args.github_output:
+        write_github_output(
+            {
+                "script": contract.script,
+                "request_id": contract.request_id,
+                "contract_b64": contract_b64(contract),
+            }
+        )
+    if args.json:
+        _write_json(contract.to_dict())
+    else:
+        print(contract.script)
+        print(contract.request_id)
+    return 0
+
+
+def _cmd_resolve(registry: Registry, args) -> int:
+    from scripts.script_manager.contract import (
+        Contract,
+        ContractError,
+        read_contract,
+        resolve_payload,
+        write_github_output,
+    )
+
+    try:
+        if args.from_contract:
+            contract = read_contract(Path(args.from_contract))
+        else:
+            if not args.name:
+                logger.error("resolve requires a script name or --from-contract")
+                return exit_codes.USAGE
+            contract = Contract(
+                script=args.name,
+                args="",
+                argv=[],
+                request_id="resolve",
+                outputs=None,
+                confirm=bool(args.confirm),
+                dry_run=bool(args.dry_run),
+                callback_url="",
+                trigger="cli",
+            )
+    except ContractError as exc:
+        logger.error("%s", exc)
+        return exit_codes.USAGE
+    payload, code = resolve_payload(repo_root(), registry, contract)
+    if code == exit_codes.UNKNOWN_SCRIPT:
+        _unknown(contract.script, registry, False)
+    elif payload.get("message"):
+        logger.error("%s", payload["message"])
+    if args.github_output:
+        write_github_output(
+            {
+                "timeout_minutes": str(payload.get("timeout_minutes") or 1),
+                "playwright": "true" if payload.get("needs_playwright") else "false",
+                "request_id": contract.request_id,
+                "script": contract.script,
+            }
+        )
+    if args.json:
+        _write_json(payload)
+    else:
+        print(json.dumps(payload, indent=2))
+    return code
+
+
+def _cmd_sinks(registry: Registry, args) -> int:
+    from scripts.script_manager.contract import ContractError, read_contract
+    from scripts.script_manager.sinks import deliver
+
+    summary_path = Path(args.summary)
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.error("cannot read run summary: %s", exc)
+        return 0
+    if not isinstance(summary, dict):
+        logger.error("run summary must be a JSON object")
+        return 0
+    try:
+        contract = read_contract(Path(args.from_contract))
+    except ContractError as exc:
+        logger.error("%s", exc)
+        summary["sinks"] = [{"name": "contract", "ok": False, "error": str(exc)}]
+        summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        return 0
+    deliver(repo_root(), registry, summary, contract, summary_path)
+    return 0
+
+
+def _cmd_schedules(registry: Registry, args) -> int:
+    from scripts.script_manager.schedules import (
+        SCHEDULE_WORKFLOW,
+        ScheduleError,
+        due_matrix,
+        render_schedule_block,
+        replace_schedule_block,
+        schedule_block_matches,
+    )
+    from scripts.script_manager.contract import write_github_output
+
+    repo = repo_root()
+    workflow = Path(args.workflow) if args.workflow else repo / SCHEDULE_WORKFLOW
+    flags = [bool(args.due), bool(args.check), bool(args.write)]
+    if sum(flags) != 1:
+        logger.error("pass one of --due, --check, or --write")
+        return exit_codes.USAGE
+    if args.due:
+        try:
+            matrix = due_matrix(registry, now=_parse_now(args.now))
+        except ScheduleError as exc:
+            logger.error("%s", exc)
+            return exit_codes.REGISTRY_INVALID
+        text = json.dumps(matrix, separators=(",", ":"))
+        if args.github_output:
+            write_github_output({"matrix": text})
+        if args.json:
+            _write_json(matrix)
+        elif not args.github_output:
+            print(text)
+        return 0
+    if not workflow.is_file():
+        logger.error("schedule workflow not found: %s", workflow)
+        return exit_codes.REGISTRY_INVALID
+    text = workflow.read_text(encoding="utf-8")
+    try:
+        if args.check:
+            if schedule_block_matches(text, registry):
+                print("schedules ok")
+                return 0
+            logger.error("schedule workflow cron block does not match the registry. Run schedules --write.")
+            return exit_codes.REGISTRY_INVALID
+        updated = replace_schedule_block(text, render_schedule_block(registry))
+    except ScheduleError as exc:
+        logger.error("%s", exc)
+        return exit_codes.REGISTRY_INVALID
+    workflow.write_text(updated, encoding="utf-8")
+    print(f"wrote {workflow}")
+    return 0
+
+
+def _parse_now(value: str | None):
+    if not value:
+        return None
+    from datetime import datetime
+
+    text = value.replace("Z", "+00:00")
+    return datetime.fromisoformat(text)
 
 
 def _cmd_validate(registry: Registry, args) -> int:
@@ -299,6 +492,11 @@ def _cmd_validate(registry: Registry, args) -> int:
         check_unregistered=True,
         check_env_docs=current == bundled,
     )
+    if args.ci_secrets:
+        from scripts.script_manager.ci_secrets import WORKFLOW, ci_secret_errors
+
+        workflow = Path(args.workflow) if args.workflow else repo / WORKFLOW
+        errors.extend(ci_secret_errors(registry, workflow))
     if args.strict and warnings:
         errors.append(f"strict: {len(warnings)} warning(s) treated as errors")
     ok = not errors
@@ -340,7 +538,7 @@ def validate_inventory(repo, registry: Registry, *, smoke: bool, check_unregiste
                 warnings.append(f"{script.name}: system dependency not on PATH: {dep}")
     if check_unregistered:
         known = registered_files(repo, registry)
-        for path in unregistered_scripts(repo, registry.ignore_paths, known):
+        for path in unregistered_scripts(repo, registry.ignore_paths, known, registry.discover_roots):
             warnings.append(f"unregistered script: {path.relative_to(repo).as_posix()}")
     if check_env_docs:
         warnings.extend(_env_doc_warnings(repo, registry))
@@ -603,7 +801,8 @@ def _build_parser() -> argparse.ArgumentParser:
     help_parser.add_argument("name")
 
     run_parser = sub.add_parser("run", parents=[common], help="Run a registered script")
-    run_parser.add_argument("name")
+    run_parser.add_argument("name", nargs="?")
+    run_parser.add_argument("--from-contract", help="Read script, args, confirm, and dry_run from a contract file")
     run_parser.add_argument("--dry-run", action="store_true")
     run_parser.add_argument("--timeout", type=int)
     run_parser.add_argument("--env-file")
@@ -611,11 +810,12 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--non-interactive", action="store_true")
     run_parser.add_argument("--interactive", action="store_true")
     run_parser.add_argument("--yes", action="store_true")
+    run_parser.add_argument("--confirm", action="store_true", help="Allow a script with side effects or confirm_required")
     run_parser.add_argument("--force", action="store_true")
     run_parser.add_argument("--no-defaults", action="store_true")
     run_parser.add_argument("--summary-json")
     run_parser.add_argument("--github-summary", action="store_true")
-    run_parser.add_argument("--ci", action="store_true", help="Refuse scripts that are not ci_allowed")
+    run_parser.add_argument("--ci", action="store_true", help="Refuse scripts that are not active, local_only, or ci_allowed")
     run_parser.add_argument("--env-scope", choices=["declared", "inherit"])
 
     sub.add_parser("menu", parents=[common], help="Pick scripts, queue them, and run the queue")
@@ -623,4 +823,29 @@ def _build_parser() -> argparse.ArgumentParser:
     validate_parser = sub.add_parser("validate", parents=[common], help="Check the registry, paths, and unregistered scripts")
     validate_parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")
     validate_parser.add_argument("--smoke", action="store_true", help="Import broken scripts and run --help for active ones")
+    validate_parser.add_argument("--ci-secrets", action="store_true", help="Fail when a ci_allowed script declares an env name missing from the workflow")
+    validate_parser.add_argument("--workflow", help="Workflow file for --ci-secrets")
+
+    contract_parser = sub.add_parser("contract", parents=[common], help="Write a CI run contract from the environment")
+    contract_parser.add_argument("--out", help="Write contract JSON to this path")
+    contract_parser.add_argument("--github-output", action="store_true", help="Append script, request_id, and contract_b64 to GITHUB_OUTPUT")
+
+    resolve_parser = sub.add_parser("resolve", parents=[common], help="Resolve a script for CI without running it")
+    resolve_parser.add_argument("name", nargs="?")
+    resolve_parser.add_argument("--from-contract")
+    resolve_parser.add_argument("--confirm", action="store_true")
+    resolve_parser.add_argument("--dry-run", action="store_true")
+    resolve_parser.add_argument("--github-output", action="store_true")
+
+    sinks_parser = sub.add_parser("sinks", parents=[common], help="Deliver a run summary. Sink failures stay in the summary")
+    sinks_parser.add_argument("--summary", required=True)
+    sinks_parser.add_argument("--from-contract", required=True)
+
+    schedules_parser = sub.add_parser("schedules", parents=[common], help="Generate, check, or list due cron schedules")
+    schedules_parser.add_argument("--due", action="store_true")
+    schedules_parser.add_argument("--check", action="store_true")
+    schedules_parser.add_argument("--write", action="store_true")
+    schedules_parser.add_argument("--workflow")
+    schedules_parser.add_argument("--now", help="UTC timestamp for --due, such as 2026-10-13T14:05:00Z")
+    schedules_parser.add_argument("--github-output", action="store_true")
     return parser

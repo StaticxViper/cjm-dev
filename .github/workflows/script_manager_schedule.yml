@@ -1,0 +1,46 @@
+# Generated cron block: python -m scripts.script_manager schedules --write
+name: Script Manager Schedules
+
+on:
+  schedule:
+    # script-manager:schedules:begin
+    - cron: '0 14 * * 1-5'
+    # script-manager:schedules:end
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  due:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.due.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements/requirements.txt
+      - name: Scripts due now
+        id: due
+        run: python -m scripts.script_manager schedules --due --github-output
+
+  run:
+    needs: due
+    if: needs.due.outputs.matrix != '{"include":[]}' && needs.due.outputs.matrix != ''
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.due.outputs.matrix) }}
+    concurrency:
+      group: script-manager-${{ matrix.script }}
+      cancel-in-progress: false
+    uses: ./.github/workflows/script_manager.yml
+    with:
+      script: ${{ matrix.script }}
+      confirm: ${{ matrix.confirm }}
+      outputs: ${{ matrix.outputs }}
+      request_id: schedule-${{ matrix.script }}-${{ github.run_id }}
+    secrets: inherit

@@ -11,7 +11,7 @@ cd cjm-dev
 
 ## 2. Install Python 3.12+
 
-Python 3.12 is used in CI (see `.github/workflows/stock_analyzer-Automation.yml`). Install Python 3.12 or newer from [python.org](https://www.python.org/downloads/) or your system package manager.
+Python 3.12 is used in CI (see `.github/workflows/script_manager.yml`). Install Python 3.12 or newer from [python.org](https://www.python.org/downloads/) or your system package manager.
 
 Verify:
 
