@@ -1,0 +1,210 @@
+{
+  "name": "Christopher J. Moulton",
+  "preferredName": "Chris Moulton",
+  "headline": "Senior Software Engineer",
+  "employerLine": "Senior Software Engineer at ASRC Federal",
+  "location": "Clementon, New Jersey",
+  "siteUrl": "https://staticxviper.github.io/cjm-dev/",
+  "resumeFile": "Christopher-Moulton-Resume.pdf",
+  "generateResume": true,
+  "bio": [
+    "I am passionate about continuously learning and adapting to achieve both personal and organizational goals.",
+    "I design and maintain automated test frameworks for mission-critical software, and I collaborate across teams to make integration, regression, and end-to-end testing reliable. I earned an M.S. in Computer Science and a B.S. in Computer Science with a minor in Cyber Security from Felician University."
+  ],
+  "credentials": [
+    "M.S. Computer Science",
+    "Secret clearance",
+    "ISTQB CTFL"
+  ],
+  "contact": {
+    "email": "Cj3_31@yahoo.com",
+    "phone": "609-969-2653",
+    "phoneHref": "tel:+16099692653",
+    "linkedin": "https://www.linkedin.com/in/moultonc",
+    "linkedinLabel": "linkedin.com/in/moultonc",
+    "github": "https://github.com/StaticxViper",
+    "githubLabel": "github.com/StaticxViper"
+  },
+  "experience": [
+    {
+      "company": "ASRC Federal Mission Solutions",
+      "location": "Moorestown, NJ",
+      "summary": "Software development, software testing, and software integration for mission-critical systems.",
+      "roles": [
+        {
+          "title": "Senior Software Engineer",
+          "dates": "March 2026 – Present"
+        },
+        {
+          "title": "Software Test Automation Engineer",
+          "dates": "October 2022 – March 2026"
+        }
+      ],
+      "highlights": [
+        "Designed and maintained automated test frameworks using Python, JSON, and Bash to validate mission-critical software across multiple environments.",
+        "Led cross-organization collaboration between ASRC Federal and Lockheed Martin to integrate automation frameworks using Sikuli and Robot Framework, improving test coverage and reuse.",
+        "Built automation supporting system integration, end-to-end, and regression testing under live and simulated conditions.",
+        "Improved performance, portability, and maintainability of automation tools across diverse system configurations.",
+        "Collaborated with software and systems engineers to define test requirements, troubleshoot integration issues, and improve system reliability.",
+        "Developed automated testing pipelines to streamline validation workflows and reduce manual effort.",
+        "Delivered technical reports and analysis supporting high-stakes test events and program milestones."
+      ]
+    },
+    {
+      "company": "Freedom Mortgage",
+      "location": "Remote",
+      "summary": "Selected for the First Flyer program, an accelerated path for recent graduates. Rotational assignments covered the IT department and the mortgage industry, and this role was my introduction to Agile Scrum.",
+      "roles": [
+        {
+          "title": "Product Delivery Engineer",
+          "dates": "July 2021 – June 2022"
+        }
+      ],
+      "highlights": [
+        "Queried and analyzed loan and customer data using Oracle SQL to support application validation and reporting.",
+        "Wrote Jira user stories, acceptance criteria, and test cases with developers and product teams.",
+        "Performed regression and user-acceptance testing for loan disclosure and underwriting systems before production releases.",
+        "Tested and validated InRule business rules so data stayed accurate across internal systems.",
+        "Created, developed, and maintained reports using Jira and Tableau.",
+        "Coordinated daily and weekly cross-team syncs during rotational assignments.",
+        "Supported identity and access management, including secure enterprise authentication distribution.",
+        "Assisted with system and network monitoring using QRadar, Palo Alto, and Symantec.",
+        "Prepared and presented weekly technical summaries to management and stakeholders."
+      ]
+    },
+    {
+      "company": "Freedom Mortgage",
+      "location": "Moorestown, NJ",
+      "summary": "Second internship, with the Information Security team. Focused on network management and application security.",
+      "roles": [
+        {
+          "title": "Information Security Intern",
+          "dates": "June 2019 – August 2019"
+        }
+      ],
+      "highlights": [
+        "Monitored company traffic with QRadar and Palo Alto.",
+        "Scanned for phishing emails and malicious links.",
+        "Configured firewall rules and conditions.",
+        "Compiled and presented weekly reports on significant changes in security data."
+      ]
+    },
+    {
+      "company": "RYLTY",
+      "location": "Started from a college dorm room",
+      "summary": "Founded RYLTY (pronounced Royalty) just before sophomore year. The brand began with apparel, then moved into jewelry and accessories after dropping the apparel line.",
+      "roles": [
+        {
+          "title": "Owner",
+          "dates": "August 2017 – August 2018"
+        }
+      ],
+      "highlights": [
+        "Partnered with international manufacturers to offer custom jewelry in gold, white gold, 925 sterling silver, platinum, and GIA-certified diamonds (SI–VVS clarity).",
+        "Used the internet and social media to reach customers, which started a lasting interest in entrepreneurship."
+      ]
+    },
+    {
+      "company": "Freedom Mortgage",
+      "location": "Cherry Hill, NJ",
+      "summary": "First internship. Managed and analyzed mortgage loan data and presented findings to management.",
+      "roles": [
+        {
+          "title": "IT Analyst",
+          "dates": "June 2017 – August 2017"
+        }
+      ],
+      "highlights": [
+        "Analyzed mortgage loan data and presented findings with Tableau and PowerPoint.",
+        "Worked with colleagues to identify and depict data trends used in decision-making.",
+        "Built a foundation in industry tools that later roles kept expanding."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Real Estate Property Analyzer",
+      "description": "Compiles data from several APIs so real estate investors and agents can get a comprehensive property report in minutes.",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/zillow_automation",
+      "urlLabel": "Related code on GitHub"
+    },
+    {
+      "name": "AI Automated Blog",
+      "description": "A blog pipeline automated and powered by AI, written to promote personal development and investing.",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/chikara_realms",
+      "urlLabel": "View on GitHub"
+    },
+    {
+      "name": "Personal Admin Dashboard",
+      "description": "A personal hub for managing APIs and webhooks, monitoring devices, tracking goals and tasks, and reviewing personal analytics.",
+      "url": "",
+      "urlLabel": ""
+    },
+    {
+      "name": "Arcade Racer",
+      "description": "A small racing game built with Unity and C#.",
+      "url": "",
+      "urlLabel": ""
+    },
+    {
+      "name": "Multi-hop VPN and DNS Sinkhole",
+      "description": "A Raspberry Pi 4 set up to block ads while browsing and to give any device on the network a secure connection.",
+      "url": "",
+      "urlLabel": ""
+    }
+  ],
+  "skills": [
+    {
+      "group": "Languages",
+      "items": ["Python", "C++", "C#", "JavaScript", "HTML", "CSS", "SQL", "XML", "Bash/Shell"]
+    },
+    {
+      "group": "Engineering",
+      "items": ["API development", "Test automation", "Software integration", "Git", "Jenkins", "Robot Framework", "Sikuli", "Agile Scrum", "User acceptance testing"]
+    },
+    {
+      "group": "Platforms and tools",
+      "items": ["GitHub", "GitLab", "Jira", "Confluence", "Bitbucket", "Oracle Database", "Tableau", "InRule", "Unity", "Microsoft Office"]
+    },
+    {
+      "group": "Security",
+      "items": ["Application security", "Network monitoring", "QRadar", "Palo Alto", "Symantec", "Identity and access management"]
+    },
+    {
+      "group": "Professional",
+      "items": ["Leadership", "Communication", "Problem solving", "Adaptability"]
+    }
+  ],
+  "education": [
+    {
+      "school": "Felician University",
+      "credential": "M.S., Computer Science",
+      "dates": "September 2020 – May 2021",
+      "location": "Lodi and Rutherford, NJ",
+      "details": "GPA 3.75. Coursework included Advanced Software Engineering, Game Development, Cloud Computing, and Artificial Intelligence."
+    },
+    {
+      "school": "Felician University",
+      "credential": "B.S., Computer Science",
+      "dates": "September 2016 – May 2020",
+      "location": "Lodi and Rutherford, NJ",
+      "details": "Minor in Cyber Security. GPA 3.2. Coursework included Programming I and II (C++), Data Structures and Algorithms, Pre-Calculus, and Networks and Telecommunications."
+    },
+    {
+      "school": "Delran High School",
+      "credential": "High School Diploma",
+      "dates": "2012 – 2016",
+      "location": "",
+      "details": ""
+    }
+  ],
+  "certifications": [
+    "ISTQB Certified Tester, Foundation Level (CTFL)",
+    "Dale Carnegie Leadership Training",
+    "Codecademy certifications in Python, JavaScript, Bash/Shell, SQL, HTML, and CSS"
+  ],
+  "honors": [
+    "The American Legion Jersey Boys State",
+    "Unsung Hero"
+  ]
+}
