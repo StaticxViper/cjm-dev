@@ -22,6 +22,7 @@ INFO_KEYS = {
     "env",
     "timeout_seconds",
     "outputs",
+    "default_outputs",
     "ci_allowed",
     "schedule",
 }
@@ -67,8 +68,10 @@ class CliTests(unittest.TestCase):
         self.assertEqual(listed.returncode, 0, listed.stderr)
         names = {row["name"] for row in json.loads(listed.stdout)}
         self.assertIn("stock-analyzer", names)
+        self.assertIn("leadgen", names)
         self.assertNotIn("webhook-manager", names)
-        self.assertNotIn("leadgen", names)
+        self.assertNotIn("clip-generator", names)
+        self.assertNotIn("opp-finder-v2", names)
         info = run_cli(["info", "--json", "stock-analyzer"], registry=bundled_registry_path())
         self.assertEqual(info.returncode, 0, info.stderr)
         payload = json.loads(info.stdout)

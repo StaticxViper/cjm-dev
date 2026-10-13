@@ -35,11 +35,16 @@ def is_ignored(rel_posix: str, patterns: list[str]) -> bool:
     return any(glob_match(rel_posix, pattern) for pattern in patterns)
 
 
-def unregistered_scripts(repo: Path, ignore_paths: list[str], registered: set[Path]) -> list[Path]:
-    """Return ``__main__`` files under scripts/ and helper_scripts/ that are not registered."""
+def unregistered_scripts(
+    repo: Path,
+    ignore_paths: list[str],
+    registered: set[Path],
+    roots: list[str] | None = None,
+) -> list[Path]:
+    """Return ``__main__`` files under the registry discover roots that are not registered."""
     registered_resolved = {path.resolve() for path in registered}
     found: list[Path] = []
-    for root_name in ("scripts", "helper_scripts"):
+    for root_name in roots or ("scripts", "helper_scripts"):
         root = repo / root_name
         if not root.is_dir():
             continue

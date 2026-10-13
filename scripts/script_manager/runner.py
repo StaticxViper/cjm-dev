@@ -54,6 +54,7 @@ class RunOptions:
     skip_system_deps: bool = False
     skip_confirm: bool = False
     process_env: dict[str, str] | None = None
+    request_id: str | None = None
 
 
 def decide_noninteractive(explicit_noninteractive: bool, explicit_interactive: bool, process: dict | None = None) -> bool:
@@ -120,6 +121,7 @@ def blank_summary(name: str, status: str | None, started: datetime) -> dict:
         "outputs": [],
         "timed_out": False,
         "dry_run": False,
+        "request_id": None,
     }
 
 
@@ -233,10 +235,79 @@ def _wait_with_timeout(proc: subprocess.Popen, timeout: int) -> tuple[int, bool,
         return exit_codes.INTERRUPTED, False, True
 
 
+def status_refusal(script: Script, options: RunOptions) -> tuple[int, str] | None:
+    """Refuse a script that is not active. ``--ci`` ignores ``--force``."""
+    if script.status == "active":
+        return None
+    if options.ci:
+        return (
+            exit_codes.NOT_RUNNABLE,
+            f"{script.name}: status is {script.status} ({script.status_reason or 'no reason recorded'}). Refusing --ci.",
+        )
+    if options.force:
+        return None
+    return (
+        exit_codes.NOT_RUNNABLE,
+        f"{script.name}: status is {script.status} ({script.status_reason or 'no reason recorded'}). Pass --force to run it anyway.",
+    )
+
+
+def entry_refusal(repo: Path, script: Script) -> tuple[int, str] | None:
+    """Refuse a script whose entry or working directory is not in this checkout."""
+    if script.status == "planned" and entry_file(repo, script) is None and script.entry_type == "path":
+        missing = script.entry_path or script.entry_module
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: planned entry is not in this checkout ({missing})."
+    if script.status == "planned" and script.entry_type == "module" and entry_file(repo, script) is None:
+        return (
+            exit_codes.NOT_RUNNABLE,
+            f"{script.name}: planned module {script.entry_module} is not in this checkout.",
+        )
+    if script.entry_type == "path" and not (repo / (script.entry_path or "")).is_file():
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: entry file does not exist: {script.entry_path}"
+    if script.entry_type == "module" and entry_file(repo, script) is None:
+        return (
+            exit_codes.NOT_RUNNABLE,
+            f"{script.name}: module {script.entry_module} was not found from cwd {script.cwd}",
+        )
+    cwd = (repo / script.cwd).resolve()
+    if not cwd.is_dir():
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: working directory does not exist: {script.cwd}"
+    return None
+
+
+def ci_access_refusal(script: Script, options: RunOptions) -> tuple[int, str] | None:
+    """Refuse local-only scripts and scripts that are not allowed in CI."""
+    if not options.ci:
+        return None
+    if script.local_only:
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: local_only is true. Refusing --ci."
+    if not script.ci_allowed:
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: ci_allowed is false. Refusing --ci."
+    return None
+
+
+def confirm_refusal(script: Script, options: RunOptions) -> tuple[int, str] | None:
+    """Side effects require confirm on CI runs. ``confirm_required`` always does, except dry runs."""
+    if options.dry_run or options.yes or options.skip_confirm:
+        return None
+    reasons = []
+    if script.confirm_required:
+        reasons.append("confirm_required")
+    if options.ci and script.side_effects:
+        reasons.append("side_effects (" + ", ".join(script.side_effects) + ")")
+    if not reasons:
+        return None
+    return (
+        exit_codes.CONFIRMATION_REQUIRED,
+        f"{script.name}: confirmation required ({'; '.join(reasons)}). Pass --yes or confirm=true.",
+    )
+
+
 def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
     started = utc_now()
     summary = blank_summary(script.name, script.status, started)
     summary["dry_run"] = options.dry_run
+    summary["request_id"] = options.request_id
     if options.non_interactive is None:
         non_interactive = decide_noninteractive(False, False, options.process_env)
     else:
@@ -262,36 +333,16 @@ def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
         _emit_summary(summary, options)
         return summary
 
-    if script.status != "active" and not options.force:
-        logger.error(
-            "%s: status is %s (%s). Pass --force to run it anyway.",
-            script.name,
-            script.status,
-            script.status_reason or "no reason recorded",
-        )
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.status == "planned" and entry_file(repo, script) is None and script.entry_type == "path":
-        missing = script.entry_path or script.entry_module
-        logger.error("%s: planned entry is not in this checkout (%s).", script.name, missing)
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.status == "planned" and script.entry_type == "module" and entry_file(repo, script) is None:
-        logger.error("%s: planned module %s is not in this checkout.", script.name, script.entry_module)
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.entry_type == "path" and not (repo / (script.entry_path or "")).is_file():
-        logger.error("%s: entry file does not exist: %s", script.name, script.entry_path)
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.entry_type == "module" and entry_file(repo, script) is None:
-        logger.error("%s: module %s was not found from cwd %s", script.name, script.entry_module, script.cwd)
-        return done(exit_codes.NOT_RUNNABLE)
-    if not cwd.is_dir():
-        logger.error("%s: working directory does not exist: %s", script.name, script.cwd)
-        return done(exit_codes.NOT_RUNNABLE)
-    if options.ci and not script.ci_allowed:
-        logger.error("%s: ci_allowed is false. Refusing --ci.", script.name)
-        return done(exit_codes.CONFIRMATION_REQUIRED)
-    if script.confirm_required and not options.yes and not options.skip_confirm:
-        logger.error("%s: this script requires --yes before it runs.", script.name)
-        return done(exit_codes.CONFIRMATION_REQUIRED)
+    for refusal in (status_refusal(script, options), entry_refusal(repo, script)):
+        if refusal is not None:
+            code, message = refusal
+            logger.error("%s", message)
+            return done(code)
+    for refusal in (ci_access_refusal(script, options), confirm_refusal(script, options)):
+        if refusal is not None:
+            code, message = refusal
+            logger.error("%s", message)
+            return done(code)
     if would_prompt(script, options.passthrough, non_interactive):
         logger.error(
             "%s: this script prompts on stdin. Pass script args after -- , or add non_interactive_args.",
@@ -430,6 +481,7 @@ def _append_github_summary(summary: dict) -> None:
     failure = summary.get("failure_kind")
     text = (
         f"### script-manager: {summary.get('name')}\n\n"
+        f"- request_id: {summary.get('request_id')}\n"
         f"- exit_code: {summary.get('exit_code')}\n"
         f"- failure_kind: {failure}\n"
         f"- duration_s: {summary.get('duration_s')}\n"

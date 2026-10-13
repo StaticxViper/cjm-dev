@@ -28,14 +28,7 @@ Daily stock data pipeline: fetches the watchlist from Supabase, runs the Apify Y
 python scripts/stock_analyzer/stock_analyzer.py
 ```
 
-CI (GitHub Actions) runs:
-
-```bash
-pip install -r requirements/requirements.txt
-PYTHONPATH=$GITHUB_WORKSPACE python scripts/stock_analyzer/stock_analyzer.py
-```
-
-Scheduled weekdays at 9:00 AM EST via `.github/workflows/stock_analyzer-Automation.yml`.
+CI runs it through the Script Manager. Weekdays at 14:00 UTC (9:00 AM EST) the schedule workflow calls `script_manager.yml` with `confirm=true`, because this script posts to the dashboard. See [script_manager_actions.md](script_manager_actions.md).
 
 ## How it works
 
