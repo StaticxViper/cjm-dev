@@ -42,7 +42,7 @@ Per-script guides (purpose, configuration, usage, and how each tool works) live 
 
 ## Portfolio
 
-A personal site is in [`portfolio/`](portfolio/). Edit [`portfolio/content.json`](portfolio/content.json), then build and publish with GitHub Pages. Details: [portfolio/README.md](portfolio/README.md).
+The Moulton site is in [`portfolio/`](portfolio/). Edit [`portfolio/content.json`](portfolio/content.json) to choose which websites, apps, and scripts are shown, then build and publish with GitHub Pages. Details: [portfolio/README.md](portfolio/README.md).
 
 ## About Me
 
