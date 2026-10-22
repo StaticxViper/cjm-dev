@@ -69,7 +69,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 8 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
 endobj
 8 0 obj
-<< /Length 5519 >>
+<< /Length 5498 >>
 stream
 0.071 0.196 0.184 rg 0 0 8 792 re f
 0.290 0.271 0.235 rg BT /F1 9.00 Tf 1 0 0 1 54.00 735.00 Tm (Christopher J. Moulton · Resume) Tj ET
@@ -93,60 +93,78 @@ stream
 0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 440.88 Tm (- Built a foundation in industry tools that later roles kept expanding.) Tj ET
 0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 410.88 Tm (PROJECTS) Tj ET
 0.071 0.196 0.184 RG 0.8 w 54.00 403.36 m 576.00 403.36 l S
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 384.36 Tm (Real Estate Property Analyzer) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 369.84 Tm (Compiles data from several APIs so real estate investors and agents can get a comprehensive property report in) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 356.64 Tm (minutes.) Tj ET
-0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 344.44 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/zillow_automation) Tj ET
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 326.88 Tm (AI Automated Blog) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 312.36 Tm (A blog pipeline automated and powered by AI, written to promote personal development and investing.) Tj ET
-0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 300.16 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/chikara_realms) Tj ET
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 282.60 Tm (Personal Admin Dashboard) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 268.08 Tm (A personal hub for managing APIs and webhooks, monitoring devices, tracking goals and tasks, and reviewing) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 254.88 Tm (personal analytics.) Tj ET
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 236.68 Tm (Arcade Racer) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 222.16 Tm (A small racing game built with Unity and C#.) Tj ET
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 203.96 Tm (Multi-hop VPN and DNS Sinkhole) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 189.44 Tm (A Raspberry Pi 4 set up to block ads while browsing and to give any device on the network a secure connection.) Tj ET
-0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 163.24 Tm (SKILLS) Tj ET
-0.071 0.196 0.184 RG 0.8 w 54.00 155.72 m 576.00 155.72 l S
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 137.72 Tm (Languages: Python, C++, C#, JavaScript, HTML, CSS, SQL, XML, Bash/Shell) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 121.52 Tm (Engineering: API development, Test automation, Software integration, Git, Jenkins, Robot Framework, Sikuli, Agile) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 108.32 Tm (Scrum, User acceptance testing) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 92.12 Tm (Platforms and tools: GitHub, GitLab, Jira, Confluence, Bitbucket, Oracle Database, Tableau, InRule, Unity, Microsoft) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 78.92 Tm (Office) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 62.72 Tm (Security: Application security, Network monitoring, QRadar, Palo Alto, Symantec, Identity and access management) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 384.36 Tm (Lead generation) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 369.84 Tm (Finds local businesses with the Google Places API or Playwright on Google Maps.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 357.64 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/lead_automation) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 340.08 Tm (Property listings) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 325.56 Tm (Collects Zillow listing URLs for ZIP codes through Apify.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 313.36 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/zillow_automation) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 295.80 Tm (Chikara Realms) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 281.28 Tm (A blog pipeline automated and powered by AI, written to promote personal development and investing.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 269.08 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/chikara_realms) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 251.52 Tm (Stock analyzer) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 237.00 Tm (Collects daily stock data and writes a Perplexity analysis to a dashboard.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 224.80 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/stock_analyzer) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 207.24 Tm (Grocery prices) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 192.72 Tm (Looks up ShopRite, Costco, and Amazon prices and writes them to Supabase.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 180.52 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/grocery) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 162.96 Tm (City profiles) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 148.44 Tm (Scrapes city-data.com city and crime pages into JSON, including the Apify actor in this repository.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 136.24 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/city_data) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 118.68 Tm (Video tools) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 104.16 Tm (Cuts highlight clips from local motorcycle footage and builds montages with FFmpeg.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 91.96 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/video_editing) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 74.40 Tm (Personal admin dashboard) Tj ET
 endstream
 endobj
 9 0 obj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 10 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
 endobj
 10 0 obj
-<< /Length 2492 >>
+<< /Length 4657 >>
 stream
 0.071 0.196 0.184 rg 0 0 8 792 re f
 0.290 0.271 0.235 rg BT /F1 9.00 Tf 1 0 0 1 54.00 735.00 Tm (Christopher J. Moulton · Resume) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 706.12 Tm (Professional: Leadership, Communication, Problem solving, Adaptability) Tj ET
-0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 680.92 Tm (EDUCATION) Tj ET
-0.071 0.196 0.184 RG 0.8 w 54.00 673.40 m 576.00 673.40 l S
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 654.40 Tm (M.S., Computer Science · September 2020 – May 2021) Tj ET
-0.290 0.271 0.235 rg BT /F1 10.00 Tf 1 0 0 1 54.00 639.88 Tm (Felician University · Lodi and Rutherford, NJ) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 625.68 Tm (GPA 3.75. Coursework included Advanced Software Engineering, Game Development, Cloud Computing, and) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 612.48 Tm (Artificial Intelligence.) Tj ET
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 594.28 Tm (B.S., Computer Science · September 2016 – May 2020) Tj ET
-0.290 0.271 0.235 rg BT /F1 10.00 Tf 1 0 0 1 54.00 579.76 Tm (Felician University · Lodi and Rutherford, NJ) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 565.56 Tm (Minor in Cyber Security. GPA 3.2. Coursework included Programming I and II \(C++\), Data Structures and Algorithms,) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 552.36 Tm (Pre-Calculus, and Networks and Telecommunications.) Tj ET
-0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 534.16 Tm (High School Diploma · 2012 – 2016) Tj ET
-0.290 0.271 0.235 rg BT /F1 10.00 Tf 1 0 0 1 54.00 519.64 Tm (Delran High School) Tj ET
-0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 492.44 Tm (CERTIFICATIONS) Tj ET
-0.071 0.196 0.184 RG 0.8 w 54.00 484.92 m 576.00 484.92 l S
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 466.92 Tm (- ISTQB Certified Tester, Foundation Level \(CTFL\)) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 451.92 Tm (- Dale Carnegie Leadership Training) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 436.92 Tm (- Codecademy certifications in Python, JavaScript, Bash/Shell, SQL, HTML, and CSS) Tj ET
-0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 412.92 Tm (HONORS) Tj ET
-0.071 0.196 0.184 RG 0.8 w 54.00 405.40 m 576.00 405.40 l S
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 387.40 Tm (- The American Legion Jersey Boys State) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 372.40 Tm (- Unsung Hero) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 706.12 Tm (A personal hub for managing APIs and webhooks, monitoring devices, tracking goals and tasks, and reviewing) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 692.92 Tm (personal analytics.) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 674.72 Tm (Arcade Racer) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 660.20 Tm (A small racing game built with Unity and C#.) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 642.00 Tm (Civilization mods) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 627.48 Tm (Civilization V and Civilization: Beyond Earth mods packaged in this repository.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 615.28 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/game_mods) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 597.72 Tm (Opportunity finder) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 583.20 Tm (Finds remote and contract opportunities.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 571.00 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/opp_finder_v2) Tj ET
+0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 545.44 Tm (SKILLS) Tj ET
+0.071 0.196 0.184 RG 0.8 w 54.00 537.92 m 576.00 537.92 l S
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 519.92 Tm (Languages: Python, C++, C#, JavaScript, HTML, CSS, SQL, XML, Bash/Shell) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 503.72 Tm (Engineering: API development, Test automation, Software integration, Git, Jenkins, Robot Framework, Sikuli, Agile) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 490.52 Tm (Scrum, User acceptance testing) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 474.32 Tm (Platforms and tools: GitHub, GitLab, Jira, Confluence, Bitbucket, Oracle Database, Tableau, InRule, Unity, Microsoft) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 461.12 Tm (Office) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 444.92 Tm (Security: Application security, Network monitoring, QRadar, Palo Alto, Symantec, Identity and access management) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 428.72 Tm (Professional: Leadership, Communication, Problem solving, Adaptability) Tj ET
+0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 403.52 Tm (EDUCATION) Tj ET
+0.071 0.196 0.184 RG 0.8 w 54.00 396.00 m 576.00 396.00 l S
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 377.00 Tm (M.S., Computer Science · September 2020 – May 2021) Tj ET
+0.290 0.271 0.235 rg BT /F1 10.00 Tf 1 0 0 1 54.00 362.48 Tm (Felician University · Lodi and Rutherford, NJ) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 348.28 Tm (GPA 3.75. Coursework included Advanced Software Engineering, Game Development, Cloud Computing, and) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 335.08 Tm (Artificial Intelligence.) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 316.88 Tm (B.S., Computer Science · September 2016 – May 2020) Tj ET
+0.290 0.271 0.235 rg BT /F1 10.00 Tf 1 0 0 1 54.00 302.36 Tm (Felician University · Lodi and Rutherford, NJ) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 288.16 Tm (Minor in Cyber Security. GPA 3.2. Coursework included Programming I and II \(C++\), Data Structures and Algorithms,) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 274.96 Tm (Pre-Calculus, and Networks and Telecommunications.) Tj ET
+0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 256.76 Tm (High School Diploma · 2012 – 2016) Tj ET
+0.290 0.271 0.235 rg BT /F1 10.00 Tf 1 0 0 1 54.00 242.24 Tm (Delran High School) Tj ET
+0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 215.04 Tm (CERTIFICATIONS) Tj ET
+0.071 0.196 0.184 RG 0.8 w 54.00 207.52 m 576.00 207.52 l S
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 189.52 Tm (- ISTQB Certified Tester, Foundation Level \(CTFL\)) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 174.52 Tm (- Dale Carnegie Leadership Training) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 159.52 Tm (- Codecademy certifications in Python, JavaScript, Bash/Shell, SQL, HTML, and CSS) Tj ET
+0.071 0.196 0.184 rg BT /F2 11.00 Tf 1 0 0 1 54.00 135.52 Tm (HONORS) Tj ET
+0.071 0.196 0.184 RG 0.8 w 54.00 128.00 m 576.00 128.00 l S
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 110.00 Tm (- The American Legion Jersey Boys State) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 62.00 95.00 Tm (- Unsung Hero) Tj ET
 endstream
 endobj
 11 0 obj
@@ -163,10 +181,10 @@ xref
 0000000468 00000 n 
 0000006596 00000 n 
 0000006732 00000 n 
-0000012303 00000 n 
-0000012440 00000 n 
-0000014985 00000 n 
+0000012282 00000 n 
+0000012419 00000 n 
+0000017129 00000 n 
 trailer << /Size 12 /Root 1 0 R /Info 11 0 R >>
 startxref
-15114
+17258
 %%EOF
