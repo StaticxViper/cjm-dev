@@ -184,9 +184,17 @@ def resolve_payload(repo: Path, registry: Registry, contract: Contract) -> tuple
         return {
             "ok": False,
             "name": contract.script,
+            "status": None,
             "exit_code": exit_codes.UNKNOWN_SCRIPT,
             "failure_kind": "unknown_script",
             "request_id": contract.request_id,
+            "message": f"unknown script {contract.script!r}",
+            "data": None,
+            "stdout_tail": "",
+            "stderr_tail": "",
+            "output_files": {},
+            "outputs": [],
+            "dry_run": contract.dry_run,
         }, exit_codes.UNKNOWN_SCRIPT
     options = run_options_from_contract(contract)
     code, message = _resolve_refusal(repo, script, options)
@@ -215,6 +223,10 @@ def resolve_payload(repo: Path, registry: Registry, contract: Contract) -> tuple
         "exit_code": code,
         "failure_kind": None if code == 0 else exit_codes.failure_kind_for(code, child_finished=False),
         "message": message,
+        "data": None,
+        "stdout_tail": "",
+        "stderr_tail": "",
+        "output_files": {},
     }
     return payload, code
 

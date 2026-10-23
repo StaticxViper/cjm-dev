@@ -6,6 +6,7 @@ import argparse
 import difflib
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -42,7 +43,7 @@ from scripts.script_manager.runner import (
 
 logger = logging.getLogger("script_manager")
 
-_COMMANDS = {"list", "info", "help", "run", "validate", "menu", "contract", "resolve", "sinks", "schedules"}
+_COMMANDS = {"list", "info", "help", "run", "validate", "menu", "contract", "resolve", "sinks", "schedules", "stage-result"}
 _GLOBAL_FLAGS = {"--json"}
 _GLOBAL_VALUES = {"--registry", "--log-file"}
 
@@ -96,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_sinks(registry, args)
         if args.command == "schedules":
             return _cmd_schedules(registry, args)
+        if args.command == "stage-result":
+            return _cmd_stage_result(args)
     except KeyboardInterrupt:
         logger.error("interrupted")
         return exit_codes.INTERRUPTED
@@ -171,9 +174,31 @@ def _cmd_info(registry: Registry, args, passthrough: list[str]) -> int:
         "ci_allowed": script.ci_allowed,
         "schedule": script.schedule,
     }
+    refusal = None
+    if args.ci:
+        from scripts.script_manager.runner import RunOptions, ci_access_refusal, entry_refusal, status_refusal
+
+        options = RunOptions(ci=True, dry_run=True, non_interactive=True)
+        for check in (
+            status_refusal(script, options),
+            entry_refusal(repo, script),
+            ci_access_refusal(script, options),
+        ):
+            if check is not None:
+                refusal = check
+                break
+        code, message = refusal if refusal is not None else (0, "")
+        payload["ok"] = refusal is None
+        payload["exit_code"] = code
+        payload["failure_kind"] = None if code == 0 else exit_codes.failure_kind_for(code, child_finished=False)
+        payload["message"] = message
     if args.json:
         _write_json(payload)
-        return 0
+        if refusal is not None:
+            logger.error("%s", refusal[1])
+        return 0 if refusal is None else refusal[0]
+    if refusal is not None:
+        logger.error("%s", refusal[1])
     cwd = (repo / script.cwd).resolve()
     pythonpath = [str(repo), *[str((repo / rel).resolve()) for rel in script.pythonpath]]
     print(f"name: {script.name}")
@@ -216,6 +241,8 @@ def _cmd_info(registry: Registry, args, passthrough: list[str]) -> int:
         print(f"docs: {script.docs}")
     if script.schedule:
         print("schedule: " + json.dumps(script.schedule))
+    if refusal is not None:
+        return refusal[0]
     return 0
 
 
@@ -286,8 +313,15 @@ def _cmd_run(registry: Registry, args, passthrough: list[str]) -> int:
             "timed_out": False,
             "dry_run": dry_run,
             "request_id": contract.request_id if contract else None,
+            "message": f"unknown script {name!r}",
+            "data": None,
+            "stdout_tail": "",
+            "stderr_tail": "",
+            "output_files": {},
         }
         _unknown(name, registry, False)
+        if args.summary_json:
+            Path(args.summary_json).write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
         _print_run_summary(summary, args.json)
         return exit_codes.UNKNOWN_SCRIPT
     if args.non_interactive and args.interactive:
@@ -327,6 +361,7 @@ def _cmd_contract(args) -> int:
         contract = build_contract()
     except ContractError as exc:
         logger.error("%s", exc)
+        _write_contract_failure(args, exc)
         return exit_codes.USAGE
     if args.out:
         write_contract(Path(args.out), contract)
@@ -390,6 +425,9 @@ def _cmd_resolve(registry: Registry, args) -> int:
                 "script": contract.script,
             }
         )
+    if args.summary_json:
+        Path(args.summary_json).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.summary_json).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     if args.json:
         _write_json(payload)
     else:
@@ -472,6 +510,95 @@ def _cmd_schedules(registry: Registry, args) -> int:
     return 0
 
 
+def _write_contract_failure(args, exc: Exception) -> None:
+    """Write a run summary when the contract itself is rejected, and keep request_id for the artifact name."""
+    from scripts.script_manager.contract import write_github_output
+
+    from scripts.script_manager.contract import REQUEST_ID_RE
+
+    request_id = (
+        os.environ.get("SCRIPT_MANAGER_INPUT_REQUEST_ID")
+        or os.environ.get("SCRIPT_MANAGER_RUN_ID")
+        or "rejected"
+    ).strip()
+    if not REQUEST_ID_RE.fullmatch(request_id):
+        request_id = "rejected"
+    script = (os.environ.get("SCRIPT_MANAGER_INPUT_SCRIPT") or "").strip()
+    summary = {
+        "name": script or None,
+        "status": None,
+        "request_id": request_id,
+        "exit_code": exit_codes.USAGE,
+        "failure_kind": "usage",
+        "message": str(exc),
+        "data": None,
+        "stdout_tail": "",
+        "stderr_tail": "",
+        "output_files": {},
+        "outputs": [],
+        "dry_run": False,
+    }
+    if getattr(args, "summary_json", None):
+        path = Path(args.summary_json)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    if getattr(args, "github_output", False):
+        write_github_output({"request_id": request_id, "script": script})
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        _append_rejection_summary(summary)
+
+
+def _cmd_stage_result(args) -> int:
+    """Copy the first existing summary into the artifact path and note it on the job summary."""
+    dest = Path(args.dest)
+    chosen = None
+    for raw in args.summary or []:
+        path = Path(raw)
+        if path.is_file():
+            chosen = path
+            break
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if chosen is None:
+        payload = {
+            "name": None,
+            "request_id": os.environ.get("SCRIPT_MANAGER_RUN_ID") or os.environ.get("GITHUB_RUN_ID"),
+            "exit_code": exit_codes.USAGE,
+            "failure_kind": "usage",
+            "message": "script manager failed before it could write a summary",
+            "data": None,
+            "stdout_tail": "",
+            "stderr_tail": "",
+            "output_files": {},
+            "outputs": [],
+        }
+        dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    else:
+        dest.write_text(chosen.read_text(encoding="utf-8"), encoding="utf-8")
+        try:
+            payload = json.loads(dest.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            payload = {"message": chosen.read_text(encoding="utf-8")[:500], "failure_kind": "usage"}
+    if isinstance(payload, dict):
+        _append_rejection_summary(payload)
+    return 0
+
+
+def _append_rejection_summary(summary: dict) -> None:
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    text = (
+        "### script-manager rejected\n\n"
+        f"- request_id: {summary.get('request_id')}\n"
+        f"- name: {summary.get('name')}\n"
+        f"- exit_code: {summary.get('exit_code')}\n"
+        f"- failure_kind: {summary.get('failure_kind')}\n"
+        f"- message: {summary.get('message')}\n\n"
+    )
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(text)
+
+
 def _parse_now(value: str | None):
     if not value:
         return None
@@ -533,6 +660,8 @@ def validate_inventory(repo, registry: Registry, *, smoke: bool, check_unregiste
             errors.append(f"{script.name}: cwd not found: {script.cwd}")
         if script.docs and not (repo / script.docs).is_file():
             errors.append(f"{script.name}: docs not found: {script.docs}")
+        if script.local_only:
+            continue
         for dep, found in system_dep_status(script.deps_system):
             if not found:
                 warnings.append(f"{script.name}: system dependency not on PATH: {dep}")
@@ -796,6 +925,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     info_parser = sub.add_parser("info", parents=[common], help="Show one script and the resolved command")
     info_parser.add_argument("name")
+    info_parser.add_argument("--ci", action="store_true", help="Exit 67 when this script cannot run in CI")
 
     help_parser = sub.add_parser("help", parents=[common], help="Show a script's --help, or the registry description")
     help_parser.add_argument("name")
@@ -828,6 +958,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     contract_parser = sub.add_parser("contract", parents=[common], help="Write a CI run contract from the environment")
     contract_parser.add_argument("--out", help="Write contract JSON to this path")
+    contract_parser.add_argument("--summary-json", help="On failure, write a run summary to this path")
     contract_parser.add_argument("--github-output", action="store_true", help="Append script, request_id, and contract_b64 to GITHUB_OUTPUT")
 
     resolve_parser = sub.add_parser("resolve", parents=[common], help="Resolve a script for CI without running it")
@@ -836,6 +967,11 @@ def _build_parser() -> argparse.ArgumentParser:
     resolve_parser.add_argument("--confirm", action="store_true")
     resolve_parser.add_argument("--dry-run", action="store_true")
     resolve_parser.add_argument("--github-output", action="store_true")
+    resolve_parser.add_argument("--summary-json", help="Write the resolve document, including refusals")
+
+    stage_parser = sub.add_parser("stage-result", parents=[common], help="Copy a run summary into the artifact directory")
+    stage_parser.add_argument("--dest", required=True)
+    stage_parser.add_argument("--summary", action="append", default=[], help="Candidate summary file. The first one that exists is copied")
 
     sinks_parser = sub.add_parser("sinks", parents=[common], help="Deliver a run summary. Sink failures stay in the summary")
     sinks_parser.add_argument("--summary", required=True)

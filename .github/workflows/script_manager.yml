@@ -94,8 +94,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -116,8 +116,8 @@ jobs:
       timeout_minutes: ${{ steps.resolve.outputs.timeout_minutes }}
       playwright: ${{ steps.resolve.outputs.playwright }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -135,10 +135,20 @@ jobs:
           SCRIPT_MANAGER_INPUT_DRY_RUN: ${{ inputs.dry_run }}
           SCRIPT_MANAGER_INPUT_CALLBACK_URL: ${{ inputs.callback_url }}
           SCRIPT_MANAGER_RUN_ID: ${{ github.run_id }}
-        run: python -m scripts.script_manager contract --out contract.json --github-output
+        run: python -m scripts.script_manager contract --out contract.json --github-output --summary-json contract-summary.json
       - name: Resolve
         id: resolve
-        run: python -m scripts.script_manager resolve --from-contract contract.json --json --github-output
+        run: python -m scripts.script_manager resolve --from-contract contract.json --json --github-output --summary-json resolve-summary.json
+      - name: Stage rejection
+        if: failure()
+        run: python -m scripts.script_manager stage-result --dest script-manager-artifact/run.json --summary contract-summary.json --summary resolve-summary.json
+      - name: Upload rejection
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: script-manager-${{ steps.contract.outputs.request_id || github.run_id }}
+          path: script-manager-artifact/
+          if-no-files-found: warn
 
   execute:
     needs: prepare
@@ -179,8 +189,8 @@ jobs:
       SCRIPT_MANAGER_EMAIL_TO: ${{ secrets.SCRIPT_MANAGER_EMAIL_TO }}
       # script-manager:secrets:end
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -200,7 +210,7 @@ jobs:
         run: python -m scripts.script_manager sinks --summary run.json --from-contract contract.json
       - name: Upload artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: script-manager-${{ needs.prepare.outputs.request_id }}
           path: script-manager-artifact/

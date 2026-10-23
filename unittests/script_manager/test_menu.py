@@ -83,4 +83,5 @@ class MenuTests(unittest.TestCase):
         self.assertNotIn("grocery-sync", names)
         self.assertNotIn("webhook-manager", names)
         self.assertNotIn("api-manager-selftest", names)
+        self.assertNotIn("ci-ping", names)
         self.assertIsNone(registry.get("leadgen-new-business").menu)

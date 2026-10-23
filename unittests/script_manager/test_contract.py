@@ -151,3 +151,43 @@ class ContractTests(unittest.TestCase):
             self.assertEqual(written["exit_code"], 0)
             loaded = read_contract(path)
             self.assertEqual(loaded.argv, ["one"])
+
+    def test_rejected_resolve_writes_a_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp) / "resolve.json"
+            staged = Path(tmp) / "script-manager-artifact" / "run.json"
+            proc = run_cli(
+                ["resolve", "no-such-script", "--json", "--summary-json", str(summary)]
+            )
+            self.assertEqual(proc.returncode, 64, proc.stderr)
+            body = json.loads(summary.read_text(encoding="utf-8"))
+            self.assertEqual(body["failure_kind"], "unknown_script")
+            self.assertEqual(body["request_id"], "resolve")
+            self.assertIn("unknown script", body["message"])
+            staged_proc = run_cli(
+                ["stage-result", "--dest", str(staged), "--summary", str(summary)]
+            )
+            self.assertEqual(staged_proc.returncode, 0, staged_proc.stderr)
+            copied = json.loads(staged.read_text(encoding="utf-8"))
+            self.assertEqual(copied["failure_kind"], "unknown_script")
+            self.assertEqual(copied["request_id"], "resolve")
+
+    def test_contract_failure_writes_a_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp) / "contract.json"
+            output = Path(tmp) / "github-output.txt"
+            proc = run_cli(
+                ["contract", "--summary-json", str(summary), "--github-output"],
+                env={
+                    "SCRIPT_MANAGER_EVENT_NAME": "",
+                    "SCRIPT_MANAGER_INPUT_SCRIPT": "",
+                    "SCRIPT_MANAGER_INPUT_REQUEST_ID": "req-reject",
+                    "GITHUB_OUTPUT": str(output),
+                },
+            )
+            self.assertEqual(proc.returncode, 2, proc.stderr)
+            body = json.loads(summary.read_text(encoding="utf-8"))
+            self.assertEqual(body["failure_kind"], "usage")
+            self.assertEqual(body["request_id"], "req-reject")
+            self.assertIn("script is required", body["message"])
+            self.assertIn("request_id=req-reject", output.read_text(encoding="utf-8"))

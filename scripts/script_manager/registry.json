@@ -508,6 +508,20 @@
       "playwright_when_args_any": ["--headful", "--leadgen-type=playwright"],
       "tags": ["leads"],
       "docs": "documentation/scripts/new_business_sources.md"
+    },
+    {
+      "name": "ci-ping",
+      "ci_allowed": true,
+      "description": "Read-only CI probe. Prints one JSON object and writes nothing",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/ci_ping/ci_ping.py"},
+      "cwd": ".",
+      "help_supported": true,
+      "needs_playwright": false,
+      "timeout_seconds": 60,
+      "side_effects": [],
+      "tags": ["ci"],
+      "docs": "documentation/scripts/ci_ping.md"
     }
   ]
 }

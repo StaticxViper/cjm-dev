@@ -30,7 +30,7 @@ Every command accepts `--registry PATH` and `--json`. Human logs go to stderr wi
 | Command | What it does |
 |---------|----------------|
 | `list [--tag T] [--status S] [--ci]` | Table of name, status, Playwright, CI, tags, description. `--ci` keeps active scripts that are allowed in CI. |
-| `info <name> [-- args...]` | Metadata, resolved command, cwd, `PYTHONPATH`, and env names marked present or missing. |
+| `info <name> [--ci] [-- args...]` | Metadata, resolved command, cwd, `PYTHONPATH`, and env names marked present or missing. `--ci` applies the CI gates and exits 67 when the script cannot run there. It does not ask for confirmation. |
 | `help <name>` | The script's own `--help` when it has argparse. Otherwise the registry description, docs path, and an example. |
 | `run <name> [options] [-- args...]` | Everything after `--` is passed through unchanged. |
 | `validate [--strict] [--smoke] [--ci-secrets]` | Schema, paths, docs, unregistered `__main__` files, and the env-name table in [the docs index](../README.md). `--ci-secrets` also checks the workflow secrets block. |
@@ -53,7 +53,7 @@ With no subcommand, a terminal opens `menu`. A pipe still prints usage and exits
 
 The home screen can add several scripts, remove one, then run the queue. A non-zero exit asks whether to continue. Scripts that require confirmation, and scripts that are not active, ask before they are queued.
 
-These scripts do not get a menu: broken scripts, `api-manager-selftest`, the `leadgen-new-business` alias (it is a leadgen choice), `grocery-sync` (same program as `grocery-cli`), and `opp-finder` (not in this checkout).
+These scripts do not get a menu: broken scripts, `api-manager-selftest`, `ci-ping`, the `leadgen-new-business` alias (it is a leadgen choice), `grocery-sync` (same program as `grocery-cli`), and `opp-finder` (not in this checkout).
 
 `python leadgen.py` with no flags, and the same for opp finder, the clip generator, and the montage builder, exits 2 and points at this menu. `python leadgen.py --defaults ...` and every other flagged command still run on their own.
 
@@ -79,6 +79,8 @@ The ShopRite store picker still waits inside the grocery child after the browser
 ```
 
 `list --ci --json` is the list of scripts a CI job is allowed to start.
+
+`info <name> --ci --json` uses the same gates as a CI run (not active, `local_only`, or not `ci_allowed` exits 67) and adds `ok`, `exit_code`, `failure_kind`, and `message`. Confirmation is not required, because `info` does not start the script.
 
 ### Run options
 
@@ -113,6 +115,8 @@ To add a script:
 4. Put env **names** in `env.required`, `env.optional`, or `env.conditional`. Never put values in the registry.
 5. If the script is not on this branch yet, use `"status": "planned"` and a `status_reason`. `run` refuses it without `--force`, and `--force` still fails when the entry file is missing.
 6. Run `python -m scripts.script_manager validate`. Fix errors. `--strict` turns warnings into errors.
+
+`validate` does not warn when a `local_only` script's system dependency is missing from `PATH`. Those scripts are refused in CI, so a runner without `ffmpeg` still passes `--strict`.
 
 `validate` scans each directory in `discover_roots` (by default `scripts/` and `helper_scripts/`) for `if __name__ == "__main__"`. Files listed in `ignore_paths` are skipped (deprecated video tools, the Raspberry Pi updater, the logger example, and the manager itself). Anything else that is not an entry in the registry is a warning. Moving those folders is a `discover_roots` edit. The workflow does not name them.
 

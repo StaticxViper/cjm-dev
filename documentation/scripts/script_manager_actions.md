@@ -46,7 +46,14 @@ curl -X POST \
   -d '{"event_type":"script-manager-run","client_payload":{"script":"stock-analyzer","args":"","request_id":"abc123","outputs":"artifact,property_portal","confirm":true}}'
 ```
 
-`repository_dispatch` uses event type `script-manager-run`. The same body fields work for an MCP `create`/`dispatch` call.
+`repository_dispatch` uses event type `script-manager-run`. The same body fields work for an MCP `create`/`dispatch` call. GitHub only starts `repository_dispatch` and `schedule` workflows from the default branch.
+
+`ci-ping` is the read-only sample. It has no side effects, so `confirm` stays false. Its stdout is one JSON object (`{"ok": true, "script": "ci-ping", "args": [...]}`), and the run summary stores that object in `data`.
+
+```bash
+gh workflow run script_manager.yml -R StaticxViper/cjm-dev \
+  -f script=ci-ping -f request_id=ping-1
+```
 
 Grok bot routines use that dispatch API on the bot's own schedule.
 
@@ -61,6 +68,17 @@ The same script never overlaps itself (`script-manager-<name>`, in-progress runs
 3. Chromium is installed only when resolve says it is needed.
 4. `run --from-contract contract.json --ci --non-interactive --json --env-scope declared --summary-json run.json --github-summary`
 5. `sinks` delivers the summary. Sink errors are appended to `run.json` and the job summary. The job still fails when the script itself failed.
+
+A refused run still uploads `script-manager-<request_id>`. `contract` or `resolve` writes the summary, and the prepare job uploads it when that job fails. `run.json` then has `request_id`, `exit_code`, `failure_kind` (`unknown_script`, `confirmation_required`, `missing_env`, `not_runnable`, `usage`), and `message`.
+
+On a run that starts, `run.json` also has:
+
+| Field | Meaning |
+|-------|---------|
+| `data` | The script's stdout when the whole stream is one JSON object or array, and it is under 1 MB. Otherwise `null`. |
+| `stdout_tail` / `stderr_tail` | The last 8000 bytes of each stream. |
+| `output_files` | Contents of declared output files (JSON when the file is an object or array, otherwise text). Capped at 20 files, 200 KB each, 1 MB total. |
+| `message` | Why the manager refused the run. Empty when the child started. |
 
 `--env-scope declared` passes each script only the env names it lists, plus a safe base set (`PATH`, `GITHUB_*`, and the rest documented in [script_manager.md](script_manager.md)).
 
