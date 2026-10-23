@@ -10,7 +10,7 @@
 python city_data_scraper.py --input cities.json --output-path city_profiles.json
 ```
 
-**Script Manager:** `city-data`. `python -m scripts.script_manager run city-data`. The Apify copy lives in [`scripts/apify-scripts/city-data/`](../apify-scripts/city-data/). `apify_scripts.yml` tests that Actor when this scraper changes. No separate schedule workflow.
+**Script Manager:** `city-data`. `python -m scripts.script_manager run city-data`. The Apify copy lives in [`scripts/apify-scripts/city-data/`](../apify-scripts/city-data/). `ci.yml` tests that Actor on every pull request. No separate schedule workflow.
 
 **Secrets:** none. Optional `MVLLC_LOGS_KEY` for log upload.
 

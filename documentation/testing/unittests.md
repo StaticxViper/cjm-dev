@@ -14,6 +14,16 @@ Validates core logic in automation scripts without calling live APIs. Currently 
 
 Tests skip automatically if `leadgen` cannot be imported (e.g. missing deps).
 
+## CI
+
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) runs on every pull request and every push to `main`. It installs `requirements/requirements.txt` and Playwright Chromium (both cached), runs `python -m scripts.script_manager validate --ci-secrets` and `schedules --check`, then runs `python -m pytest unittests/`. A new folder or `test_*.py` file under `unittests/` is collected with no workflow change. Tests must not need network access or secrets; mock them out.
+
+Run the same suite locally from the repo root:
+
+```bash
+python -m pytest unittests/
+```
+
 ## How to run
 
 From **repo root**:
@@ -211,7 +221,7 @@ Offline checks for the Apify Actor packages. They do not open Chromium or call c
 | `test_city_data_actor` | Clementon input mapping, dataset fields, robots skip, longest-match Allow over a shorter Disallow |
 | `test_google_business_actor` | State required, Maps URL only, STRIKER and B&B Basecamp stay `no_match` with no candidate, Wegmans in Rochester matches and Whole Foods or a Williamsville Wegmans is omitted, a place-page redirect uses the heading, block flag skips enrichment |
 
-GitHub Actions workflow `.github/workflows/apify_scripts.yml` runs both modules on Python 3.12. It does not install Chromium or call the live sites.
+Both modules run in `ci.yml` with the rest of `unittests/`. `.github/workflows/apify_scripts.yml` runs just these two modules on demand (`workflow_dispatch`). Neither calls the live sites.
 
 ## Test package: `unittests/script_manager/`
 

@@ -24,7 +24,7 @@ Every trigger sends the same fields.
 
 The manager exits **64** when the name is unknown. It exits **67** when the script is not active, is `local_only`, or is not `ci_allowed`. It exits **68** when confirmation is missing. A dry run does not require confirmation.
 
-`clip-generator` and `montage-builder` stay `local_only`. Broken and planned scripts, including `opp-finder-v2`, exit 67 until their status is `active`. The opp finder PR tests stay in `opp_finder_v2.yml`.
+`clip-generator` and `montage-builder` stay `local_only`. Broken and planned scripts, including `opp-finder-v2`, exit 67 until their status is `active`. Registry validation, schedule drift, and all unit tests run in `ci.yml` on every pull request.
 
 ## Triggers
 

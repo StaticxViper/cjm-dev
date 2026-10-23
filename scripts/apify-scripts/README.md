@@ -46,7 +46,7 @@ Do this only when a listing is requested. `APIFY_TOKEN` is the CLI / `apify push
 
 ## Purpose, inputs, outputs, and secrets
 
-Actors package the local Playwright CLIs for the Apify platform. Input is the Actor `INPUT.json` (`fixtures/INPUT.json` locally). Output is an Apify dataset plus a key-value `SUMMARY`. Local run is `apify run --purge` from the Actor directory, or `python -m src` after copying the fixture into `storage/key_value_stores/default/INPUT.json`. These Actors are not Script Manager entries. GitHub Actions workflow `apify_scripts.yml` runs `unittests/apify_scripts` on pull requests. Publish uses `APIFY_TOKEN`. The Actors themselves do not read `APIFY_API_KEY`. Longer notes are the sections above.
+Actors package the local Playwright CLIs for the Apify platform. Input is the Actor `INPUT.json` (`fixtures/INPUT.json` locally). Output is an Apify dataset plus a key-value `SUMMARY`. Local run is `apify run --purge` from the Actor directory, or `python -m src` after copying the fixture into `storage/key_value_stores/default/INPUT.json`. These Actors are not Script Manager entries. `unittests/apify_scripts` runs in `ci.yml` on every pull request. `apify_scripts.yml` runs it on demand. Publish uses `APIFY_TOKEN`. The Actors themselves do not read `APIFY_API_KEY`. Longer notes are the sections above.
 
 ## Rules that stay in force
 
