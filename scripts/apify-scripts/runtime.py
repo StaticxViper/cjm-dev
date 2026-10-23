@@ -4,12 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib import error as urlerror
-from urllib import request as urlrequest
 import logging
 import os
-import random
-import time
 
 # Same Chrome UA the local Playwright scrapers already send. robots.txt is
 # evaluated for User-agent: *, which is the group this UA falls into.
@@ -61,26 +57,21 @@ def fetch_text(url, attempts=3, timeout=20):
 
     Navigation retries for the scrapers stay inside the existing Playwright
     sessions. This helper is for robots.txt and similar short HTTP reads.
+    The repo root is added here because Actors call this before prepare_imports().
     """
-    last = None
-    for attempt in range(attempts):
-        try:
-            req = urlrequest.Request(url, headers={"User-Agent": USER_AGENT})
-            with urlrequest.urlopen(req, timeout=timeout) as response:
-                status = getattr(response, "status", 200) or 200
-                body = response.read().decode("utf-8", "replace")
-                if status == 429 or status >= 500:
-                    raise RuntimeError(f"HTTP {status} for {url}")
-                return body
-        except urlerror.HTTPError as exc:
-            last = exc
-            if exc.code not in (429, 500, 502, 503, 504):
-                raise
-        except Exception as exc:
-            last = exc
-        if attempt + 1 < attempts:
-            time.sleep(random.uniform(0.4, 1.2) * (attempt + 1))
-    raise RuntimeError(f"Failed to fetch {url}: {last}")
+    import sys
+
+    root = str(find_repo_root())
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from helper_scripts.http.client import fetch_url_text
+
+    return fetch_url_text(
+        url,
+        attempts=attempts,
+        timeout=timeout,
+        headers={"User-Agent": USER_AGENT},
+    )
 
 
 async def push_charged_rows(rows, billable):

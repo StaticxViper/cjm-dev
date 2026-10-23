@@ -20,7 +20,7 @@ from opp_finder_v2.artifacts import format_z
 from opp_finder_v2.browser.detection import classify_page
 from opp_finder_v2.browser.session import USER_AGENT
 from opp_finder_v2.models import Criteria, FetchResult, RawListing, RunOptions, SearchQuery, SiteConfig
-from opp_finder_v2.politeness import Pacer, retry_delay
+from opp_finder_v2.politeness import HTTP_RETRY, Pacer
 
 logger = logging.getLogger("opp-finder-v2")
 
@@ -89,12 +89,12 @@ def _get_json(client: httpx.Client, method: str, url: str, headers: dict[str, st
     last_status = 0
     last_text = ""
     response = None
-    for attempt in range(3):
+    for attempt in range(HTTP_RETRY.attempts):
         try:
             response = client.request(method, url, headers=headers)
         except httpx.HTTPError as exc:
             logger.info("Request error %s (%s) attempt %s", url, exc, attempt + 1)
-            if attempt >= 2:
+            if attempt + 1 >= HTTP_RETRY.attempts:
                 raise
             _sleep_retry(attempt, None)
             continue
@@ -102,8 +102,8 @@ def _get_json(client: httpx.Client, method: str, url: str, headers: dict[str, st
         last_text = response.text or ""
         if response.status_code == 403:
             return {"_body": last_text}, last_status, str(response.url)
-        if response.status_code == 429 or response.status_code >= 500:
-            if attempt >= 2:
+        if HTTP_RETRY.retries_status(response.status_code):
+            if attempt + 1 >= HTTP_RETRY.attempts:
                 break
             _sleep_retry(attempt, response)
             continue
@@ -119,12 +119,10 @@ def _get_json(client: httpx.Client, method: str, url: str, headers: dict[str, st
 
 
 def _sleep_retry(attempt: int, response: httpx.Response | None) -> None:
-    import time
-
     header = None
     if response is not None:
         header = response.headers.get("Retry-After")
-    time.sleep(retry_delay(attempt, header))
+    HTTP_RETRY.sleep(attempt, header)
 
 
 class ApiAdapter:

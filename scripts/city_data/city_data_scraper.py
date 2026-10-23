@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup, NavigableString
+from helper_scripts.browser.route_block import continue_or_abort, resource_type_blocked
 from helper_scripts.utils.logger.logger import setup_logger
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -853,7 +854,7 @@ def _host_blocked(url):
 
 
 def _should_block_request(request):
-    if request.resource_type in BLOCKED_RESOURCE_TYPES:
+    if resource_type_blocked(request.resource_type, BLOCKED_RESOURCE_TYPES):
         return True
     return _host_blocked(request.url)
 
@@ -918,10 +919,7 @@ class CityDataSession:
             raise
 
     def _on_route(self, route):
-        if _should_block_request(route.request):
-            route.abort()
-            return
-        route.continue_()
+        continue_or_abort(route, _should_block_request(route.request))
 
     def _sleep_between_requests(self):
         if self._requests_done <= 0 or self.delay_seconds <= 0:

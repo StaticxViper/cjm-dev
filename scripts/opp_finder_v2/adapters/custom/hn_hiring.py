@@ -22,7 +22,7 @@ from opp_finder_v2.parsing import (
     normalize_employment,
     parse_salary_text,
 )
-from opp_finder_v2.politeness import Pacer, retry_delay
+from opp_finder_v2.politeness import HTTP_RETRY, Pacer
 
 _STORY_URL = (
     "https://hn.algolia.com/api/v1/search_by_date"
@@ -39,25 +39,21 @@ def _get_json(url: str) -> dict:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     with httpx.Client(timeout=30.0, follow_redirects=True) as client:
         last_error = None
-        for attempt in range(3):
+        for attempt in range(HTTP_RETRY.attempts):
             try:
                 response = client.get(url, headers=headers)
             except httpx.HTTPError as exc:
                 last_error = exc
-                if attempt >= 2:
+                if attempt + 1 >= HTTP_RETRY.attempts:
                     raise
-                import time
-
-                time.sleep(retry_delay(attempt, None))
+                HTTP_RETRY.sleep(attempt, None)
                 continue
             if response.status_code == 403:
                 response.raise_for_status()
-            if response.status_code == 429 or response.status_code >= 500:
-                if attempt >= 2:
+            if HTTP_RETRY.retries_status(response.status_code):
+                if attempt + 1 >= HTTP_RETRY.attempts:
                     response.raise_for_status()
-                import time
-
-                time.sleep(retry_delay(attempt, response.headers.get("Retry-After")))
+                HTTP_RETRY.sleep(attempt, response.headers.get("Retry-After"))
                 continue
             response.raise_for_status()
             return response.json()

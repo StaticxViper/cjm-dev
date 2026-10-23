@@ -8,33 +8,10 @@ import json
 import os
 import re
 from threading import Lock
-from urllib.parse import urlparse, unquote
+
+from helper_scripts.maps.identity import normalize_profile_url as _normalize_profile_url
 
 _lock = Lock()
-
-HEX_FID_RE = re.compile(r"!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)")
-CHIJ_RE = re.compile(r"(?:!19s|place_id[=:])(ChIJ[\w-]+)")
-
-
-def _normalize_profile_url(url):
-    if not url:
-        return ""
-    try:
-        parsed = urlparse(url)
-        path = unquote(parsed.path or "")
-        if "/maps/place/" in path:
-            m = CHIJ_RE.search(url)
-            if m:
-                return f"https://www.google.com/maps/place/?q=place_id:{m.group(1)}"
-            m = HEX_FID_RE.search(url)
-            if m:
-                return f"https://www.google.com/maps/place/?q={m.group(1).lower()}"
-            name = path.split("/maps/place/", 1)[1].split("/")[0]
-            if name:
-                return f"https://www.google.com/maps/place/{name}"
-        return f"{parsed.scheme}://{parsed.netloc}{path}".rstrip("/")
-    except Exception:
-        return str(url).split("?")[0].split("#")[0]
 
 
 def _phone_digits(phone):

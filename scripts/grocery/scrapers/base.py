@@ -15,6 +15,7 @@ from urllib.parse import quote_plus
 
 from grocery.models import ProductRecord
 from grocery.scrapers.extract import visible_text
+from helper_scripts.browser.backoff import backoff_seconds
 
 logger = logging.getLogger("grocery")
 
@@ -42,11 +43,6 @@ class PageFetch:
     url: str
     status: int | None
     error: str | None = None
-
-
-def backoff_seconds(attempt: int, base: float) -> float:
-    """Seconds to wait before retry. `attempt` is the zero-based failure index."""
-    return base * (2 ** attempt)
 
 
 def is_retryable_status(status: int | None) -> bool:

@@ -13,6 +13,7 @@ from urllib import robotparser
 import requests
 
 from email_discovery import CAPTCHA_MARKERS, SEARCH_DELAY_MAX, SEARCH_DELAY_MIN
+from helper_scripts.http.client import RetryPolicy, html_json_headers, polite_delay, requests_get
 from playwright_discovery import is_google_block_page
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -27,14 +28,8 @@ ACCESS_ROBOTS = "robots_disallowed"
 ACCESS_UNAVAILABLE = "unavailable"
 ACCESS_DISABLED = "disabled"
 
-FETCH_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-}
+FETCH_HEADERS = html_json_headers()
+_POLITE_RETRY = RetryPolicy(attempts=3, delay=polite_delay)
 
 LOGIN_MARKERS = (
     "sign in to continue",
@@ -208,7 +203,12 @@ def fetch_robots(url, timeout=10):
         return ""
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     try:
-        response = requests.get(robots_url, timeout=timeout, headers=FETCH_HEADERS)
+        response = requests_get(
+            robots_url,
+            timeout=timeout,
+            headers=FETCH_HEADERS,
+            getter=requests.get,
+        )
     except requests.RequestException:
         return ""
     if response.status_code >= 400:
@@ -235,14 +235,18 @@ def polite_get(url, *, rate_limit=None, timeout=20, session=None):
     lock = _host_lock(url)
     last_error = None
     with lock:
-        for attempt in range(3):
+        for attempt in range(_POLITE_RETRY.attempts):
             if attempt:
-                delay = min(30.0, (2 ** (attempt - 1)) + random.uniform(0, 0.5))
-                time.sleep(delay)
+                _POLITE_RETRY.sleep(attempt, None)
             elif rate_limit.get("_requests"):
                 time.sleep(random.uniform(min_delay, max(min_delay, max_delay)))
             try:
-                response = getter(url, timeout=timeout, headers=FETCH_HEADERS)
+                response = requests_get(
+                    url,
+                    timeout=timeout,
+                    headers=FETCH_HEADERS,
+                    getter=getter,
+                )
             except requests.RequestException as exc:
                 last_error = exc
                 continue

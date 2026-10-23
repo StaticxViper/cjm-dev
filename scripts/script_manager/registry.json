@@ -1,9 +1,7 @@
 {
   "version": 1,
   "ignore_paths": [
-    "scripts/video_editing/deprecated/**",
-    "helper_scripts/utils/update_manager/**",
-    "helper_scripts/utils/logger/import_log_example.py",
+    "scripts/repo_map/**",
     "scripts/script_manager/**"
   ],
   "discover_roots": ["scripts", "helper_scripts"],

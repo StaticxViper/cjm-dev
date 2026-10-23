@@ -15,16 +15,18 @@ import requests
 from bs4 import BeautifulSoup
 
 from email_discovery import DIRECTORY_HOSTS, is_directory_host
+from helper_scripts.http.client import html_headers, requests_get
+from helper_scripts.web.html_signals import (
+    has_title_tag,
+    has_viewport,
+    is_https_url,
+    meta_content,
+    text_has_keywords,
+    title_text,
+)
+from helper_scripts.web.urls import normalize_website_url as _normalize_website_url
 
-FETCH_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-}
+FETCH_HEADERS = html_headers()
 
 SOCIAL_HOSTS = frozenset({
     "facebook.com",
@@ -81,15 +83,7 @@ LAST_MODIFIED_FORMATS = (
 
 
 def normalize_website_url(url):
-    if not url:
-        return ""
-    text = str(url).strip()
-    if text.startswith("//"):
-        text = "https:" + text
-    parsed = urlparse(text)
-    if not parsed.scheme:
-        text = "https://" + text
-    return text
+    return _normalize_website_url(url)
 
 
 def _host(url):
@@ -166,7 +160,7 @@ def cheap_website_check(url, fetch_fn=None):
     result["http_status"] = getattr(response, "status_code", None)
     final_url = getattr(response, "url", result["url"]) or result["url"]
     result["redirect_destination"] = final_url if final_url.rstrip("/") != result["url"].rstrip("/") else None
-    result["https"] = str(final_url).lower().startswith("https://")
+    result["https"] = is_https_url(final_url)
     if is_social_or_directory_url(final_url):
         result["social_or_directory"] = True
         result["no_website"] = True
@@ -194,24 +188,17 @@ def cheap_website_check(url, fetch_fn=None):
 
 
 def _fetch_response(url):
-    return requests.get(
+    return requests_get(
         url,
         timeout=10,
         headers=FETCH_HEADERS,
         allow_redirects=True,
+        getter=requests.get,
     )
 
 
 def _meta(soup, name=None, prop=None):
-    if name:
-        tag = soup.find("meta", attrs={"name": lambda value: value and str(value).lower() == name.lower()})
-    elif prop:
-        tag = soup.find("meta", attrs={"property": lambda value: value and str(value).lower() == prop.lower()})
-    else:
-        return ""
-    if not tag:
-        return ""
-    return (tag.get("content") or "").strip()
+    return meta_content(soup, name=name, prop=prop)
 
 
 def _detect_cms(html, soup):
@@ -312,12 +299,10 @@ def analyze_website_quality(url, html=None, headers=None, final_url=None, cheap=
     text = soup.get_text(separator=" ", strip=True)
     text_lower = text.lower()
 
-    if soup.title and soup.title.string:
-        analysis["title"] = soup.title.string.strip()
+    if has_title_tag(soup):
+        analysis["title"] = title_text(soup)
     analysis["meta_description"] = _meta(soup, name="description") or None
-    analysis["has_viewport"] = bool(
-        soup.find("meta", attrs={"name": lambda value: value and value.lower() == "viewport"})
-    )
+    analysis["has_viewport"] = has_viewport(soup)
     analysis["cms"] = _detect_cms(page_html, soup)
     analysis["last_updated"] = _parse_last_modified(page_headers, page_html)
     analysis["page_count_estimate"] = _count_internal_links(soup, page_url)
@@ -360,7 +345,7 @@ def analyze_website_quality(url, html=None, headers=None, final_url=None, cheap=
         or analysis["has_quote_form"]
     )
     analysis["ads_detected"] = any(marker.lower() in haystack for marker in ADS_MARKERS)
-    analysis["https"] = str(page_url).lower().startswith("https://") or analysis["https"]
+    analysis["https"] = is_https_url(page_url) or analysis["https"]
 
     try:
         from leadenrich_playwright import extract_social_links
@@ -404,6 +389,165 @@ def analyze_website_quality(url, html=None, headers=None, final_url=None, cheap=
     else:
         analysis["conversion_quality"] = "critical"
     return analysis
+
+
+MIN_TITLE_LEN = 10
+MAX_TITLE_LEN = 70
+MIN_META_LEN = 50
+MAX_META_LEN = 160
+THIN_CONTENT_WORDS = 100
+CTA_KEYWORDS = ("call", "contact", "quote", "estimate", "book", "schedule")
+
+SEO_WEIGHTS = {
+    "no_https": 14,
+    "no_viewport": 10,
+    "no_title": 10,
+    "title_length": 6,
+    "no_meta_description": 10,
+    "meta_length": 4,
+    "no_h1": 8,
+    "multiple_h1": 4,
+    "no_canonical": 4,
+    "no_open_graph": 4,
+    "noindex": 6,
+    "no_schema": 4,
+    "missing_image_alts": 4,
+    "thin_content": 6,
+    "no_cta": 4,
+    "mixed_content": 2,
+}
+assert sum(SEO_WEIGHTS.values()) == 100
+
+
+def analyze_seo(html, url="", load_error=None):
+    """Heuristic SEO/improvement audit. Higher score = more opportunity (0-100)."""
+    if load_error or not html:
+        return {
+            "score": 100,
+            "issues": ["Site did not load or returned no HTML"],
+            "recommendations": [
+                "Confirm the website URL is correct and the site is online",
+                "Rebuild or replace a broken/expired site",
+            ],
+            "https": is_https_url(url),
+            "title": "",
+            "word_count": 0,
+        }
+
+    soup = BeautifulSoup(html, "html.parser")
+    issues = []
+    recommendations = []
+    raw = 0
+    url = url or ""
+    https = is_https_url(url)
+
+    if not https:
+        raw += SEO_WEIGHTS["no_https"]
+        issues.append("Site is not served over HTTPS")
+        recommendations.append("Enable HTTPS and redirect HTTP traffic")
+
+    if not has_viewport(soup):
+        raw += SEO_WEIGHTS["no_viewport"]
+        issues.append("Missing mobile viewport meta tag")
+        recommendations.append("Add a viewport meta tag for mobile rendering")
+
+    title = title_text(soup) if has_title_tag(soup) else ""
+    if not title:
+        raw += SEO_WEIGHTS["no_title"]
+        issues.append("Missing page title")
+        recommendations.append("Add a unique title of about 50-60 characters")
+    elif len(title) < MIN_TITLE_LEN or len(title) > MAX_TITLE_LEN:
+        raw += SEO_WEIGHTS["title_length"]
+        issues.append(f"Title length is {len(title)} characters (aim {MIN_TITLE_LEN}-{MAX_TITLE_LEN})")
+        recommendations.append("Rewrite the title to a clear 50-60 character business + city phrase")
+
+    description = _meta(soup, name="description")
+    if not description:
+        raw += SEO_WEIGHTS["no_meta_description"]
+        issues.append("Missing meta description")
+        recommendations.append("Add a 120-160 character meta description")
+    elif len(description) < MIN_META_LEN or len(description) > MAX_META_LEN:
+        raw += SEO_WEIGHTS["meta_length"]
+        issues.append(f"Meta description length is {len(description)} characters")
+        recommendations.append("Tighten the meta description to 120-160 characters")
+
+    h1s = soup.find_all("h1")
+    if not h1s:
+        raw += SEO_WEIGHTS["no_h1"]
+        issues.append("No H1 heading")
+        recommendations.append("Add a single H1 with the business name and primary service")
+    elif len(h1s) > 1:
+        raw += SEO_WEIGHTS["multiple_h1"]
+        issues.append(f"Found {len(h1s)} H1 headings")
+        recommendations.append("Keep a single H1 and demote the rest to H2")
+
+    canonical = soup.find("link", attrs={"rel": lambda value: value and "canonical" in str(value).lower()})
+    if not canonical or not (canonical.get("href") or "").strip():
+        raw += SEO_WEIGHTS["no_canonical"]
+        issues.append("Missing canonical URL")
+        recommendations.append("Add a rel=canonical link to the preferred homepage URL")
+
+    og_title = _meta(soup, prop="og:title")
+    og_desc = _meta(soup, prop="og:description")
+    if not og_title and not og_desc:
+        raw += SEO_WEIGHTS["no_open_graph"]
+        issues.append("Missing Open Graph tags")
+        recommendations.append("Add og:title, og:description, and og:image for social sharing")
+
+    robots = (_meta(soup, name="robots") or "").lower()
+    if "noindex" in robots:
+        raw += SEO_WEIGHTS["noindex"]
+        issues.append("Robots meta is set to noindex")
+        recommendations.append("Remove noindex if the page should appear in Google")
+
+    has_schema = bool(
+        soup.find("script", attrs={"type": lambda kind: kind and "ld+json" in kind.lower()})
+    )
+    if not has_schema:
+        raw += SEO_WEIGHTS["no_schema"]
+        issues.append("No JSON-LD structured data")
+        recommendations.append("Add LocalBusiness JSON-LD with name, address, phone, and hours")
+
+    images = soup.find_all("img")
+    if images:
+        missing_alt = sum(1 for img in images if not (img.get("alt") or "").strip())
+        if missing_alt / len(images) > 0.5:
+            raw += SEO_WEIGHTS["missing_image_alts"]
+            issues.append(f"{missing_alt}/{len(images)} images are missing alt text")
+            recommendations.append("Add descriptive alt text to images")
+
+    text = soup.get_text(separator=" ", strip=True)
+    words = [word for word in re.split(r"\s+", text) if word]
+    if len(words) < THIN_CONTENT_WORDS:
+        raw += SEO_WEIGHTS["thin_content"]
+        issues.append(f"Thin content ({len(words)} words)")
+        recommendations.append("Add service pages and a clear description of what the business does")
+
+    if not text_has_keywords(text, CTA_KEYWORDS):
+        raw += SEO_WEIGHTS["no_cta"]
+        issues.append("No call-to-action wording on the page")
+        recommendations.append("Add a visible Call / Contact / Get a quote button")
+
+    if https:
+        mixed = False
+        for tag in soup.find_all(["img", "script", "link", "iframe"]):
+            src = tag.get("src") or tag.get("href") or ""
+            if src.startswith("http://"):
+                mixed = True
+                break
+        if mixed:
+            raw += SEO_WEIGHTS["mixed_content"]
+            issues.append("HTTP assets loaded on an HTTPS page")
+            recommendations.append("Serve images and scripts over HTTPS")
+
+    return {
+        "score": round(raw / 100 * 100),
+        "issues": issues,
+        "recommendations": recommendations,
+        "https": https,
+        "title": title,
+        "word_count": len(words),
+    }
 
 
 def apply_website_fields(lead, cheap, deep=None):

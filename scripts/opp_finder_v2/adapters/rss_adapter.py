@@ -12,7 +12,7 @@ from opp_finder_v2.artifacts import format_z
 from opp_finder_v2.browser.session import USER_AGENT
 from opp_finder_v2.listings import mapped_to_raw
 from opp_finder_v2.models import Criteria, FetchResult, RunOptions, SearchQuery, SiteConfig
-from opp_finder_v2.politeness import Pacer, retry_delay
+from opp_finder_v2.politeness import HTTP_RETRY, Pacer
 
 logger = logging.getLogger("opp-finder-v2")
 
@@ -70,16 +70,14 @@ def _download(url: str) -> str:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/rss+xml, application/xml, text/xml"}
     last_error: Exception | None = None
     with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-        for attempt in range(3):
+        for attempt in range(HTTP_RETRY.attempts):
             try:
                 response = client.get(url, headers=headers)
             except httpx.HTTPError as exc:
                 last_error = exc
-                if attempt >= 2:
+                if attempt + 1 >= HTTP_RETRY.attempts:
                     raise
-                import time
-
-                time.sleep(retry_delay(attempt, None))
+                HTTP_RETRY.sleep(attempt, None)
                 continue
             if response.status_code == 403:
                 raise httpx.HTTPStatusError(
@@ -87,12 +85,10 @@ def _download(url: str) -> str:
                     request=response.request,
                     response=response,
                 )
-            if response.status_code == 429 or response.status_code >= 500:
-                if attempt >= 2:
+            if HTTP_RETRY.retries_status(response.status_code):
+                if attempt + 1 >= HTTP_RETRY.attempts:
                     response.raise_for_status()
-                import time
-
-                time.sleep(retry_delay(attempt, response.headers.get("Retry-After")))
+                HTTP_RETRY.sleep(attempt, response.headers.get("Retry-After"))
                 continue
             response.raise_for_status()
             return response.text

@@ -41,12 +41,24 @@ from email_discovery import (
 )
 from helper_scripts.api_manager import APIManager
 from helper_scripts.utils.logger.logger import setup_logger
+from helper_scripts.web.html_signals import meta_content
+from helper_scripts.web.urls import ensure_http_url
 from leadenrich import (
     load_leads,
     name_similarity,
     normalize_business_name,
     normalize_facebook_url,
     save_leads,
+)
+from website_quality import (
+    CTA_KEYWORDS,
+    MAX_META_LEN,
+    MAX_TITLE_LEN,
+    MIN_META_LEN,
+    MIN_TITLE_LEN,
+    SEO_WEIGHTS,
+    THIN_CONTENT_WORDS,
+    analyze_seo,
 )
 
 load_dotenv()
@@ -65,32 +77,6 @@ STATUS_SCRAPE_FAILED = "scrape_failed"
 RETRYABLE_STATUSES = frozenset({STATUS_SCRAPE_FAILED})
 
 MAX_QUERIES_PER_LEAD = 4
-MIN_TITLE_LEN = 10
-MAX_TITLE_LEN = 70
-MIN_META_LEN = 50
-MAX_META_LEN = 160
-THIN_CONTENT_WORDS = 100
-CTA_KEYWORDS = ("call", "contact", "quote", "estimate", "book", "schedule")
-
-SEO_WEIGHTS = {
-    "no_https": 14,
-    "no_viewport": 10,
-    "no_title": 10,
-    "title_length": 6,
-    "no_meta_description": 10,
-    "meta_length": 4,
-    "no_h1": 8,
-    "multiple_h1": 4,
-    "no_canonical": 4,
-    "no_open_graph": 4,
-    "noindex": 6,
-    "no_schema": 4,
-    "missing_image_alts": 4,
-    "thin_content": 6,
-    "no_cta": 4,
-    "mixed_content": 2,
-}
-assert sum(SEO_WEIGHTS.values()) == 100
 
 SOCIAL_LABELS = {
     "instagram.com": "instagram",
@@ -148,13 +134,7 @@ def _host_from_url(url):
 
 
 def _normalize_website_url(url):
-    if not url:
-        return url
-    if url.startswith("//"):
-        url = "https:" + url
-    if not urlparse(url).scheme:
-        url = "https://" + url
-    return url
+    return ensure_http_url(url)
 
 
 def build_research_queries(lead, max_queries=MAX_QUERIES_PER_LEAD):
@@ -302,150 +282,7 @@ def extract_social_links(html, base_url=""):
 
 
 def _meta_content(soup, name=None, prop=None):
-    if name:
-        tag = soup.find("meta", attrs={"name": lambda v: v and str(v).lower() == name.lower()})
-    elif prop:
-        tag = soup.find("meta", attrs={"property": lambda v: v and str(v).lower() == prop.lower()})
-    else:
-        return ""
-    if not tag:
-        return ""
-    return (tag.get("content") or "").strip()
-
-
-def analyze_seo(html, url="", load_error=None):
-    """Heuristic SEO/improvement audit. Higher score = more opportunity (0-100)."""
-    if load_error or not html:
-        return {
-            "score": 100,
-            "issues": ["Site did not load or returned no HTML"],
-            "recommendations": [
-                "Confirm the website URL is correct and the site is online",
-                "Rebuild or replace a broken/expired site",
-            ],
-            "https": str(url or "").lower().startswith("https://"),
-            "title": "",
-            "word_count": 0,
-        }
-
-    soup = BeautifulSoup(html, "html.parser")
-    issues = []
-    recommendations = []
-    raw = 0
-    url = url or ""
-    https = url.lower().startswith("https://")
-
-    if not https:
-        raw += SEO_WEIGHTS["no_https"]
-        issues.append("Site is not served over HTTPS")
-        recommendations.append("Enable HTTPS and redirect HTTP traffic")
-
-    viewport = soup.find("meta", attrs={"name": lambda v: v and v.lower() == "viewport"})
-    if not viewport:
-        raw += SEO_WEIGHTS["no_viewport"]
-        issues.append("Missing mobile viewport meta tag")
-        recommendations.append("Add a viewport meta tag for mobile rendering")
-
-    title = ""
-    if soup.title and soup.title.string:
-        title = soup.title.string.strip()
-    if not title:
-        raw += SEO_WEIGHTS["no_title"]
-        issues.append("Missing page title")
-        recommendations.append("Add a unique title of about 50-60 characters")
-    elif len(title) < MIN_TITLE_LEN or len(title) > MAX_TITLE_LEN:
-        raw += SEO_WEIGHTS["title_length"]
-        issues.append(f"Title length is {len(title)} characters (aim {MIN_TITLE_LEN}-{MAX_TITLE_LEN})")
-        recommendations.append("Rewrite the title to a clear 50-60 character business + city phrase")
-
-    description = _meta_content(soup, name="description")
-    if not description:
-        raw += SEO_WEIGHTS["no_meta_description"]
-        issues.append("Missing meta description")
-        recommendations.append("Add a 120-160 character meta description")
-    elif len(description) < MIN_META_LEN or len(description) > MAX_META_LEN:
-        raw += SEO_WEIGHTS["meta_length"]
-        issues.append(f"Meta description length is {len(description)} characters")
-        recommendations.append("Tighten the meta description to 120-160 characters")
-
-    h1s = soup.find_all("h1")
-    if not h1s:
-        raw += SEO_WEIGHTS["no_h1"]
-        issues.append("No H1 heading")
-        recommendations.append("Add a single H1 with the business name and primary service")
-    elif len(h1s) > 1:
-        raw += SEO_WEIGHTS["multiple_h1"]
-        issues.append(f"Found {len(h1s)} H1 headings")
-        recommendations.append("Keep a single H1 and demote the rest to H2")
-
-    canonical = soup.find("link", attrs={"rel": lambda v: v and "canonical" in str(v).lower()})
-    if not canonical or not (canonical.get("href") or "").strip():
-        raw += SEO_WEIGHTS["no_canonical"]
-        issues.append("Missing canonical URL")
-        recommendations.append("Add a rel=canonical link to the preferred homepage URL")
-
-    og_title = _meta_content(soup, prop="og:title")
-    og_desc = _meta_content(soup, prop="og:description")
-    if not og_title and not og_desc:
-        raw += SEO_WEIGHTS["no_open_graph"]
-        issues.append("Missing Open Graph tags")
-        recommendations.append("Add og:title, og:description, and og:image for social sharing")
-
-    robots = (_meta_content(soup, name="robots") or "").lower()
-    if "noindex" in robots:
-        raw += SEO_WEIGHTS["noindex"]
-        issues.append("Robots meta is set to noindex")
-        recommendations.append("Remove noindex if the page should appear in Google")
-
-    has_schema = bool(
-        soup.find("script", attrs={"type": lambda t: t and "ld+json" in t.lower()})
-    )
-    if not has_schema:
-        raw += SEO_WEIGHTS["no_schema"]
-        issues.append("No JSON-LD structured data")
-        recommendations.append("Add LocalBusiness JSON-LD with name, address, phone, and hours")
-
-    images = soup.find_all("img")
-    if images:
-        missing_alt = sum(1 for img in images if not (img.get("alt") or "").strip())
-        if missing_alt / len(images) > 0.5:
-            raw += SEO_WEIGHTS["missing_image_alts"]
-            issues.append(f"{missing_alt}/{len(images)} images are missing alt text")
-            recommendations.append("Add descriptive alt text to images")
-
-    text = soup.get_text(separator=" ", strip=True)
-    words = [w for w in re.split(r"\s+", text) if w]
-    if len(words) < THIN_CONTENT_WORDS:
-        raw += SEO_WEIGHTS["thin_content"]
-        issues.append(f"Thin content ({len(words)} words)")
-        recommendations.append("Add service pages and a clear description of what the business does")
-
-    lowered = text.lower()
-    if not any(kw in lowered for kw in CTA_KEYWORDS):
-        raw += SEO_WEIGHTS["no_cta"]
-        issues.append("No call-to-action wording on the page")
-        recommendations.append("Add a visible Call / Contact / Get a quote button")
-
-    if https:
-        mixed = False
-        for tag in soup.find_all(["img", "script", "link", "iframe"]):
-            src = tag.get("src") or tag.get("href") or ""
-            if src.startswith("http://"):
-                mixed = True
-                break
-        if mixed:
-            raw += SEO_WEIGHTS["mixed_content"]
-            issues.append("HTTP assets loaded on an HTTPS page")
-            recommendations.append("Serve images and scripts over HTTPS")
-
-    return {
-        "score": round(raw / 100 * 100),
-        "issues": issues,
-        "recommendations": recommendations,
-        "https": https,
-        "title": title,
-        "word_count": len(words),
-    }
+    return meta_content(soup, name=name, prop=prop)
 
 
 def _empty_visit(url, error):

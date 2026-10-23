@@ -21,7 +21,11 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
+from helper_scripts.browser.google_session import GoogleBrowserCore, sleep_between
+from helper_scripts.http.client import html_headers, requests_get
+from helper_scripts.text.phones import US_PHONE_RE, is_valid_us_phone
 from helper_scripts.utils.logger.logger import setup_logger
+from helper_scripts.web.urls import ensure_http_url
 
 logger = setup_logger(
     name="leadgen",
@@ -45,21 +49,10 @@ CONTACT_PAGE_PATHS = (
     "/get-in-touch",
 )
 
-FETCH_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-}
+FETCH_HEADERS = html_headers()
 
 EMAIL_RE = re.compile(
     r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
-)
-US_PHONE_RE = re.compile(
-    r"^(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$"
 )
 ZIP_RE = re.compile(r"\b(\d{5})(?:-\d{4})?\b")
 STATE_RE = re.compile(r"\b([A-Z]{2})\b")
@@ -155,19 +148,6 @@ NAME_STOPWORDS = frozenset({
     "the", "a", "an", "and", "of", "llc", "inc", "incorporated", "co", "corp",
     "corporation", "ltd", "limited", "company", "pllc", "lp", "llp",
 })
-
-
-def is_valid_us_phone(phone):
-    """Return True if phone is present and matches a valid US format."""
-    if not phone or not str(phone).strip():
-        return False
-    phone = str(phone).strip()
-    if US_PHONE_RE.match(phone):
-        return True
-    digits = re.sub(r"[^0-9]", "", phone)
-    if len(digits) == 11 and digits.startswith("1"):
-        digits = digits[1:]
-    return len(digits) == 10
 
 
 def _normalize_email(raw):
@@ -563,22 +543,17 @@ def _phone_in_text(lead, text):
 
 
 def _normalize_website_url(url):
-    if not url:
-        return url
-    if url.startswith("//"):
-        url = "https:" + url
-    if not urlparse(url).scheme:
-        url = "https://" + url
-    return url
+    return ensure_http_url(url)
 
 
 def fetch_html(url, timeout=REQUEST_TIMEOUT):
     """GET url and return response text, or raise."""
-    response = requests.get(
+    response = requests_get(
         url,
         timeout=timeout,
         headers=FETCH_HEADERS,
         allow_redirects=True,
+        getter=requests.get,
     )
     return response.text or ""
 
@@ -743,7 +718,7 @@ def _start_sync_playwright():
     return sync_playwright().start()
 
 
-class EmailDiscoverySession:
+class EmailDiscoverySession(GoogleBrowserCore):
     """One Playwright browser per location batch, plus an in-run cache.
 
     Maps discovery may already own a Playwright Sync event loop on the main
@@ -752,11 +727,8 @@ class EmailDiscoverySession:
     """
 
     def __init__(self, delay=None, cache_path=None, ttl_days=30, refresh=False):
-        self.google_blocked = False
+        super().__init__()
         self.cache = {}
-        self._playwright = None
-        self._browser = None
-        self._page = None
         self._searches_done = 0
         self._delay = delay
         self._worker = None
@@ -863,21 +835,9 @@ class EmailDiscoverySession:
             self._worker = None
 
     def _close_blocking(self):
-        page, browser, playwright = self._page, self._browser, self._playwright
-        self._page = None
-        self._browser = None
-        self._playwright = None
-        for closer, label in (
-            (getattr(page, "close", None), "page"),
-            (getattr(browser, "close", None), "browser"),
-            (getattr(playwright, "stop", None), "playwright"),
-        ):
-            if closer is None:
-                continue
-            try:
-                closer()
-            except Exception as exc:
-                logger.error("[GOOGLE] Failed to close %s: %s", label, exc)
+        self.close_browser(
+            lambda label, exc: logger.error("[GOOGLE] Failed to close %s: %s", label, exc)
+        )
 
     def _ensure_browser(self):
         return self._call_in_browser_thread(self._ensure_browser_blocking)
@@ -903,12 +863,7 @@ class EmailDiscoverySession:
             return None
 
     def _sleep_between_searches(self):
-        if self._searches_done <= 0:
-            return
-        if self._delay is not None:
-            time.sleep(self._delay)
-            return
-        time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
+        sleep_between(self._searches_done, self._delay, SEARCH_DELAY_MIN, SEARCH_DELAY_MAX)
 
     def search(self, query):
         """Return organic results for a Google query, or [] if blocked/failed."""

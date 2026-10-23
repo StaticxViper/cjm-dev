@@ -10,6 +10,8 @@ from datetime import datetime
 import httpx
 from dotenv import load_dotenv
 
+from helper_scripts.crm.mcp_client import jsonrpc_notification, jsonrpc_request, mcp_headers, post_json
+
 load_dotenv()
 
 CRM_MCP_URL = os.getenv(
@@ -68,14 +70,16 @@ class CrmMcpClient:
         self._initialized = False
 
     def _headers(self):
-        return {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            "Authorization": f"Bearer {self.api_key}",
-        }
+        return mcp_headers(self.api_key)
 
     def _post(self, payload):
-        response = httpx.post(self.url, headers=self._headers(), json=payload, timeout=60.0)
+        response = post_json(
+            self.url,
+            self.api_key,
+            payload,
+            timeout=60.0,
+            poster=httpx.post,
+        )
         if response.status_code == 202:
             return {}
         if response.status_code >= 400:
@@ -87,10 +91,7 @@ class CrmMcpClient:
 
     def _rpc(self, method, params=None):
         self._request_id += 1
-        body = {"jsonrpc": "2.0", "id": self._request_id, "method": method}
-        if params is not None:
-            body["params"] = params
-        data = self._post(body)
+        data = self._post(jsonrpc_request(self._request_id, method, params))
         if isinstance(data, dict) and data.get("error"):
             err = data["error"]
             message = err.get("message") if isinstance(err, dict) else str(err)
@@ -112,7 +113,7 @@ class CrmMcpClient:
                 "clientInfo": {"name": "leadgen", "version": "1.0"},
             },
         )
-        self._post({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        self._post(jsonrpc_notification("notifications/initialized"))
         self._initialized = True
 
     def call_tool(self, name, arguments):

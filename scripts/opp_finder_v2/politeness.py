@@ -6,6 +6,7 @@ import random
 import time
 from typing import Callable
 
+from helper_scripts.http.client import RetryPolicy
 from opp_finder_v2.models import SiteConfig
 
 
@@ -54,3 +55,6 @@ def retry_delay(attempt: int, retry_after: str | None = None) -> float:
             return parsed
     base = 5.0 if attempt == 0 else 15.0
     return base + random.uniform(0, 1.5)
+
+
+HTTP_RETRY = RetryPolicy(attempts=3, delay=retry_delay)
