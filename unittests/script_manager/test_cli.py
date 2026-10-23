@@ -154,18 +154,17 @@ class CliTests(unittest.TestCase):
         strict = run_cli(["validate", "--strict"], registry=bundled_registry_path())
         self.assertEqual(strict.returncode, 0, strict.stdout + strict.stderr)
 
-    def test_smoke_reports_logger_import_failure(self):
-        registry = load_registry(bundled_registry_path())
-        for name in (
-            "blog-automation",
-            "webhook-manager",
-            "json-formatter",
-            "lead-ingest",
-            "lovable-automation",
-        ):
-            code, detail = smoke_import(repo_root(), registry.get(name))
-            self.assertNotEqual(code, 0, detail)
-            self.assertIn("setup_logger", detail)
+    def test_smoke_reports_import_failure(self):
+        import dataclasses
+
+        broken = load_registry(FIXTURE).get("broken-echo")
+        script = dataclasses.replace(
+            broken, entry_path="unittests/script_manager/fixtures/broken_import.py"
+        )
+        code, detail = smoke_import(repo_root(), script)
+        self.assertNotEqual(code, 0, detail)
+        self.assertIn("logger_missing", detail)
+        self.assertNotIn("must not run __main__", detail)
 
     def test_summary_json_and_github_summary(self):
         import tempfile
