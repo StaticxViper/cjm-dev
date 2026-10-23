@@ -63,6 +63,18 @@ def pid_alive(pid):
 
 
 class RunnerTests(unittest.TestCase):
+    def test_non_json_stdout_lands_in_the_tail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp) / "run.json"
+            proc = run_cli(
+                ["run", "echo", "--non-interactive", "--summary-json", str(summary), "--", "--city", "X"]
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            written = json.loads(summary.read_text(encoding="utf-8"))
+            self.assertIsNone(written["data"])
+            self.assertIn("ECHO ", written["stdout_tail"])
+            self.assertIn("--city", written["stdout_tail"])
+
     def test_passthrough_is_unchanged(self):
         proc = run_cli(["run", "echo", "--", "--city", "Cherry Hill", "--city", "Newark", "--output=both", "-x"])
         self.assertEqual(proc.returncode, 0, proc.stderr)

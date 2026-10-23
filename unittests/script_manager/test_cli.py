@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -22,6 +23,7 @@ INFO_KEYS = {
     "env",
     "timeout_seconds",
     "outputs",
+    "default_outputs",
     "ci_allowed",
     "schedule",
 }
@@ -67,8 +69,11 @@ class CliTests(unittest.TestCase):
         self.assertEqual(listed.returncode, 0, listed.stderr)
         names = {row["name"] for row in json.loads(listed.stdout)}
         self.assertIn("stock-analyzer", names)
+        self.assertIn("leadgen", names)
+        self.assertIn("ci-ping", names)
         self.assertNotIn("webhook-manager", names)
-        self.assertNotIn("leadgen", names)
+        self.assertNotIn("clip-generator", names)
+        self.assertNotIn("opp-finder-v2", names)
         info = run_cli(["info", "--json", "stock-analyzer"], registry=bundled_registry_path())
         self.assertEqual(info.returncode, 0, info.stderr)
         payload = json.loads(info.stdout)
@@ -76,6 +81,46 @@ class CliTests(unittest.TestCase):
         self.assertFalse(payload["needs_playwright_resolved"])
         self.assertTrue(payload["ci_allowed"])
         self.assertEqual(payload["schedule"]["cron"], "0 14 * * 1-5")
+        ping = run_cli(["info", "ci-ping", "--ci", "--json"], registry=bundled_registry_path())
+        self.assertEqual(ping.returncode, 0, ping.stderr)
+        ping_body = json.loads(ping.stdout)
+        self.assertTrue(ping_body["ok"])
+        self.assertEqual(ping_body["exit_code"], 0)
+        clip = run_cli(["info", "clip-generator", "--ci", "--json"], registry=bundled_registry_path())
+        self.assertEqual(clip.returncode, 67, clip.stderr)
+        self.assertEqual(json.loads(clip.stdout)["failure_kind"], "not_runnable")
+
+    def test_info_ci_does_not_require_confirm(self):
+        allowed = run_cli(["info", "poster", "--ci", "--json"])
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+        self.assertTrue(json.loads(allowed.stdout)["ok"])
+        local = run_cli(["info", "local-tool", "--ci", "--json"])
+        self.assertEqual(local.returncode, 67, local.stderr)
+        self.assertEqual(json.loads(local.stdout)["failure_kind"], "not_runnable")
+        plain = run_cli(["info", "--json", "echo"])
+        self.assertEqual(set(json.loads(plain.stdout)), INFO_KEYS)
+
+    def test_ci_ping_summary_includes_stdout_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp) / "run.json"
+            proc = run_cli(
+                [
+                    "run",
+                    "ci-ping",
+                    "--non-interactive",
+                    "--no-dotenv",
+                    "--summary-json",
+                    str(summary),
+                    "--",
+                    "hello",
+                ],
+                registry=bundled_registry_path(),
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            written = json.loads(summary.read_text(encoding="utf-8"))
+            self.assertEqual(written["data"], {"ok": True, "script": "ci-ping", "args": ["hello"]})
+            self.assertIsNone(written["failure_kind"])
+            self.assertIn("hello", written["stdout_tail"])
 
     def test_unknown_script_suggests_a_close_name(self):
         proc = run_cli(["run", "ecko"])

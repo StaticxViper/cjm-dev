@@ -10,6 +10,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +33,11 @@ logger = logging.getLogger("script_manager")
 
 _PLAYWRIGHT_OK: tuple[bool, str] | None = None
 _INSTALL_HINT = "python -m playwright install chromium"
+_TAIL_BYTES = 8000
+_DATA_BYTES = 1_000_000
+_OUTPUT_FILE_BYTES = 200_000
+_OUTPUT_TOTAL_BYTES = 1_000_000
+_OUTPUT_FILE_COUNT = 20
 
 
 @dataclass
@@ -54,6 +60,7 @@ class RunOptions:
     skip_system_deps: bool = False
     skip_confirm: bool = False
     process_env: dict[str, str] | None = None
+    request_id: str | None = None
 
 
 def decide_noninteractive(explicit_noninteractive: bool, explicit_interactive: bool, process: dict | None = None) -> bool:
@@ -120,6 +127,12 @@ def blank_summary(name: str, status: str | None, started: datetime) -> dict:
         "outputs": [],
         "timed_out": False,
         "dry_run": False,
+        "request_id": None,
+        "message": "",
+        "data": None,
+        "stdout_tail": "",
+        "stderr_tail": "",
+        "output_files": {},
     }
 
 
@@ -130,6 +143,38 @@ def finish_summary(summary: dict, started: datetime, exit_code: int, *, child_fi
     summary["exit_code"] = exit_code
     summary["failure_kind"] = exit_codes.failure_kind_for(exit_code, child_finished=child_finished)
     return summary
+
+
+def read_output_files(repo: Path, paths: list[str]) -> dict:
+    """Text or JSON contents of declared output files, capped so a log tree cannot fill the summary."""
+    found: dict = {}
+    total = 0
+    for rel in paths:
+        if len(found) >= _OUTPUT_FILE_COUNT or total >= _OUTPUT_TOTAL_BYTES:
+            break
+        path = (repo / rel).resolve()
+        try:
+            path.relative_to(repo.resolve())
+        except ValueError:
+            continue
+        if not path.is_file():
+            continue
+        size = path.stat().st_size
+        if size > _OUTPUT_FILE_BYTES:
+            found[rel] = {"omitted": True, "bytes": size}
+            continue
+        raw = path.read_bytes()
+        if b"\0" in raw[:1024]:
+            found[rel] = {"binary": True, "bytes": len(raw)}
+            continue
+        text = raw.decode("utf-8", errors="replace")
+        total += len(text)
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            parsed = None
+        found[rel] = parsed if isinstance(parsed, (dict, list)) else text
+    return found
 
 
 def expand_outputs(repo: Path, patterns: list[str]) -> list[str]:
@@ -170,11 +215,13 @@ def playwright_status() -> tuple[bool, str]:
     return _PLAYWRIGHT_OK
 
 
-def _popen(argv: list[str], cwd: Path, env: dict[str, str], *, stdin):
+def _popen(argv: list[str], cwd: Path, env: dict[str, str], *, stdin, stdout=None, stderr=None):
     kwargs = {
         "cwd": str(cwd),
         "env": env,
         "stdin": stdin,
+        "stdout": stdout,
+        "stderr": stderr,
     }
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
@@ -202,6 +249,82 @@ def _signal_group(proc: subprocess.Popen, kill: bool) -> None:
             proc.kill()
         else:
             proc.terminate()
+
+
+class _StreamCapture:
+    """Keep a bounded copy of a child stream for the run summary, and forward it live."""
+
+    def __init__(self) -> None:
+        self._data = bytearray()
+        self._tail = bytearray()
+        self.truncated = False
+        self._lock = threading.Lock()
+
+    def add(self, chunk: bytes) -> None:
+        with self._lock:
+            if len(self._data) < _DATA_BYTES:
+                room = _DATA_BYTES - len(self._data)
+                self._data.extend(chunk[:room])
+                if len(chunk) > room:
+                    self.truncated = True
+            else:
+                self.truncated = True
+            self._tail.extend(chunk)
+            if len(self._tail) > _TAIL_BYTES:
+                del self._tail[: len(self._tail) - _TAIL_BYTES]
+
+    def tail_text(self) -> str:
+        with self._lock:
+            return self._tail.decode("utf-8", errors="replace")
+
+    def json_data(self):
+        """Parse stdout when the whole captured stream is one JSON object or array."""
+        with self._lock:
+            if self.truncated:
+                return None
+            text = self._data.decode("utf-8", errors="replace").strip()
+        if not text or text[0] not in "{[":
+            return None
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+        if isinstance(value, (dict, list)):
+            return value
+        return None
+
+
+def _forward_chunk(forward, chunk: bytes) -> None:
+    try:
+        buffer = getattr(forward, "buffer", None)
+        if buffer is not None:
+            buffer.write(chunk)
+            buffer.flush()
+            return
+        forward.write(chunk.decode("utf-8", errors="replace"))
+        forward.flush()
+    except Exception:
+        return
+
+
+def _start_reader(stream, capture: _StreamCapture, forward) -> threading.Thread:
+    def _read() -> None:
+        try:
+            while True:
+                chunk = stream.read(8192)
+                if not chunk:
+                    break
+                capture.add(chunk)
+                _forward_chunk(forward, chunk)
+        finally:
+            try:
+                stream.close()
+            except Exception:
+                pass
+
+    thread = threading.Thread(target=_read, daemon=True)
+    thread.start()
+    return thread
 
 
 def _wait_with_timeout(proc: subprocess.Popen, timeout: int) -> tuple[int, bool, bool]:
@@ -233,10 +356,79 @@ def _wait_with_timeout(proc: subprocess.Popen, timeout: int) -> tuple[int, bool,
         return exit_codes.INTERRUPTED, False, True
 
 
+def status_refusal(script: Script, options: RunOptions) -> tuple[int, str] | None:
+    """Refuse a script that is not active. ``--ci`` ignores ``--force``."""
+    if script.status == "active":
+        return None
+    if options.ci:
+        return (
+            exit_codes.NOT_RUNNABLE,
+            f"{script.name}: status is {script.status} ({script.status_reason or 'no reason recorded'}). Refusing --ci.",
+        )
+    if options.force:
+        return None
+    return (
+        exit_codes.NOT_RUNNABLE,
+        f"{script.name}: status is {script.status} ({script.status_reason or 'no reason recorded'}). Pass --force to run it anyway.",
+    )
+
+
+def entry_refusal(repo: Path, script: Script) -> tuple[int, str] | None:
+    """Refuse a script whose entry or working directory is not in this checkout."""
+    if script.status == "planned" and entry_file(repo, script) is None and script.entry_type == "path":
+        missing = script.entry_path or script.entry_module
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: planned entry is not in this checkout ({missing})."
+    if script.status == "planned" and script.entry_type == "module" and entry_file(repo, script) is None:
+        return (
+            exit_codes.NOT_RUNNABLE,
+            f"{script.name}: planned module {script.entry_module} is not in this checkout.",
+        )
+    if script.entry_type == "path" and not (repo / (script.entry_path or "")).is_file():
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: entry file does not exist: {script.entry_path}"
+    if script.entry_type == "module" and entry_file(repo, script) is None:
+        return (
+            exit_codes.NOT_RUNNABLE,
+            f"{script.name}: module {script.entry_module} was not found from cwd {script.cwd}",
+        )
+    cwd = (repo / script.cwd).resolve()
+    if not cwd.is_dir():
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: working directory does not exist: {script.cwd}"
+    return None
+
+
+def ci_access_refusal(script: Script, options: RunOptions) -> tuple[int, str] | None:
+    """Refuse local-only scripts and scripts that are not allowed in CI."""
+    if not options.ci:
+        return None
+    if script.local_only:
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: local_only is true. Refusing --ci."
+    if not script.ci_allowed:
+        return exit_codes.NOT_RUNNABLE, f"{script.name}: ci_allowed is false. Refusing --ci."
+    return None
+
+
+def confirm_refusal(script: Script, options: RunOptions) -> tuple[int, str] | None:
+    """Side effects require confirm on CI runs. ``confirm_required`` always does, except dry runs."""
+    if options.dry_run or options.yes or options.skip_confirm:
+        return None
+    reasons = []
+    if script.confirm_required:
+        reasons.append("confirm_required")
+    if options.ci and script.side_effects:
+        reasons.append("side_effects (" + ", ".join(script.side_effects) + ")")
+    if not reasons:
+        return None
+    return (
+        exit_codes.CONFIRMATION_REQUIRED,
+        f"{script.name}: confirmation required ({'; '.join(reasons)}). Pass --yes or confirm=true.",
+    )
+
+
 def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
     started = utc_now()
     summary = blank_summary(script.name, script.status, started)
     summary["dry_run"] = options.dry_run
+    summary["request_id"] = options.request_id
     if options.non_interactive is None:
         non_interactive = decide_noninteractive(False, False, options.process_env)
     else:
@@ -259,44 +451,27 @@ def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
         finish_summary(summary, started, code, child_finished=child_finished, finished=finished)
         if expand:
             summary["outputs"] = expand_outputs(repo, script.outputs)
+            summary["output_files"] = read_output_files(repo, summary["outputs"])
         _emit_summary(summary, options)
         return summary
 
-    if script.status != "active" and not options.force:
-        logger.error(
-            "%s: status is %s (%s). Pass --force to run it anyway.",
-            script.name,
-            script.status,
-            script.status_reason or "no reason recorded",
-        )
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.status == "planned" and entry_file(repo, script) is None and script.entry_type == "path":
-        missing = script.entry_path or script.entry_module
-        logger.error("%s: planned entry is not in this checkout (%s).", script.name, missing)
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.status == "planned" and script.entry_type == "module" and entry_file(repo, script) is None:
-        logger.error("%s: planned module %s is not in this checkout.", script.name, script.entry_module)
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.entry_type == "path" and not (repo / (script.entry_path or "")).is_file():
-        logger.error("%s: entry file does not exist: %s", script.name, script.entry_path)
-        return done(exit_codes.NOT_RUNNABLE)
-    if script.entry_type == "module" and entry_file(repo, script) is None:
-        logger.error("%s: module %s was not found from cwd %s", script.name, script.entry_module, script.cwd)
-        return done(exit_codes.NOT_RUNNABLE)
-    if not cwd.is_dir():
-        logger.error("%s: working directory does not exist: %s", script.name, script.cwd)
-        return done(exit_codes.NOT_RUNNABLE)
-    if options.ci and not script.ci_allowed:
-        logger.error("%s: ci_allowed is false. Refusing --ci.", script.name)
-        return done(exit_codes.CONFIRMATION_REQUIRED)
-    if script.confirm_required and not options.yes and not options.skip_confirm:
-        logger.error("%s: this script requires --yes before it runs.", script.name)
-        return done(exit_codes.CONFIRMATION_REQUIRED)
+    for refusal in (status_refusal(script, options), entry_refusal(repo, script)):
+        if refusal is not None:
+            code, message = refusal
+            summary["message"] = message
+            logger.error("%s", message)
+            return done(code)
+    for refusal in (ci_access_refusal(script, options), confirm_refusal(script, options)):
+        if refusal is not None:
+            code, message = refusal
+            summary["message"] = message
+            logger.error("%s", message)
+            return done(code)
     if would_prompt(script, options.passthrough, non_interactive):
-        logger.error(
-            "%s: this script prompts on stdin. Pass script args after -- , or add non_interactive_args.",
-            script.name,
+        summary["message"] = (
+            f"{script.name}: this script prompts on stdin. Pass script args after -- , or add non_interactive_args."
         )
+        logger.error("%s", summary["message"])
         return done(exit_codes.WOULD_PROMPT)
 
     try:
@@ -308,22 +483,24 @@ def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
     report = missing_names(script, args, report_env)
     summary["env_missing"] = report["required_missing"] + report["conditional_missing"]
     if summary["env_missing"] and not options.skip_env_check:
-        logger.error(
-            "%s: missing required env: %s (set them in .env or the environment).",
-            script.name,
-            ", ".join(summary["env_missing"]),
+        summary["message"] = (
+            f"{script.name}: missing required env: {', '.join(summary['env_missing'])} "
+            "(set them in .env or the environment)."
         )
+        logger.error("%s", summary["message"])
         return done(exit_codes.MISSING_ENV)
     if not options.skip_system_deps:
         missing_deps = [name for name, found in system_dep_status(script.deps_system) if not found]
         if missing_deps:
-            logger.error("%s: missing system dependency: %s", script.name, ", ".join(missing_deps))
+            summary["message"] = f"{script.name}: missing system dependency: {', '.join(missing_deps)}"
+            logger.error("%s", summary["message"])
             return done(exit_codes.NOT_RUNNABLE)
     needs_browser = playwright_needed(script, args)
     if needs_browser and not options.skip_playwright:
         ok, detail = playwright_status()
         if not ok:
-            logger.error("%s: %s", script.name, detail)
+            summary["message"] = f"{script.name}: {detail}"
+            logger.error("%s", summary["message"])
             return done(exit_codes.NOT_RUNNABLE)
 
     scope = env_scope_mode(options.env_scope, options.process_env)
@@ -344,12 +521,37 @@ def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
     )
     stdin = subprocess.DEVNULL if non_interactive else None
     timeout = options.timeout if options.timeout is not None else script.timeout_seconds
+    capture_output = non_interactive
+    stdout_capture = _StreamCapture() if capture_output else None
+    stderr_capture = _StreamCapture() if capture_output else None
     try:
-        proc = _popen(argv, cwd, child_env, stdin=stdin)
+        proc = _popen(
+            argv,
+            cwd,
+            child_env,
+            stdin=stdin,
+            stdout=subprocess.PIPE if capture_output else None,
+            stderr=subprocess.PIPE if capture_output else None,
+        )
     except OSError as exc:
         logger.error("%s: failed to start: %s", script.name, exc)
+        summary["message"] = f"{script.name}: failed to start: {exc}"
         return done(exit_codes.NOT_RUNNABLE)
-    code, timed_out, interrupted = _wait_with_timeout(proc, timeout)
+    readers = []
+    if capture_output:
+        readers = [
+            _start_reader(proc.stdout, stdout_capture, sys.stdout),
+            _start_reader(proc.stderr, stderr_capture, sys.stderr),
+        ]
+    try:
+        code, timed_out, interrupted = _wait_with_timeout(proc, timeout)
+    finally:
+        for thread in readers:
+            thread.join(timeout=5)
+    if stdout_capture is not None and stderr_capture is not None:
+        summary["stdout_tail"] = stdout_capture.tail_text()
+        summary["stderr_tail"] = stderr_capture.tail_text()
+        summary["data"] = stdout_capture.json_data()
     summary["timed_out"] = timed_out
     if timed_out:
         logger.error("%s: timed out after %ss", script.name, timeout)
@@ -430,6 +632,7 @@ def _append_github_summary(summary: dict) -> None:
     failure = summary.get("failure_kind")
     text = (
         f"### script-manager: {summary.get('name')}\n\n"
+        f"- request_id: {summary.get('request_id')}\n"
         f"- exit_code: {summary.get('exit_code')}\n"
         f"- failure_kind: {failure}\n"
         f"- duration_s: {summary.get('duration_s')}\n"

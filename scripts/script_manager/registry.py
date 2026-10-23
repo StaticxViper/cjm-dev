@@ -42,6 +42,7 @@ _SCRIPT_KEYS = {
     "playwright_when_args_any",
     "timeout_seconds",
     "outputs",
+    "default_outputs",
     "side_effects",
     "confirm_required",
     "ci_allowed",
@@ -58,7 +59,18 @@ _ENTRY_KEYS = {"type", "path", "module"}
 _ENV_KEYS = {"required", "optional", "conditional"}
 _COND_KEYS = {"when_args_any", "require"}
 _DEPS_KEYS = {"requirements", "extras", "system"}
-_SCHEDULE_KEYS = {"cron", "tz", "note"}
+_SCHEDULE_KEYS = {"cron", "tz", "note", "confirm"}
+_TOP_KEYS = {"version", "ignore_paths", "discover_roots", "sinks", "scripts"}
+DEFAULT_DISCOVER_ROOTS = ["scripts", "helper_scripts"]
+DEFAULT_OUTPUTS = ["artifact"]
+_SINK_NAME_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
+DEFAULT_SINKS = {
+    "artifact": "scripts.script_manager.sinks.artifact",
+    "dashboard": "scripts.script_manager.sinks.dashboard",
+    "property_portal": "scripts.script_manager.sinks.property_portal",
+    "callback": "scripts.script_manager.sinks.callback",
+    "email": "scripts.script_manager.sinks.email",
+}
 _MENU_KINDS = {"leadgen", "opp-finder", "clip-generator", "montage-builder", "flags", "confirm"}
 _PROMPT_KINDS = {"str", "int", "float", "bool", "choice"}
 _PROMPT_KEYS = {"arg", "prompt", "kind", "optional", "choices", "split"}
@@ -112,6 +124,7 @@ class Script:
     playwright_when_args_any: list[str] = field(default_factory=list)
     timeout_seconds: int = 3600
     outputs: list[str] = field(default_factory=list)
+    default_outputs: list[str] = field(default_factory=list)
     side_effects: list[str] = field(default_factory=list)
     confirm_required: bool = False
     ci_allowed: bool = False
@@ -150,6 +163,7 @@ class Script:
             playwright_when_args_any=list(self.playwright_when_args_any),
             timeout_seconds=self.timeout_seconds,
             outputs=list(self.outputs),
+            default_outputs=list(self.default_outputs),
             side_effects=list(self.side_effects),
             confirm_required=self.confirm_required,
             ci_allowed=self.ci_allowed,
@@ -180,6 +194,9 @@ class Script:
                     names.append(name)
         return names
 
+    def effective_default_outputs(self) -> list[str]:
+        return list(self.default_outputs) if self.default_outputs else list(DEFAULT_OUTPUTS)
+
 
 @dataclass
 class Registry:
@@ -187,6 +204,8 @@ class Registry:
     ignore_paths: list[str]
     scripts: dict[str, Script]
     path: Path | None = None
+    discover_roots: list[str] = field(default_factory=lambda: list(DEFAULT_DISCOVER_ROOTS))
+    sinks: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_SINKS))
 
     def get(self, name: str) -> Script | None:
         return self.scripts.get(name)
@@ -216,7 +235,7 @@ def parse_registry(data, *, source: str = "registry", path: Path | None = None) 
     errors: list[str] = []
     if not isinstance(data, dict):
         raise RegistryError([f"{source}: registry must be a JSON object"])
-    _unknown(data, {"version", "ignore_paths", "scripts"}, f"{source}", errors)
+    _unknown(data, _TOP_KEYS, f"{source}", errors)
     version = data.get("version")
     if version != 1:
         errors.append(f"{source}: version must be 1")
@@ -224,6 +243,8 @@ def parse_registry(data, *, source: str = "registry", path: Path | None = None) 
     if not isinstance(ignore_paths, list) or not all(isinstance(item, str) for item in ignore_paths):
         errors.append(f"{source}: ignore_paths must be a list of strings")
         ignore_paths = []
+    discover_roots = _root_list(data.get("discover_roots", list(DEFAULT_DISCOVER_ROOTS)), source, errors)
+    sinks = _parse_sinks(data.get("sinks"), source, errors)
     raw_scripts = data.get("scripts")
     if not isinstance(raw_scripts, list):
         errors.append(f"{source}: scripts must be a list")
@@ -250,7 +271,14 @@ def parse_registry(data, *, source: str = "registry", path: Path | None = None) 
         _resolve_alias(name, by_raw, by_script, resolved, [], errors, source)
     if errors:
         raise RegistryError(errors)
-    return Registry(version=1, ignore_paths=list(ignore_paths), scripts=resolved, path=path)
+    return Registry(
+        version=1,
+        ignore_paths=list(ignore_paths),
+        scripts=resolved,
+        path=path,
+        discover_roots=discover_roots,
+        sinks=sinks,
+    )
 
 
 def entry_file(repo: Path, script: Script) -> Path | None:
@@ -345,6 +373,8 @@ def _resolve_alias(name, by_raw, by_script, resolved, stack, errors, source):
         script.timeout_seconds = base.timeout_seconds
     if "outputs" in raw:
         script.outputs = list(base.outputs)
+    if "default_outputs" in raw:
+        script.default_outputs = list(base.default_outputs)
     if "side_effects" in raw:
         script.side_effects = list(base.side_effects)
     if "confirm_required" in raw:
@@ -471,6 +501,7 @@ def _parse_script(raw: dict, label: str) -> tuple[Script | None, list[str]]:
         playwright_when_args_any=when,
         timeout_seconds=timeout,
         outputs=_string_list(raw, "outputs", label, errors) or [],
+        default_outputs=_string_list(raw, "default_outputs", label, errors) or [],
         side_effects=_side_effects(raw, label, errors),
         confirm_required=_bool_field(raw, "confirm_required", label, errors, default=False),
         ci_allowed=_bool_field(raw, "ci_allowed", label, errors, default=False),
@@ -624,14 +655,44 @@ def _parse_schedule(schedule, label, errors):
     if not isinstance(cron, str) or not cron.strip():
         errors.append(f"{label}: schedule.cron must be a string")
         cron = ""
-    parsed = {"cron": cron}
+    parsed = {"cron": cron, "confirm": False}
     for key in ("tz", "note"):
         if key in schedule:
             if not isinstance(schedule[key], str):
                 errors.append(f"{label}: schedule.{key} must be a string")
             else:
                 parsed[key] = schedule[key]
+    if "confirm" in schedule:
+        if not isinstance(schedule["confirm"], bool):
+            errors.append(f"{label}: schedule.confirm must be a boolean")
+        else:
+            parsed["confirm"] = schedule["confirm"]
     return parsed
+
+
+def _root_list(value, source, errors) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+        errors.append(f"{source}: discover_roots must be a list of non-empty strings")
+        return list(DEFAULT_DISCOVER_ROOTS)
+    return list(value)
+
+
+def _parse_sinks(value, source, errors) -> dict[str, str]:
+    if value is None:
+        return dict(DEFAULT_SINKS)
+    if not isinstance(value, dict):
+        errors.append(f"{source}: sinks must be an object of name to module")
+        return dict(DEFAULT_SINKS)
+    sinks: dict[str, str] = {}
+    for name, module in value.items():
+        if not isinstance(name, str) or not _SINK_NAME_RE.fullmatch(name):
+            errors.append(f"{source}: sink name {name!r} must match {_SINK_NAME_RE.pattern}")
+            continue
+        if not isinstance(module, str) or not module.strip():
+            errors.append(f"{source}: sink {name} must name a module")
+            continue
+        sinks[name] = module
+    return sinks
 
 
 def _side_effects(raw, label, errors):

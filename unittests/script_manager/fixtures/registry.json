@@ -106,6 +106,27 @@
       "entry": {"type": "path", "path": "unittests/script_manager/fixtures/echo_args.py"},
       "cwd": "unittests/script_manager/fixtures",
       "needs_playwright": false
+    },
+    {
+      "name": "local-tool",
+      "description": "Local only fixture",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/echo_args.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "needs_playwright": false,
+      "local_only": true,
+      "ci_allowed": true
+    },
+    {
+      "name": "poster",
+      "description": "Posts outside the machine",
+      "status": "active",
+      "entry": {"type": "path", "path": "unittests/script_manager/fixtures/echo_args.py"},
+      "cwd": "unittests/script_manager/fixtures",
+      "needs_playwright": false,
+      "ci_allowed": true,
+      "side_effects": ["external_post"],
+      "schedule": {"cron": "0 14 * * 1-5", "confirm": true}
     }
   ]
 }
