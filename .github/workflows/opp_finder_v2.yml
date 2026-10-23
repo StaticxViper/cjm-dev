@@ -2,6 +2,7 @@ name: Opp Finder V2
 
 # workflow_dispatch is available in the Actions tab only after this file
 # is on the default branch (main). Until then, dispatching opp_finder_v2.yml fails.
+# Unit tests run in ci.yml.
 
 on:
   workflow_dispatch:
@@ -26,31 +27,9 @@ on:
         required: false
         type: boolean
         default: false
-  pull_request:
-    paths:
-      - "scripts/opp_finder_v2/**"
-      - "unittests/opp_finder_v2/**"
-      - "requirements/requirements.txt"
-      - ".github/workflows/opp_finder_v2.yml"
 
 jobs:
-  test:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: pip install -r requirements/requirements.txt
-      - name: Install Chromium
-        run: python -m playwright install --with-deps chromium
-      - name: Unit tests
-        run: pytest unittests/opp_finder_v2
-
   search:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
