@@ -1,9 +1,10 @@
 """Cron schedules stored on registry scripts.
 
 GitHub Actions cron is written into the schedule workflow by ``--write``.
-``--check`` fails when that block drifts from the registry. ``--due`` reports
-scripts whose cron matched within the grace window, because a scheduled run
-can start late.
+``--check`` fails when that block drifts from the registry. ``--due --cron``
+reports scripts whose cron equals the one that fired. GitHub often starts a
+scheduled run hours late, so the clock alone is not reliable. Without
+``--cron`` (a manual run), ``--due`` falls back to the grace window.
 """
 
 from __future__ import annotations
@@ -86,15 +87,28 @@ def _normalize(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
-def due_matrix(registry: Registry, now: datetime | None = None, grace_minutes: int = GRACE_MINUTES) -> dict:
+def due_matrix(
+    registry: Registry,
+    now: datetime | None = None,
+    grace_minutes: int = GRACE_MINUTES,
+    cron: str | None = None,
+) -> dict:
+    """Scripts to run. With ``cron`` (github.event.schedule), match it exactly; otherwise use the time window."""
     moment = now or datetime.now(timezone.utc)
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=timezone.utc)
     moment = moment.astimezone(timezone.utc).replace(second=0, microsecond=0)
+    fired = _canonical(cron) if cron and cron.strip() else None
+    if fired is not None:
+        parse_cron(fired)
     include = []
     for script in scheduled_scripts(registry):
-        cron = script.schedule["cron"].strip()
-        if is_due(cron, moment, grace_minutes):
+        expression = script.schedule["cron"].strip()
+        if fired is not None:
+            due = _canonical(expression) == fired
+        else:
+            due = is_due(expression, moment, grace_minutes)
+        if due:
             include.append(
                 {
                     "script": script.name,
@@ -103,6 +117,10 @@ def due_matrix(registry: Registry, now: datetime | None = None, grace_minutes: i
                 }
             )
     return {"include": include}
+
+
+def _canonical(expression: str) -> str:
+    return " ".join(expression.split())
 
 
 def is_due(expression: str, now: datetime, grace_minutes: int = GRACE_MINUTES) -> bool:

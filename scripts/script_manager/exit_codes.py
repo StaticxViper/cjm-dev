@@ -26,6 +26,16 @@ FAILURE_KIND = {
 }
 
 
+SUCCESS = "success"
+REJECTED = "rejected"
+FAILED = "failed"
+CANCELLED = "cancelled"
+
+# A rejection means the manager refused the request as designed. CI reports it
+# in run.json and the job summary but ends the workflow run successfully.
+REJECTED_KINDS = frozenset({"usage", "bad_args", "unknown_script", "confirmation_required", "would_prompt"})
+
+
 def failure_kind_for(exit_code, *, child_finished):
     """Return the summary failure_kind for a manager or child exit."""
     if child_finished:
@@ -33,3 +43,26 @@ def failure_kind_for(exit_code, *, child_finished):
             return None
         return "child_exit"
     return FAILURE_KIND.get(exit_code)
+
+
+def looks_like_usage_error(exit_code, stderr_tail: str | None) -> bool:
+    """argparse and click exit 2 after printing a usage line."""
+    return exit_code == USAGE and "usage:" in (stderr_tail or "").lower()
+
+
+def outcome_for(exit_code, failure_kind, *, rejected: bool = False) -> str:
+    """success, rejected, failed, or cancelled for a run summary."""
+    if failure_kind == CANCELLED:
+        return CANCELLED
+    if exit_code == 0 and not failure_kind:
+        return SUCCESS
+    if rejected or failure_kind in REJECTED_KINDS:
+        return REJECTED
+    return FAILED
+
+
+def summary_outcome(summary: dict) -> str:
+    value = summary.get("outcome")
+    if value in {SUCCESS, REJECTED, FAILED, CANCELLED}:
+        return value
+    return outcome_for(summary.get("exit_code"), summary.get("failure_kind"))

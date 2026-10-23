@@ -43,7 +43,21 @@ from scripts.script_manager.runner import (
 
 logger = logging.getLogger("script_manager")
 
-_COMMANDS = {"list", "info", "help", "run", "validate", "menu", "contract", "resolve", "sinks", "schedules", "stage-result"}
+_COMMANDS = {
+    "list",
+    "info",
+    "help",
+    "run",
+    "validate",
+    "menu",
+    "contract",
+    "resolve",
+    "sinks",
+    "schedules",
+    "stage-result",
+    "conclude",
+    "status",
+}
 _GLOBAL_FLAGS = {"--json"}
 _GLOBAL_VALUES = {"--registry", "--log-file"}
 
@@ -99,6 +113,10 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_schedules(registry, args)
         if args.command == "stage-result":
             return _cmd_stage_result(args)
+        if args.command == "conclude":
+            return _cmd_conclude(args)
+        if args.command == "status":
+            return _cmd_status(args)
     except KeyboardInterrupt:
         logger.error("interrupted")
         return exit_codes.INTERRUPTED
@@ -308,6 +326,7 @@ def _cmd_run(registry: Registry, args, passthrough: list[str]) -> int:
             "duration_s": 0.0,
             "exit_code": exit_codes.UNKNOWN_SCRIPT,
             "failure_kind": "unknown_script",
+            "outcome": exit_codes.REJECTED,
             "env_missing": [],
             "outputs": [],
             "timed_out": False,
@@ -318,6 +337,7 @@ def _cmd_run(registry: Registry, args, passthrough: list[str]) -> int:
             "stdout_tail": "",
             "stderr_tail": "",
             "output_files": {},
+            **(contract.context() if contract else {}),
         }
         _unknown(name, registry, False)
         if args.summary_json:
@@ -348,6 +368,7 @@ def _cmd_run(registry: Registry, args, passthrough: list[str]) -> int:
         ci=args.ci or contract is not None,
         env_scope=args.env_scope or ("declared" if contract is not None else None),
         request_id=contract.request_id if contract else None,
+        context=contract.context() if contract else None,
     )
     summary = run_script(repo_root(), script, options)
     _print_run_summary(summary, args.json)
@@ -441,22 +462,107 @@ def _cmd_sinks(registry: Registry, args) -> int:
 
     summary_path = Path(args.summary)
     try:
-        summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        logger.error("cannot read run summary: %s", exc)
-        return 0
-    if not isinstance(summary, dict):
-        logger.error("run summary must be a JSON object")
-        return 0
-    try:
         contract = read_contract(Path(args.from_contract))
     except ContractError as exc:
-        logger.error("%s", exc)
-        summary["sinks"] = [{"name": "contract", "ok": False, "error": str(exc)}]
+        contract = None
+        contract_error = str(exc)
+    summary = _read_summary(summary_path)
+    if summary is None:
+        summary = _missing_summary(contract, args.job_status)
+        logger.error("%s", summary["message"])
+    if contract is None:
+        logger.error("%s", contract_error)
+        summary["sinks"] = [{"name": "contract", "ok": False, "error": contract_error}]
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
         summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
         return 0
     deliver(repo_root(), registry, summary, contract, summary_path)
     return 0
+
+
+def _read_summary(path: Path) -> dict | None:
+    try:
+        summary = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return summary if isinstance(summary, dict) else None
+
+
+def _missing_summary(contract, job_status: str | None) -> dict:
+    """Summary for a run that ended before run.json was written, such as a cancelled or timed-out job."""
+    from scripts.script_manager.contract import context_from_env
+
+    cancelled = (job_status or "").strip().lower() == "cancelled"
+    kind = exit_codes.CANCELLED if cancelled else "manager_error"
+    message = (
+        "the job was cancelled before the script finished"
+        if cancelled
+        else "the run step ended without writing run.json"
+    )
+    return {
+        "name": contract.script if contract else None,
+        "status": None,
+        "request_id": contract.request_id if contract else None,
+        "exit_code": None,
+        "failure_kind": kind,
+        "outcome": exit_codes.outcome_for(None, kind),
+        "message": message,
+        "data": None,
+        "stdout_tail": "",
+        "stderr_tail": "",
+        "output_files": {},
+        "outputs": [],
+        "dry_run": bool(contract.dry_run) if contract else False,
+        **(contract.context() if contract else context_from_env()),
+    }
+
+
+def _cmd_conclude(args) -> int:
+    """Set the job result from run.json: rejections pass, real failures and cancellations fail."""
+    from scripts.script_manager.contract import write_github_output
+
+    summary = None
+    for raw in args.summary or []:
+        summary = _read_summary(Path(raw))
+        if summary is not None:
+            break
+    if summary is None:
+        summary = _missing_summary(None, args.job_status)
+    outcome = exit_codes.summary_outcome(summary)
+    if (args.job_status or "").strip().lower() == "cancelled":
+        outcome = exit_codes.CANCELLED
+    name = summary.get("name") or "script"
+    detail = summary.get("message") or summary.get("failure_kind") or ""
+    title = _annotation_property(f"script-manager {name} {outcome}")
+    if outcome == exit_codes.SUCCESS:
+        print(f"script-manager {name} {outcome}")
+    elif outcome == exit_codes.REJECTED:
+        message = f"{summary.get('failure_kind')}: {detail}"
+        print(f"::notice title={title}::{_annotation_message(message)}")
+    else:
+        message = f"exit_code {summary.get('exit_code')}: {detail}"
+        print(f"::error title={title}::{_annotation_message(message)}")
+    if args.github_output:
+        write_github_output({"outcome": outcome})
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        explain = {
+            exit_codes.SUCCESS: "The script finished with exit code 0.",
+            exit_codes.REJECTED: "The request was refused as designed. The workflow run ends successfully; run.json has the reason.",
+            exit_codes.FAILED: "The script or the manager failed. The workflow run is marked failed.",
+            exit_codes.CANCELLED: "The run was cancelled before the script finished.",
+        }[outcome]
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(f"### script-manager outcome: {outcome}\n\n{explain}\n\n")
+    return 0 if outcome in (exit_codes.SUCCESS, exit_codes.REJECTED) else 1
+
+
+def _annotation_message(text: str) -> str:
+    return str(text).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _annotation_property(text: str) -> str:
+    return _annotation_message(text).replace(":", "%3A").replace(",", "%2C")
 
 
 def _cmd_schedules(registry: Registry, args) -> int:
@@ -477,10 +583,21 @@ def _cmd_schedules(registry: Registry, args) -> int:
         logger.error("pass one of --due, --check, or --write")
         return exit_codes.USAGE
     if args.due:
+        cron = (args.cron or "").strip()
         try:
-            matrix = due_matrix(registry, now=_parse_now(args.now))
+            matrix = due_matrix(registry, now=_parse_now(args.now), cron=cron or None)
         except ScheduleError as exc:
             logger.error("%s", exc)
+            return exit_codes.REGISTRY_INVALID
+        names = [item["script"] for item in matrix["include"]]
+        if cron:
+            reason = f"cron {cron!r} fired"
+        else:
+            reason = "no cron given; matched the last schedule window"
+        logger.info("%s: %s", reason, ", ".join(names) or "nothing due")
+        _append_due_summary(reason, names)
+        if cron and not names:
+            logger.error("cron %r is in the schedule workflow but no active ci_allowed script uses it. Run schedules --write.", cron)
             return exit_codes.REGISTRY_INVALID
         text = json.dumps(matrix, separators=(",", ":"))
         if args.github_output:
@@ -510,11 +627,50 @@ def _cmd_schedules(registry: Registry, args) -> int:
     return 0
 
 
+def _append_due_summary(reason: str, names: list[str]) -> None:
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    lines = ["### script-manager schedules", "", f"- {reason}"]
+    lines.extend(f"- due: {name}" for name in names)
+    if not names:
+        lines.append("- due: none")
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write("\n".join(lines) + "\n\n")
+
+
+def _cmd_status(args) -> int:
+    from scripts.script_manager.contract import REQUEST_ID_RE
+    from scripts.script_manager.lookup import GitHub, GitHubLookupError, lookup, wait_for
+
+    if not REQUEST_ID_RE.fullmatch(args.request_id):
+        logger.error("request_id must match %s", REQUEST_ID_RE.pattern)
+        return exit_codes.USAGE
+    repo = (args.repo or os.environ.get("GITHUB_REPOSITORY") or "").strip()
+    if not repo or "/" not in repo:
+        logger.error("pass --repo owner/name or set GITHUB_REPOSITORY")
+        return exit_codes.USAGE
+    token = (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or "").strip() or None
+    client = GitHub(repo, token)
+    try:
+        if args.wait and args.wait > 0:
+            report = wait_for(client, args.request_id, timeout_s=args.wait, interval_s=args.interval, fetch_result=args.result)
+        else:
+            report = lookup(client, args.request_id, fetch_result=args.result)
+    except GitHubLookupError as exc:
+        logger.error("%s", exc)
+        return 1
+    if args.json:
+        _write_json(report)
+    else:
+        for key in ("request_id", "found", "run_url", "status", "conclusion", "outcome", "artifact", "artifact_url"):
+            print(f"{key}: {report.get(key)}")
+    return 0 if report["found"] else 1
+
+
 def _write_contract_failure(args, exc: Exception) -> None:
     """Write a run summary when the contract itself is rejected, and keep request_id for the artifact name."""
-    from scripts.script_manager.contract import write_github_output
-
-    from scripts.script_manager.contract import REQUEST_ID_RE
+    from scripts.script_manager.contract import REQUEST_ID_RE, context_from_env, write_github_output
 
     request_id = (
         os.environ.get("SCRIPT_MANAGER_INPUT_REQUEST_ID")
@@ -530,6 +686,7 @@ def _write_contract_failure(args, exc: Exception) -> None:
         "request_id": request_id,
         "exit_code": exit_codes.USAGE,
         "failure_kind": "usage",
+        "outcome": exit_codes.REJECTED,
         "message": str(exc),
         "data": None,
         "stdout_tail": "",
@@ -537,6 +694,7 @@ def _write_contract_failure(args, exc: Exception) -> None:
         "output_files": {},
         "outputs": [],
         "dry_run": False,
+        **context_from_env(),
     }
     if getattr(args, "summary_json", None):
         path = Path(args.summary_json)
@@ -559,17 +717,21 @@ def _cmd_stage_result(args) -> int:
             break
     dest.parent.mkdir(parents=True, exist_ok=True)
     if chosen is None:
+        from scripts.script_manager.contract import context_from_env
+
         payload = {
-            "name": None,
+            "name": (os.environ.get("SCRIPT_MANAGER_INPUT_SCRIPT") or "").strip() or None,
             "request_id": os.environ.get("SCRIPT_MANAGER_RUN_ID") or os.environ.get("GITHUB_RUN_ID"),
-            "exit_code": exit_codes.USAGE,
-            "failure_kind": "usage",
+            "exit_code": None,
+            "failure_kind": "manager_error",
+            "outcome": exit_codes.FAILED,
             "message": "script manager failed before it could write a summary",
             "data": None,
             "stdout_tail": "",
             "stderr_tail": "",
             "output_files": {},
             "outputs": [],
+            **context_from_env(),
         }
         dest.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     else:
@@ -587,10 +749,13 @@ def _append_rejection_summary(summary: dict) -> None:
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
         return
+    outcome = exit_codes.summary_outcome(summary)
+    heading = "rejected" if outcome == exit_codes.REJECTED else "failed before the script started"
     text = (
-        "### script-manager rejected\n\n"
+        f"### script-manager {heading}\n\n"
         f"- request_id: {summary.get('request_id')}\n"
         f"- name: {summary.get('name')}\n"
+        f"- outcome: {outcome}\n"
         f"- exit_code: {summary.get('exit_code')}\n"
         f"- failure_kind: {summary.get('failure_kind')}\n"
         f"- message: {summary.get('message')}\n\n"
@@ -976,6 +1141,19 @@ def _build_parser() -> argparse.ArgumentParser:
     sinks_parser = sub.add_parser("sinks", parents=[common], help="Deliver a run summary. Sink failures stay in the summary")
     sinks_parser.add_argument("--summary", required=True)
     sinks_parser.add_argument("--from-contract", required=True)
+    sinks_parser.add_argument("--job-status", help="GitHub job.status. A missing run.json on a cancelled job is reported as cancelled")
+
+    conclude_parser = sub.add_parser("conclude", parents=[common], help="Exit 0 for success or rejection, 1 for failure or cancellation")
+    conclude_parser.add_argument("--summary", action="append", default=[], help="Candidate summary file. The first readable one is used")
+    conclude_parser.add_argument("--job-status")
+    conclude_parser.add_argument("--github-output", action="store_true", help="Append outcome to GITHUB_OUTPUT")
+
+    status_parser = sub.add_parser("status", parents=[common], help="Find the workflow run for a request_id")
+    status_parser.add_argument("request_id")
+    status_parser.add_argument("--repo", help="owner/name (default: GITHUB_REPOSITORY)")
+    status_parser.add_argument("--wait", type=float, default=0, help="Poll up to this many seconds for the run to finish")
+    status_parser.add_argument("--interval", type=float, default=10)
+    status_parser.add_argument("--result", action="store_true", help="Download the artifact and include run.json")
 
     schedules_parser = sub.add_parser("schedules", parents=[common], help="Generate, check, or list due cron schedules")
     schedules_parser.add_argument("--due", action="store_true")
@@ -983,5 +1161,9 @@ def _build_parser() -> argparse.ArgumentParser:
     schedules_parser.add_argument("--write", action="store_true")
     schedules_parser.add_argument("--workflow")
     schedules_parser.add_argument("--now", help="UTC timestamp for --due, such as 2026-10-13T14:05:00Z")
+    schedules_parser.add_argument(
+        "--cron",
+        help="For --due: the cron string that fired (github.event.schedule). Matches exactly, however late the run starts",
+    )
     schedules_parser.add_argument("--github-output", action="store_true")
     return parser

@@ -7,6 +7,12 @@ on:
     - cron: '0 14 * * 1-5'
     # script-manager:schedules:end
   workflow_dispatch:
+    inputs:
+      cron:
+        description: Run the scripts for this cron line, as if it fired. Empty uses the last 90 minutes
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -24,9 +30,13 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install -r requirements/requirements.txt
+      # github.event.schedule is the cron line that fired. GitHub often starts
+      # scheduled runs hours late, so matching on it is reliable and the clock is not.
       - name: Scripts due now
         id: due
-        run: python -m scripts.script_manager schedules --due --github-output
+        env:
+          SCRIPT_MANAGER_FIRED_CRON: ${{ github.event.schedule || inputs.cron }}
+        run: python -m scripts.script_manager schedules --due --cron "$SCRIPT_MANAGER_FIRED_CRON" --github-output
 
   run:
     needs: due
@@ -34,13 +44,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.due.outputs.matrix) }}
-    concurrency:
-      group: script-manager-${{ matrix.script }}
-      cancel-in-progress: false
     uses: ./.github/workflows/script_manager.yml
     with:
       script: ${{ matrix.script }}
       confirm: ${{ matrix.confirm }}
       outputs: ${{ matrix.outputs }}
       request_id: schedule-${{ matrix.script }}-${{ github.run_id }}
+      caller: script-manager-schedule
     secrets: inherit

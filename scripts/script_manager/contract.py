@@ -32,6 +32,7 @@ from scripts.script_manager.runner import (
 SCRIPT_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
 JOB_TIMEOUT_CAP_MINUTES = 360
+JOB_SETUP_MINUTES = 15
 
 _INPUT_SCRIPT = "SCRIPT_MANAGER_INPUT_SCRIPT"
 _INPUT_ARGS = "SCRIPT_MANAGER_INPUT_ARGS"
@@ -40,9 +41,11 @@ _INPUT_OUTPUTS = "SCRIPT_MANAGER_INPUT_OUTPUTS"
 _INPUT_CONFIRM = "SCRIPT_MANAGER_INPUT_CONFIRM"
 _INPUT_DRY_RUN = "SCRIPT_MANAGER_INPUT_DRY_RUN"
 _INPUT_CALLBACK = "SCRIPT_MANAGER_INPUT_CALLBACK_URL"
+_INPUT_CALLER = "SCRIPT_MANAGER_INPUT_CALLER"
 _EVENT_NAME = "SCRIPT_MANAGER_EVENT_NAME"
 _EVENT_PATH = "SCRIPT_MANAGER_EVENT_PATH"
 _RUN_ID = "SCRIPT_MANAGER_RUN_ID"
+CALLER_RE = re.compile(r"^[A-Za-z0-9 ._:@/-]{1,120}$")
 
 
 class ContractError(Exception):
@@ -60,6 +63,12 @@ class Contract:
     dry_run: bool
     callback_url: str
     trigger: str
+    actor: str = ""
+    caller: str = ""
+    schedule: str = ""
+    run_id: str = ""
+    run_attempt: str = ""
+    run_url: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -72,6 +81,28 @@ class Contract:
             "dry_run": self.dry_run,
             "callback_url": self.callback_url,
             "trigger": self.trigger,
+            "actor": self.actor,
+            "caller": self.caller,
+            "schedule": self.schedule,
+            "run_id": self.run_id,
+            "run_attempt": self.run_attempt,
+            "run_url": self.run_url,
+        }
+
+    def context(self) -> dict:
+        """The trigger and run fields copied onto every run summary."""
+        return {
+            "trigger": {
+                "event": self.trigger or None,
+                "actor": self.actor or None,
+                "caller": self.caller or None,
+                "schedule": self.schedule or None,
+            },
+            "run": {
+                "id": self.run_id or None,
+                "attempt": self.run_attempt or None,
+                "url": self.run_url or None,
+            },
         }
 
 
@@ -101,6 +132,12 @@ def build_contract(env: dict | None = None) -> Contract:
     confirm = _as_bool(_prefer(source.get(_INPUT_CONFIRM), payload.get("confirm")))
     dry_run = _as_bool(_prefer(source.get(_INPUT_DRY_RUN), payload.get("dry_run")))
     callback_url = _first(source.get(_INPUT_CALLBACK), payload.get("callback_url"))
+    caller = _first(source.get(_INPUT_CALLER), payload.get("caller"))
+    if caller and not CALLER_RE.fullmatch(caller):
+        raise ContractError("caller must be 1-120 characters of letters, digits, space, or . _ : @ / -")
+    event = _event_document(source)
+    schedule = event.get("schedule") if isinstance(event.get("schedule"), str) else ""
+    run_id = _first(source.get("GITHUB_RUN_ID"), source.get(_RUN_ID))
     return Contract(
         script=script,
         args=raw_args,
@@ -111,7 +148,54 @@ def build_contract(env: dict | None = None) -> Contract:
         dry_run=dry_run,
         callback_url=callback_url,
         trigger=event_name or "cli",
+        actor=_first(source.get("GITHUB_TRIGGERING_ACTOR"), source.get("GITHUB_ACTOR")),
+        caller=caller,
+        schedule=schedule.strip(),
+        run_id=run_id,
+        run_attempt=_first(source.get("GITHUB_RUN_ATTEMPT")),
+        run_url=run_url(source, run_id),
     )
+
+
+def run_url(env, run_id: str | None = None) -> str:
+    server = _first(env.get("GITHUB_SERVER_URL")) or "https://github.com"
+    repo = _first(env.get("GITHUB_REPOSITORY"))
+    run_id = run_id or _first(env.get("GITHUB_RUN_ID"), env.get(_RUN_ID))
+    if not repo or not run_id:
+        return ""
+    return f"{server.rstrip('/')}/{repo}/actions/runs/{run_id}"
+
+
+def context_from_env(env=None) -> dict:
+    """Trigger and run fields when no contract could be built."""
+    source = os.environ if env is None else env
+    event_name = _first(source.get(_EVENT_NAME))
+    try:
+        event = _event_document(source)
+    except ContractError:
+        event = {}
+    payload = event.get("client_payload") if event_name == "repository_dispatch" else None
+    payload = payload if isinstance(payload, dict) else {}
+    caller = _first(source.get(_INPUT_CALLER), payload.get("caller"))
+    schedule = event.get("schedule") if isinstance(event.get("schedule"), str) else ""
+    run_id = _first(source.get("GITHUB_RUN_ID"), source.get(_RUN_ID))
+    return Contract(
+        script="unknown",
+        args="",
+        argv=[],
+        request_id="unknown",
+        outputs=None,
+        confirm=False,
+        dry_run=False,
+        callback_url="",
+        trigger=event_name or "cli",
+        actor=_first(source.get("GITHUB_TRIGGERING_ACTOR"), source.get("GITHUB_ACTOR")),
+        caller=caller if CALLER_RE.fullmatch(caller or "") else "",
+        schedule=schedule.strip(),
+        run_id=run_id,
+        run_attempt=_first(source.get("GITHUB_RUN_ATTEMPT")),
+        run_url=run_url(source, run_id),
+    ).context()
 
 
 def write_contract(path: Path, contract: Contract) -> None:
@@ -150,7 +234,12 @@ def read_contract(path: Path) -> Contract:
         dry_run=bool(data.get("dry_run")),
         callback_url=data.get("callback_url") if isinstance(data.get("callback_url"), str) else "",
         trigger=data.get("trigger") if isinstance(data.get("trigger"), str) else "",
+        **{key: _text(data.get(key)) for key in ("actor", "caller", "schedule", "run_id", "run_attempt", "run_url")},
     )
+
+
+def _text(value) -> str:
+    return value if isinstance(value, str) else ""
 
 
 def contract_b64(contract: Contract) -> str:
@@ -187,6 +276,7 @@ def resolve_payload(repo: Path, registry: Registry, contract: Contract) -> tuple
             "status": None,
             "exit_code": exit_codes.UNKNOWN_SCRIPT,
             "failure_kind": "unknown_script",
+            "outcome": exit_codes.REJECTED,
             "request_id": contract.request_id,
             "message": f"unknown script {contract.script!r}",
             "data": None,
@@ -195,11 +285,13 @@ def resolve_payload(repo: Path, registry: Registry, contract: Contract) -> tuple
             "output_files": {},
             "outputs": [],
             "dry_run": contract.dry_run,
+            **contract.context(),
         }, exit_codes.UNKNOWN_SCRIPT
     options = run_options_from_contract(contract)
-    code, message = _resolve_refusal(repo, script, options)
+    code, message, rejected = _resolve_refusal(repo, script, options)
     args = command_args(script, contract.argv, no_defaults=False, non_interactive=True)
-    timeout_minutes = max(1, min(JOB_TIMEOUT_CAP_MINUTES, math.ceil(script.timeout_seconds / 60)))
+    timeout_minutes = job_timeout_minutes(script.timeout_seconds)
+    failure_kind = None if code == 0 else exit_codes.failure_kind_for(code, child_finished=False)
     selected = _selected_output_names(script, contract)
     payload = {
         "ok": code == 0,
@@ -221,14 +313,22 @@ def resolve_payload(repo: Path, registry: Registry, contract: Contract) -> tuple
         "dry_run": contract.dry_run,
         "request_id": contract.request_id,
         "exit_code": code,
-        "failure_kind": None if code == 0 else exit_codes.failure_kind_for(code, child_finished=False),
+        "failure_kind": failure_kind,
+        "outcome": exit_codes.outcome_for(code, failure_kind, rejected=rejected),
         "message": message,
         "data": None,
         "stdout_tail": "",
         "stderr_tail": "",
         "output_files": {},
+        **contract.context(),
     }
     return payload, code
+
+
+def job_timeout_minutes(timeout_seconds: int) -> int:
+    """Script timeout plus setup time, so the manager's own timeout fires first and writes run.json."""
+    minutes = math.ceil(timeout_seconds / 60) + JOB_SETUP_MINUTES
+    return max(1, min(JOB_TIMEOUT_CAP_MINUTES, minutes))
 
 
 def selected_sinks(script: Script, contract: Contract) -> list[str]:
@@ -257,16 +357,17 @@ def write_github_output(values: dict[str, str]) -> None:
                 handle.write(f"{key}={text}\n")
 
 
-def _resolve_refusal(repo: Path, script: Script, options: RunOptions) -> tuple[int, str]:
-    for check in (
-        status_refusal(script, options),
-        entry_refusal(repo, script),
-        ci_access_refusal(script, options),
-        confirm_refusal(script, options),
+def _resolve_refusal(repo: Path, script: Script, options: RunOptions) -> tuple[int, str, bool]:
+    """Exit code, message, and whether the refusal is a caller rejection rather than a repo fault."""
+    for check, rejected in (
+        (status_refusal(script, options), True),
+        (entry_refusal(repo, script), False),
+        (ci_access_refusal(script, options), True),
+        (confirm_refusal(script, options), True),
     ):
         if check is not None:
-            return check
-    return 0, ""
+            return check[0], check[1], rejected
+    return 0, "", False
 
 
 def _selected_output_names(script: Script, contract: Contract) -> list[str]:
@@ -275,17 +376,28 @@ def _selected_output_names(script: Script, contract: Contract) -> list[str]:
     return list(contract.outputs)
 
 
-def _client_payload(env: dict, event_name: str) -> dict:
-    if event_name != "repository_dispatch":
-        return {}
+def _event_document(env) -> dict:
+    """The GitHub event JSON, or {} when there is none. Only repository_dispatch requires it."""
+    event_name = str(env.get(_EVENT_NAME, "") or "").strip()
     path = str(env.get(_EVENT_PATH, "") or "").strip()
     if not path:
-        raise ContractError("repository_dispatch requires SCRIPT_MANAGER_EVENT_PATH")
+        if event_name == "repository_dispatch":
+            raise ContractError("repository_dispatch requires SCRIPT_MANAGER_EVENT_PATH")
+        return {}
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise ContractError(f"cannot read GitHub event: {exc}") from exc
-    payload = data.get("client_payload") if isinstance(data, dict) else None
+        if event_name == "repository_dispatch":
+            raise ContractError(f"cannot read GitHub event: {exc}") from exc
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _client_payload(env: dict, event_name: str) -> dict:
+    if event_name != "repository_dispatch":
+        return {}
+    data = _event_document(env)
+    payload = data.get("client_payload")
     if payload is None:
         return {}
     if not isinstance(payload, dict):

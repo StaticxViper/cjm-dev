@@ -61,6 +61,7 @@ class RunOptions:
     skip_confirm: bool = False
     process_env: dict[str, str] | None = None
     request_id: str | None = None
+    context: dict | None = None
 
 
 def decide_noninteractive(explicit_noninteractive: bool, explicit_interactive: bool, process: dict | None = None) -> bool:
@@ -123,6 +124,7 @@ def blank_summary(name: str, status: str | None, started: datetime) -> dict:
         "duration_s": 0.0,
         "exit_code": None,
         "failure_kind": None,
+        "outcome": None,
         "env_missing": [],
         "outputs": [],
         "timed_out": False,
@@ -136,12 +138,24 @@ def blank_summary(name: str, status: str | None, started: datetime) -> dict:
     }
 
 
-def finish_summary(summary: dict, started: datetime, exit_code: int, *, child_finished: bool, finished: datetime | None = None) -> dict:
+def finish_summary(
+    summary: dict,
+    started: datetime,
+    exit_code: int,
+    *,
+    child_finished: bool,
+    finished: datetime | None = None,
+    rejected: bool = False,
+) -> dict:
     finished = finished or utc_now()
     summary["finished_at"] = format_time(finished)
     summary["duration_s"] = float((finished - started).total_seconds())
     summary["exit_code"] = exit_code
-    summary["failure_kind"] = exit_codes.failure_kind_for(exit_code, child_finished=child_finished)
+    kind = exit_codes.failure_kind_for(exit_code, child_finished=child_finished)
+    if child_finished and exit_codes.looks_like_usage_error(exit_code, summary.get("stderr_tail")):
+        kind = "bad_args"
+    summary["failure_kind"] = kind
+    summary["outcome"] = exit_codes.outcome_for(exit_code, kind, rejected=rejected)
     return summary
 
 
@@ -429,6 +443,8 @@ def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
     summary = blank_summary(script.name, script.status, started)
     summary["dry_run"] = options.dry_run
     summary["request_id"] = options.request_id
+    if options.context:
+        summary.update(options.context)
     if options.non_interactive is None:
         non_interactive = decide_noninteractive(False, False, options.process_env)
     else:
@@ -447,26 +463,32 @@ def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
     logger.info("command: %s", " ".join(_quote(part) for part in argv))
     logger.info("cwd: %s", cwd)
 
-    def done(code: int, *, child_finished: bool = False, expand: bool = False, finished: datetime | None = None) -> dict:
-        finish_summary(summary, started, code, child_finished=child_finished, finished=finished)
+    def done(
+        code: int,
+        *,
+        child_finished: bool = False,
+        expand: bool = False,
+        finished: datetime | None = None,
+        rejected: bool = False,
+    ) -> dict:
+        finish_summary(summary, started, code, child_finished=child_finished, finished=finished, rejected=rejected)
         if expand:
             summary["outputs"] = expand_outputs(repo, script.outputs)
             summary["output_files"] = read_output_files(repo, summary["outputs"])
         _emit_summary(summary, options)
         return summary
 
-    for refusal in (status_refusal(script, options), entry_refusal(repo, script)):
+    for refusal, rejected in (
+        (status_refusal(script, options), True),
+        (entry_refusal(repo, script), False),
+        (ci_access_refusal(script, options), True),
+        (confirm_refusal(script, options), True),
+    ):
         if refusal is not None:
             code, message = refusal
             summary["message"] = message
             logger.error("%s", message)
-            return done(code)
-    for refusal in (ci_access_refusal(script, options), confirm_refusal(script, options)):
-        if refusal is not None:
-            code, message = refusal
-            summary["message"] = message
-            logger.error("%s", message)
-            return done(code)
+            return done(code, rejected=rejected)
     if would_prompt(script, options.passthrough, non_interactive):
         summary["message"] = (
             f"{script.name}: this script prompts on stdin. Pass script args after -- , or add non_interactive_args."
@@ -633,8 +655,10 @@ def _append_github_summary(summary: dict) -> None:
     text = (
         f"### script-manager: {summary.get('name')}\n\n"
         f"- request_id: {summary.get('request_id')}\n"
+        f"- outcome: {summary.get('outcome')}\n"
         f"- exit_code: {summary.get('exit_code')}\n"
         f"- failure_kind: {failure}\n"
+        f"- trigger: {(summary.get('trigger') or {}).get('event')}\n"
         f"- duration_s: {summary.get('duration_s')}\n"
         f"- timed_out: {summary.get('timed_out')}\n"
         f"- env_missing: {missing}\n\n"

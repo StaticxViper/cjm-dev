@@ -41,6 +41,11 @@ on:
         required: false
         type: string
         default: ""
+      caller:
+        description: Who or what started this run. Recorded in run.json trigger.caller
+        required: false
+        type: string
+        default: ""
   repository_dispatch:
     types: [script-manager-run]
   workflow_call:
@@ -72,6 +77,10 @@ on:
         required: false
         type: string
         default: ""
+      caller:
+        required: false
+        type: string
+        default: ""
   pull_request:
     paths:
       - "scripts/script_manager/**"
@@ -85,8 +94,10 @@ permissions:
   contents: read
   actions: write
 
+# One group per request. A per-script group lets GitHub keep only one pending run
+# and silently cancel the rest. Reusing a request_id still collapses duplicates.
 concurrency:
-  group: script-manager-${{ inputs.script || github.event.client_payload.script || github.run_id }}
+  group: script-manager-${{ inputs.request_id || github.event.client_payload.request_id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -115,6 +126,7 @@ jobs:
       request_id: ${{ steps.contract.outputs.request_id }}
       timeout_minutes: ${{ steps.resolve.outputs.timeout_minutes }}
       playwright: ${{ steps.resolve.outputs.playwright }}
+      proceed: ${{ steps.resolve.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -122,8 +134,11 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install -r requirements/requirements.txt
+      # A refusal (unknown script, missing confirm, bad request) is recorded and
+      # the job continues, so an expected rejection does not fail the run.
       - name: Write contract
         id: contract
+        continue-on-error: true
         env:
           SCRIPT_MANAGER_EVENT_NAME: ${{ github.event_name }}
           SCRIPT_MANAGER_EVENT_PATH: ${{ github.event_path }}
@@ -134,25 +149,37 @@ jobs:
           SCRIPT_MANAGER_INPUT_CONFIRM: ${{ inputs.confirm }}
           SCRIPT_MANAGER_INPUT_DRY_RUN: ${{ inputs.dry_run }}
           SCRIPT_MANAGER_INPUT_CALLBACK_URL: ${{ inputs.callback_url }}
+          SCRIPT_MANAGER_INPUT_CALLER: ${{ inputs.caller }}
           SCRIPT_MANAGER_RUN_ID: ${{ github.run_id }}
         run: python -m scripts.script_manager contract --out contract.json --github-output --summary-json contract-summary.json
       - name: Resolve
         id: resolve
+        if: steps.contract.outcome == 'success'
+        continue-on-error: true
         run: python -m scripts.script_manager resolve --from-contract contract.json --json --github-output --summary-json resolve-summary.json
       - name: Stage rejection
-        if: failure()
+        if: always() && steps.resolve.outcome != 'success'
+        env:
+          SCRIPT_MANAGER_EVENT_NAME: ${{ github.event_name }}
+          SCRIPT_MANAGER_EVENT_PATH: ${{ github.event_path }}
+          SCRIPT_MANAGER_INPUT_SCRIPT: ${{ inputs.script }}
+          SCRIPT_MANAGER_INPUT_CALLER: ${{ inputs.caller }}
+          SCRIPT_MANAGER_RUN_ID: ${{ github.run_id }}
         run: python -m scripts.script_manager stage-result --dest script-manager-artifact/run.json --summary contract-summary.json --summary resolve-summary.json
       - name: Upload rejection
-        if: failure()
+        if: always() && steps.resolve.outcome != 'success'
         uses: actions/upload-artifact@v6
         with:
           name: script-manager-${{ steps.contract.outputs.request_id || github.run_id }}
           path: script-manager-artifact/
           if-no-files-found: warn
+      - name: Conclude
+        if: always() && steps.resolve.outcome != 'success'
+        run: python -m scripts.script_manager conclude --summary script-manager-artifact/run.json --job-status ${{ job.status }}
 
   execute:
     needs: prepare
-    if: needs.prepare.result == 'success'
+    if: needs.prepare.result == 'success' && needs.prepare.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: ${{ fromJSON(needs.prepare.outputs.timeout_minutes) }}
     env:
@@ -202,12 +229,14 @@ jobs:
       - name: Install Chromium
         if: needs.prepare.outputs.playwright == 'true'
         run: python -m playwright install --with-deps chromium
+      # Conclude sets the job result from run.json after the sinks and artifact run.
       - name: Run
         id: script
+        continue-on-error: true
         run: python -m scripts.script_manager run --from-contract contract.json --ci --non-interactive --json --env-scope declared --summary-json run.json --github-summary --log-file script-manager.log
       - name: Sinks
         if: always()
-        run: python -m scripts.script_manager sinks --summary run.json --from-contract contract.json
+        run: python -m scripts.script_manager sinks --summary run.json --from-contract contract.json --job-status ${{ job.status }}
       - name: Upload artifact
         if: always()
         uses: actions/upload-artifact@v6
@@ -215,3 +244,6 @@ jobs:
           name: script-manager-${{ needs.prepare.outputs.request_id }}
           path: script-manager-artifact/
           if-no-files-found: warn
+      - name: Conclude
+        if: always()
+        run: python -m scripts.script_manager conclude --summary run.json --job-status ${{ job.status }}
