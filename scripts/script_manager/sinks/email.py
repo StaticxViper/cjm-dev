@@ -23,21 +23,32 @@ def send(run_result: dict, config: dict) -> None:
     recipients = [part.strip() for part in recipient.split(",") if part.strip()]
     name = run_result.get("name") or "script"
     request_id = run_result.get("request_id") or ""
+    outcome = run_result.get("outcome") or ""
+    trigger = run_result.get("trigger") or {}
+    run = run_result.get("run") or {}
     lines = [
         f"script: {name}",
         f"request_id: {request_id}",
+        f"outcome: {outcome}",
         f"exit_code: {run_result.get('exit_code')}",
         f"failure_kind: {run_result.get('failure_kind')}",
         f"duration_s: {run_result.get('duration_s')}",
         f"dry_run: {run_result.get('dry_run')}",
+        f"trigger: {trigger.get('event')}",
     ]
+    if trigger.get("caller"):
+        lines.append(f"caller: {trigger.get('caller')}")
+    if run.get("url"):
+        lines.append(f"run_url: {run.get('url')}")
+    if run_result.get("message"):
+        lines.append(f"message: {run_result.get('message')}")
     missing = run_result.get("env_missing") or []
     if missing:
         lines.append("env_missing: " + ", ".join(missing))
     message = build_email(
         sender=sender,
         recipients=recipients,
-        subject=f"script-manager {name} {request_id}".strip(),
+        subject=" ".join(part for part in ("script-manager", name, outcome, request_id) if part),
         body_text="\n".join(lines) + "\n",
     )
     send_email(host, port, username, password, recipients, message)

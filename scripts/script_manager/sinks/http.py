@@ -40,6 +40,7 @@ def post_json(url: str, body: bytes, headers: dict[str, str]) -> int:
     import httpx
 
     response = httpx.post(url, content=body, headers=headers, timeout=60.0, follow_redirects=False)
-    if response.status_code >= 400:
+    # Redirects are not followed, so a 3xx means the summary was not delivered.
+    if response.status_code >= 300:
         raise SinkError(f"callback HTTP {response.status_code}")
     return response.status_code
