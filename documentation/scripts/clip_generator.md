@@ -67,7 +67,7 @@ Interactive folder pick if `--folder` is omitted.
 
 ## Deprecated
 
-`scripts/video_editing/deprecated/video_editor_engine.py` is superseded by this script and [montage_builder](montage_builder.md). Do not use for new workflows.
+The old `video_editor_engine.py` helper was removed. Use this script and [montage_builder](montage_builder.md).
 
 ## Related scripts
 

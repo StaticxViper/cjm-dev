@@ -9,34 +9,21 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from pathlib import Path
 
 from email_discovery import _registrable_domain, is_directory_host
+from helper_scripts.text.names import (
+    REGISTRY_LEGAL_SUFFIXES as LEGAL_SUFFIXES,
+    clean_registry_text as _clean_text,
+    normalize_registry_name as normalize_business_name,
+    registry_name_similarity as name_similarity,
+)
 from leadfilter import _phone_digits, identity_keys_from_row
 from playwright_discovery import normalize_profile_url
 from website_quality import is_social_or_directory_url
 
 SHARED_THRESHOLD = 3
 NAME_SIMILARITY = 0.85
-LEGAL_SUFFIXES = (
-    "limited liability company",
-    "incorporated",
-    "corporation",
-    "company",
-    "pllc",
-    "llc",
-    "l l c",
-    "inc",
-    "corp",
-    "ltd",
-    "limited",
-    "llp",
-    "lp",
-    "pc",
-    "pa",
-    "co",
-)
 DBA_RE = re.compile(r"\b(?:d\s*/\s*b\s*/\s*a|d\.?\s*b\.?\s*a\.?|dba|t\s*/\s*a)\b", re.I)
 UNIT_RE = re.compile(r"\b(?:suite|ste|unit|apt|apartment|#)\s*[a-z0-9-]*\b", re.I)
 ZIP_RE = re.compile(r"\b(\d{5})(?:-\d{4})?\b")
@@ -72,35 +59,6 @@ PHONE_RANK = {"website": 4, "maps": 3, "registry": 2, "directory": 1, "": 0}
 CONFIDENCE_RANK = {"high": 3, "medium": 2, "low": 1, "": 0}
 
 
-def _clean_text(value):
-    text = (value or "").lower().replace("&", " and ")
-    text = re.sub(r"[^a-z0-9\s]", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def _strip_suffixes(text):
-    changed = True
-    while changed and text:
-        changed = False
-        for suffix in LEGAL_SUFFIXES:
-            if text == suffix:
-                return ""
-            tail = " " + suffix
-            if text.endswith(tail):
-                text = text[: -len(tail)].strip()
-                changed = True
-                break
-    return text
-
-
-def normalize_business_name(name):
-    """Lowercase, expand &, drop punctuation and a trailing legal suffix."""
-    text = _clean_text(name)
-    if text.startswith("the "):
-        text = text[4:].strip()
-    return _strip_suffixes(text)
-
-
 def split_dba_names(name):
     """Return normalized names for the legal name and each d/b/a / dba / t/a."""
     raw = str(name or "").strip()
@@ -119,25 +77,6 @@ def split_dba_names(name):
         if normalized:
             names.append(normalized)
     return names
-
-
-def name_similarity(left, right):
-    """Max of SequenceMatcher ratio and a token-set ratio. No extra dependencies."""
-    a = normalize_business_name(left) if left else ""
-    b = normalize_business_name(right) if right else ""
-    if not a or not b:
-        return 0.0
-    if a == b:
-        return 1.0
-    sequence = SequenceMatcher(None, a, b).ratio()
-    a_tokens = set(a.split())
-    b_tokens = set(b.split())
-    if not a_tokens or not b_tokens:
-        token_score = 0.0
-    else:
-        shared = len(a_tokens & b_tokens)
-        token_score = (2.0 * shared) / (len(a_tokens) + len(b_tokens))
-    return max(sequence, token_score)
 
 
 def normalize_street(address):

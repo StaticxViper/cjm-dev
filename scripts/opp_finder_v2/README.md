@@ -145,6 +145,18 @@ On a captcha, login wall, or block page the tool stops that site, writes `artifa
 
 Default caps are 50 results per site, a few pages, and multi-second random delays. One site runs at a time. This is engineering guidance for personal low-volume use, not legal advice.
 
+## Script Manager
+
+Registry name `opp-finder-v2` (status planned). From the repo root:
+
+```bash
+python -m scripts.script_manager run opp-finder-v2 -- --dry-run --no-crm
+```
+
+The working directory in the registry is `scripts/`, which is the same directory the CLI needs for `python -m opp_finder_v2`.
+
+Inputs are `sites.json`, `criteria.json`, `skills.json`, and `presets.json`. Outputs are `output/opps_<timestamp>.json`, optional CSV, and a CRM lead batch. Secret: `CRM_MCP_MV_LLC` (skipped by `--dry-run` and `--no-crm`). Longer guide: [documentation/scripts/opp_finder_v2.md](../../documentation/scripts/opp_finder_v2.md).
+
 ## GitHub Actions
 
 `.github/workflows/opp_finder_v2.yml` runs the unit tests on pull requests and a `workflow_dispatch` search. GitHub only shows `workflow_dispatch` after the workflow file is on the default branch (`main`). Until then, dispatching `opp_finder_v2.yml` will not work.

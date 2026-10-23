@@ -2,7 +2,23 @@
 
 Documentation for Python automation in `scripts/` and `helper_scripts/`, plus unit tests.
 
-For first-time setup, see [setup.md](setup.md). The root [README.md](../README.md) has a shorter setup checklist.
+For first-time setup, see [setup.md](setup.md). The root [README.md](../README.md) has a shorter setup checklist and the folder layout.
+
+Short guides live next to the code. Longer notes stay in this folder.
+
+| Folder | README |
+|--------|--------|
+| Lead automation | [scripts/lead_automation/README.md](../scripts/lead_automation/README.md) |
+| Opportunity finder v2 | [scripts/opp_finder_v2/README.md](../scripts/opp_finder_v2/README.md) |
+| Grocery | [scripts/grocery/README.md](../scripts/grocery/README.md) |
+| City data | [scripts/city_data/README.md](../scripts/city_data/README.md) |
+| Zillow | [scripts/zillow_automation/README.md](../scripts/zillow_automation/README.md) |
+| Apify Actors | [scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
+| Script Manager | [scripts/script_manager/README.md](../scripts/script_manager/README.md) |
+| Shared helpers | [helper_scripts/README.md](../helper_scripts/README.md) |
+| Repo map | [repo-map/overview.md](repo-map/overview.md) |
+
+The published diagrams are at <https://staticxviper.github.io/cjm-dev/repo-map/>.
 
 ## Scripts
 
@@ -37,7 +53,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 |--------|-----|
 | API manager | [helper_scripts/api_manager.md](helper_scripts/api_manager.md) |
 | Logger | [helper_scripts/logger.md](helper_scripts/logger.md) |
-| Update manager (legacy) | [helper_scripts/update_manager.md](helper_scripts/update_manager.md) |
+| Update manager (removed) | [helper_scripts/update_manager.md](helper_scripts/update_manager.md) |
 
 ## Testing
 

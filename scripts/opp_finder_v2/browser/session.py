@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import logging
 
+from helper_scripts.browser.google_session import close_playwright_handles
+
 logger = logging.getLogger("opp-finder-v2")
 
 USER_AGENT = (
@@ -54,17 +56,14 @@ class BrowserSession:
         return page
 
     def close(self) -> None:
-        for closer, label in (
-            (getattr(self._context, "close", None), "context"),
-            (getattr(self._browser, "close", None), "browser"),
-            (getattr(self._playwright, "stop", None), "playwright"),
-        ):
-            if closer is None:
-                continue
-            try:
-                closer()
-            except Exception as exc:  # noqa: BLE001 — cleanup must not raise
-                logger.debug("Failed closing %s: %s", label, exc)
+        close_playwright_handles(
+            (
+                (self._context, "context", "close"),
+                (self._browser, "browser", "close"),
+                (self._playwright, "playwright", "stop"),
+            ),
+            lambda label, exc: logger.debug("Failed closing %s: %s", label, exc),
+        )
         self._context = None
         self._browser = None
         self._playwright = None

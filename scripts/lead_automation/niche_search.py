@@ -13,6 +13,7 @@ import time
 import requests
 
 from email_discovery import EmailDiscoverySession, enrich_lead_with_email, parse_address_parts
+from helper_scripts.http.client import requests_get
 from intent_scoring import apply_competitor_gap, score_intent_lead
 from leadfilter import is_new_identity, load_existing_identities
 from niche_config import (
@@ -99,7 +100,11 @@ def geocode_zip(zip_code, api_key, fetch_fn=None):
     """Return 'lat,lng' for a US ZIP using the existing Google key."""
     if not zip_code or not api_key:
         return None
-    fetcher = fetch_fn or requests.get
+
+    def _default_fetch(url, params=None, timeout=10):
+        return requests_get(url, timeout=timeout, params=params, getter=requests.get)
+
+    fetcher = fetch_fn or _default_fetch
     response = fetcher(
         "https://maps.googleapis.com/maps/api/geocode/json",
         params={"address": str(zip_code), "key": api_key},

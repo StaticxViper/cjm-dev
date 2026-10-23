@@ -16,6 +16,10 @@ COPY --chown=myuser:myuser scripts/apify-scripts/runtime.py /home/myuser/repo/sc
 COPY --chown=myuser:myuser scripts/city_data /home/myuser/repo/scripts/city_data
 COPY --chown=myuser:myuser scripts/lead_automation/crm_enrich_robots.py /home/myuser/repo/scripts/lead_automation/crm_enrich_robots.py
 COPY --chown=myuser:myuser helper_scripts/__init__.py /home/myuser/repo/helper_scripts/__init__.py
+COPY --chown=myuser:myuser helper_scripts/http/__init__.py /home/myuser/repo/helper_scripts/http/__init__.py
+COPY --chown=myuser:myuser helper_scripts/http/client.py /home/myuser/repo/helper_scripts/http/client.py
+COPY --chown=myuser:myuser helper_scripts/browser/__init__.py /home/myuser/repo/helper_scripts/browser/__init__.py
+COPY --chown=myuser:myuser helper_scripts/browser/route_block.py /home/myuser/repo/helper_scripts/browser/route_block.py
 COPY --chown=myuser:myuser helper_scripts/utils/__init__.py /home/myuser/repo/helper_scripts/utils/__init__.py
 COPY --chown=myuser:myuser helper_scripts/utils/logger/logger.py /home/myuser/repo/helper_scripts/utils/logger/logger.py
 

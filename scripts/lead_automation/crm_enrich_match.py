@@ -16,7 +16,7 @@ from email_discovery import (
     is_directory_host,
     parse_address_parts,
 )
-from leadenrich import name_similarity, normalize_business_name
+from helper_scripts.text.names import name_similarity, normalize_business_name
 from website_quality import is_social_or_directory_url
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
