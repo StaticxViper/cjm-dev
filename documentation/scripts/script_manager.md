@@ -38,7 +38,9 @@ Every command accepts `--registry PATH` and `--json`. Human logs go to stderr wi
 | `contract` | Write the CI run contract from the environment. |
 | `resolve` | Playwright, timeout, outputs, and the CI gates, without starting the script. |
 | `sinks` | Deliver a run summary. A sink failure is recorded and does not change the script exit code. |
-| `schedules` | `--due`, `--check`, or `--write` for registry cron entries. |
+| `schedules` | `--due [--cron C]`, `--check`, or `--write` for registry cron entries. |
+| `conclude` | Exit 0 when `run.json` says `success` or `rejected`, 1 for `failed` or `cancelled`. The workflow's last step. |
+| `status <request_id> [--repo R] [--wait S] [--result]` | Find the GitHub run, its artifact, and (with `--result`) its `run.json` for a request_id. Exit 1 when no run matches. |
 
 With no subcommand, a terminal opens `menu`. A pipe still prints usage and exits 2.
 
@@ -122,7 +124,7 @@ To add a script:
 
 A conditional token matches when it equals an arg, when `--flag=value` equals an arg, or when `--flag` is followed by the value. The rules do not read saved settings or a script's own argparse defaults. `info` says this. leadgen's default discovery type is `api_manager`, and `--defaults` can also load `leadgen_settings.json`, so `GOOGLE_API_KEY` stays optional unless you actually pass `--leadgen-type=api_manager`. The script still exits on its own when a key it needs is missing.
 
-`opp-finder`, `opp-finder-v2`, and `leadgen-new-business` are `planned`. The v2 package is in this checkout; `run` stays gated until its status is `active`. `--sites` on v2 is a placeholder for "this run needs Chromium". Blog automation, the webhook manager, the JSON formatter, lead ingest, and Lovable automation are `broken` because `from helper_scripts.utils.logger import setup_logger` fails (the logger package has no `__init__.py`). That import is fixed in a separate change. `validate --smoke` imports the broken scripts without running their `__main__` blocks, so a webhook or other side effect does not fire, and prints the traceback. It also runs `--help` for active scripts that support it, with a 30 second cap, `--no-dotenv`, and without the required-env check. A script that calls `load_dotenv` itself, including the logger's upload-on-exit hook, still reads the repo-root `.env` during that `--help`. `--smoke` exits 65 while those imports are still broken.
+`opp-finder`, `opp-finder-v2`, and `leadgen-new-business` are `planned`. The v2 package is in this checkout; `run` stays gated until its status is `active`. `--sites` on v2 is a placeholder for "this run needs Chromium". Blog automation, the webhook manager, the JSON formatter, lead ingest, and Lovable automation are still `broken` in the registry. They were marked broken because `from helper_scripts.utils.logger import setup_logger` failed. The logger package now has an `__init__.py` and they import, but each one still needs a real run before its status moves to `active`. `validate --smoke` imports the broken scripts without running their `__main__` blocks, so a webhook or other side effect does not fire, and prints the traceback. It also runs `--help` for active scripts that support it, with a 30 second cap, `--no-dotenv`, and without the required-env check. A script that calls `load_dotenv` itself, including the logger's upload-on-exit hook, still reads the repo-root `.env` during that `--help`. `--smoke` exits 65 when a broken script still fails to import.
 
 Apify actors under `scripts/apify-scripts/` are started with the Apify CLI, not this manager. `APIFY_TOKEN` is listed on `api-manager-selftest` so the env table in the docs index has a matching registry name. The selftest does not read that variable.
 
