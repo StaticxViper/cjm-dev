@@ -1,0 +1,142 @@
+{
+  "title": "Home services lead input",
+  "description": "A niche from niches.json and an area, or a Maps dataset to score instead of searching.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "niche": {
+      "title": "Niche",
+      "type": "string",
+      "description": "Preset id from scripts/lead_automation/niches.json.",
+      "editor": "select",
+      "enum": [
+        "mobile_notaries",
+        "professional_organizers",
+        "specialty_dog_trainers",
+        "premium_mobile_auto_detailers",
+        "estate_sale_companies",
+        "court_medical_interpreters",
+        "birth_postpartum_doulas",
+        "private_speech_language_pathologists",
+        "pediatric_occupational_therapists",
+        "geriatric_care_managers",
+        "funeral_celebrants",
+        "specialized_wedding_officiants",
+        "pet_funeral_aftercare",
+        "equine_bodyworkers",
+        "pool_specialists",
+        "premium_appliance_repair",
+        "commercial_hood_cleaning",
+        "radon_mold_specialists",
+        "septic_well_drainage",
+        "specialty_music_teachers"
+      ],
+      "default": "pool_specialists"
+    },
+    "area": {
+      "title": "Area",
+      "type": "string",
+      "description": "Region name from geo_regions.json, or City, ST. A county uses the form Monroe County, NY.",
+      "editor": "textfield",
+      "prefill": "Rochester, NY"
+    },
+    "city": {
+      "title": "City",
+      "type": "string",
+      "description": "Optional city. Overrides the city parsed from area.",
+      "editor": "textfield"
+    },
+    "county": {
+      "title": "County",
+      "type": "string",
+      "description": "Optional county. Do not include the word County. Overrides the county parsed from area.",
+      "editor": "textfield"
+    },
+    "state": {
+      "title": "State",
+      "type": "string",
+      "description": "Optional two-letter state. Overrides the state parsed from area.",
+      "editor": "textfield"
+    },
+    "mapsDataset": {
+      "title": "Maps dataset",
+      "type": "array",
+      "description": "Upstream Maps rows. When set, the Actor scores these listings and does not open Google Maps.",
+      "editor": "json"
+    },
+    "maxItems": {
+      "title": "Max accepted leads",
+      "type": "integer",
+      "description": "Stop after this many accepted matches. Default 10, maximum 25.",
+      "editor": "number",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 25
+    },
+    "maxSearches": {
+      "title": "Max Maps searches",
+      "type": "integer",
+      "description": "Keyword and place searches when mapsDataset is omitted. Default 5, maximum 20.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 20
+    },
+    "maxResults": {
+      "title": "Max results per search",
+      "type": "integer",
+      "description": "Listings opened per Maps search. Default 5, maximum 10.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "minConfidence": {
+      "title": "Minimum confidence",
+      "type": "integer",
+      "description": "Issue #127 score required for an accepted place. Default 80.",
+      "editor": "number",
+      "default": 80,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "lowConfidenceFloor": {
+      "title": "Low-confidence floor",
+      "type": "integer",
+      "description": "Scores at or above this floor and below the minimum are rejected and not billed. Default 60.",
+      "editor": "number",
+      "default": 60,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "includeEmail": {
+      "title": "Find website email",
+      "type": "boolean",
+      "description": "Read emails from the business website after robots.txt allows it. Billed only when a validated address is found.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "includeWebsiteQuality": {
+      "title": "Score website quality",
+      "type": "boolean",
+      "description": "Fetch the business website after robots.txt allows it and record website_quality. Higher means a weaker site.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "includeScore": {
+      "title": "Score the lead",
+      "type": "boolean",
+      "description": "Write lead_score and intent signals. Billed only when a score is produced.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Run Chromium headless. Default true.",
+      "editor": "checkbox",
+      "default": true
+    }
+  },
+  "required": ["niche"]
+}
