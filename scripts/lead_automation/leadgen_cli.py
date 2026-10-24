@@ -3,6 +3,20 @@
 Executed into the leadgen module so imports and patches of leadgen.*
 keep resolving there. This file is not an import target.
 """
+from scripts.lead_automation.search_input import (
+    EMPTY_NICHE_MESSAGE,
+    EMPTY_SEARCH_MESSAGE,
+    EmptySearchInput,
+    allocate_output_paths,
+    build_search_queries,
+    is_presets_choice,
+    lead_types_for_filename,
+    output_directory,
+    parse_term_list,
+    places_keyword,
+    queries_for_location,
+    require_niches,
+)
 
 def _is_contacted(row, contacted_emails):
     """True if any email on the row has already been contacted."""
@@ -368,10 +382,112 @@ def _prompt_locations(all_locations):
 
 
 def interactive_select_locations_and_keywords():
-    """Return (keywords, locations) from interactive pickers."""
+    """Return (keywords, locations) from the optional keywords.json presets."""
     keywords = _prompt_keywords(KEYWORD_CATEGORIES)
     locations = _prompt_locations(_default_locations())
     return keywords, locations
+
+
+def _prompt_free_text_niches():
+    """Ask for niches. Return 'presets' or a list. Re-prompts when the line is empty."""
+    print("\nBusiness niche(s), comma-separated.")
+    print("Example: mobile dog grooming")
+    print("Type presets to choose from keywords.json instead.")
+    while True:
+        try:
+            raw = input("Business niche(s): ")
+        except EOFError:
+            raise SystemExit(2)
+        if is_presets_choice(raw):
+            return "presets"
+        try:
+            return require_niches(raw)
+        except EmptySearchInput as exc:
+            print(exc)
+
+
+def _prompt_free_text_keywords():
+    print("\nKeyword search string(s), comma-separated.")
+    print("Leave blank to search each niche in the locations you pick.")
+    print("Example: pressure washing near Cherry Hill NJ")
+    try:
+        raw = input("Keyword search string(s): ")
+    except EOFError:
+        raise SystemExit(2)
+    return parse_term_list(raw)
+
+
+def apply_free_text_search(config, niches, keywords, today=None, explicit_json=False):
+    """Point a run at the typed niche and keyword strings and a new output name."""
+    niches = parse_term_list(niches)
+    keywords = parse_term_list(keywords)
+    if not niches and not keywords:
+        raise EmptySearchInput(EMPTY_SEARCH_MESSAGE)
+    queries = build_search_queries(niches, keywords, config.locations)
+    if not queries:
+        raise EmptySearchInput(EMPTY_SEARCH_MESSAGE)
+    config.niches = list(niches)
+    config.keywords = queries
+    config.exact_queries = True
+    if explicit_json:
+        if not getattr(config, "csv_output", ""):
+            config.csv_output = str(Path(config.json_output).with_suffix(".csv"))
+        return config
+    directory = output_directory(config.json_output)
+    csv_path, json_path = allocate_output_paths(
+        directory,
+        lead_types_for_filename(niches, keywords),
+        today=today,
+    )
+    config.json_output = str(json_path)
+    config.csv_output = str(csv_path)
+    return config
+
+
+def keywords_for_location(config, city, state):
+    """Keyword strings to run at one city. Exact queries are not repeated everywhere."""
+    keywords = list(config.keywords or [])
+    if not getattr(config, "exact_queries", False):
+        return keywords
+    return queries_for_location(keywords, city, state, config.locations or [])
+
+
+def interactive_free_text_run():
+    """Prompt for a niche and keywords, then return a config or None if cancelled."""
+    cfg = config_from_saved_settings()
+    print("\n=== Lead Generation ===")
+    print("Type a business niche and, if you want, the exact search strings.")
+    print("keywords.json is optional. Any niche works, including ones that are not configured.")
+    choice = _prompt_free_text_niches()
+    if choice == "presets":
+        if not KEYWORD_CATEGORIES:
+            print("keywords.json has no presets. Type a niche instead.")
+            choice = _prompt_free_text_niches()
+            if choice == "presets":
+                print(EMPTY_NICHE_MESSAGE)
+                return None
+        else:
+            cfg.keywords, cfg.locations = interactive_select_locations_and_keywords()
+            cfg.discovery_mode = "standard"
+            _print_config_summary(cfg)
+            confirm = input("Run with these settings? [Y/n]: ").strip().lower()
+            if confirm in ("n", "no"):
+                return None
+            return cfg
+    niches = choice
+    keywords = _prompt_free_text_keywords()
+    cfg.locations = _prompt_locations(_default_locations())
+    cfg.discovery_mode = "standard"
+    try:
+        apply_free_text_search(cfg, niches, keywords)
+    except EmptySearchInput as exc:
+        print(exc)
+        return None
+    _print_config_summary(cfg)
+    confirm = input("Run with these settings? [Y/n]: ").strip().lower()
+    if confirm in ("n", "no"):
+        return None
+    return cfg
 
 
 def interactive_customize_config(base_config=None):
@@ -470,15 +586,26 @@ def interactive_customize_config(base_config=None):
 def _print_volume_estimate(config):
     stats = estimate_discovery_volume(config)
     print("\n--- Volume estimate ---")
-    print(
-        f"  {stats['keywords']} keywords x {stats['locations']} cities"
-        + (
-            f" x {stats['areas_per_search']} map cells"
-            if stats["leadgen_type"] == "playwright"
-            else ""
+    if stats.get("exact_queries"):
+        print(
+            f"  {stats['keywords']} search string(s) across {stats['locations']} location(s)"
+            + (
+                f" x {stats['areas_per_search']} map cells"
+                if stats["leadgen_type"] == "playwright"
+                else ""
+            )
+            + f" = {stats['searches']} searches"
         )
-        + f" = {stats['searches']} searches"
-    )
+    else:
+        print(
+            f"  {stats['keywords']} keywords x {stats['locations']} cities"
+            + (
+                f" x {stats['areas_per_search']} map cells"
+                if stats["leadgen_type"] == "playwright"
+                else ""
+            )
+            + f" = {stats['searches']} searches"
+        )
     print(
         f"  Typical unique businesses: {stats['unique_low']:,}-{stats['unique_high']:,}"
     )
@@ -514,7 +641,11 @@ def _print_config_summary(config, include_run_scope=True):
     print(f"  Lead enrichment:   {config.lead_enrichment}")
     print(f"  Output:            {config.output_mode}")
     print(f"  JSON path:         {config.json_output}")
+    if getattr(config, "csv_output", ""):
+        print(f"  CSV path:          {config.csv_output}")
     if include_run_scope:
+        if getattr(config, "niches", None):
+            print(f"  Niches ({len(config.niches)}): {', '.join(config.niches)}")
         print(f"  Keywords ({len(config.keywords)}): {', '.join(config.keywords)}")
         locs = ", ".join(f"{city}, {state}" for state, city, _ in config.locations)
         print(f"  Locations ({len(config.locations)}): {locs}")
@@ -765,8 +896,12 @@ def parse_args(argv=None):
         choices=["json", "csv", "dashboard", "both"],
         help="Output destination (new-business: json, csv, or both; standard both is JSON + dashboard)",
     )
-    parser.add_argument("--json-path", help="JSON output path (default leads_output.json)")
-    parser.add_argument("--keywords", nargs="+", help="Keyword subset from keywords.json")
+    parser.add_argument("--json-path", help="JSON output path. Omit to name the file from today's date and the niche")
+    parser.add_argument(
+        "--keywords",
+        nargs="+",
+        help="Free-text keyword search strings. Commas are allowed. Not limited to keywords.json",
+    )
     parser.add_argument(
         "--city",
         action="append",
@@ -779,7 +914,17 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--niche",
-        help="Run Niche Lead Search for this niche id or display name",
+        action="append",
+        help=(
+            "Business niche free text, repeatable or comma-separated "
+            "(example: mobile dog grooming). A single niches.json id still runs "
+            "Niche Lead Search unless --free-text or --keywords is set"
+        ),
+    )
+    parser.add_argument(
+        "--free-text",
+        action="store_true",
+        help="Search the typed --niche and --keywords with the normal lead criteria",
     )
     parser.add_argument(
         "--review-leads",
@@ -912,6 +1057,8 @@ def _has_cli_overrides(args):
         args.keywords is not None,
         args.city is not None,
         args.state is not None,
+        bool(getattr(args, "niche", None)),
+        bool(getattr(args, "free_text", False)),
         getattr(args, "mode", None) is not None,
         getattr(args, "max_age_days", None) is not None,
         getattr(args, "very_new_days", None) is not None,
@@ -1049,12 +1196,103 @@ def config_from_args(args):
     return config
 
 
+def niche_terms(args):
+    """Parsed --niche values. Empty when the flag was omitted."""
+    raw = getattr(args, "niche", None)
+    if not raw:
+        return []
+    return parse_term_list(raw)
+
+
+def keyword_terms(args):
+    raw = getattr(args, "keywords", None)
+    if not raw:
+        return []
+    return parse_term_list(raw)
+
+
+def _niche_search_flags_set(args):
+    if getattr(args, "extra_keywords", None):
+        return True
+    if getattr(args, "max_leads", None) is not None:
+        return True
+    if getattr(args, "min_rating", None) is not None:
+        return True
+    if getattr(args, "zips", None):
+        return True
+    if getattr(args, "exclude_strong_websites", None):
+        return True
+    if getattr(args, "require_social", None):
+        return True
+    if getattr(args, "require_no_website", None):
+        return True
+    if getattr(args, "require_website_issue", None):
+        return True
+    if getattr(args, "website_requirement", None):
+        return True
+    if getattr(args, "radius", None) is not None:
+        return True
+    return False
+
+
+def is_catalog_niche_search(args):
+    """True when --niche should run niches.json Lead Search, not a free-text search."""
+    if getattr(args, "free_text", False):
+        return False
+    terms = niche_terms(args)
+    if not terms:
+        return False
+    if keyword_terms(args):
+        return False
+    if _niche_search_flags_set(args):
+        return True
+    if len(terms) != 1:
+        return False
+    try:
+        from niche_config import NicheConfigError, get_niche
+        get_niche(terms[0])
+    except NicheConfigError:
+        return False
+    except (OSError, ImportError):
+        return False
+    return True
+
+
+def free_text_inputs_from_args(args):
+    """Return (niches, keywords) or raise EmptySearchInput when the flag is blank."""
+    niches = niche_terms(args)
+    keywords = keyword_terms(args)
+    niche_flag = bool(getattr(args, "niche", None))
+    if niche_flag and not niches:
+        raise EmptySearchInput(EMPTY_NICHE_MESSAGE)
+    if getattr(args, "keywords", None) is not None and not keywords and not niches:
+        raise EmptySearchInput(EMPTY_SEARCH_MESSAGE)
+    if getattr(args, "free_text", False) and not niches and not keywords:
+        raise EmptySearchInput(EMPTY_SEARCH_MESSAGE)
+    return niches, keywords
+
+
+def wants_free_text(args):
+    if is_catalog_niche_search(args):
+        return False
+    if getattr(args, "free_text", False):
+        return True
+    if niche_terms(args):
+        return True
+    if keyword_terms(args):
+        return True
+    if getattr(args, "keywords", None) and not keyword_terms(args):
+        return True
+    return False
+
+
 def resolve_config(args):
     """Resolve final config from CLI flags. The script manager owns the menu."""
     if _has_cli_overrides(args):
         return config_from_args(args)
     print(
-        "Leadgen no longer opens a menu. Run: python -m scripts.script_manager menu",
+        "Pass --niche or --keywords, or run python leadgen.py with no flags to be prompted. "
+        "Script Manager: python -m scripts.script_manager menu",
         file=sys.stderr,
     )
     raise SystemExit(2)
@@ -1132,6 +1370,86 @@ def _load_contacted_emails():
     return set()
 
 
+def _collect_api_places(config, coords, pending, api_call_counter):
+    """Nearby Search for pending keywords. Exact queries use the text before ``near``."""
+    if not getattr(config, "exact_queries", False):
+        places = get_places(
+            coords,
+            config.search_radius,
+            pending,
+            GOOGLE_API_KEY,
+            api_call_counter=api_call_counter,
+        )
+        found = {
+            keyword: sum(1 for place in places if place.get("niche_key") == keyword)
+            for keyword in pending
+        }
+        return places, found
+    places = []
+    seen = set()
+    found = {}
+    for query in pending:
+        short = places_keyword(query)
+        batch = get_places(
+            coords,
+            config.search_radius,
+            [short],
+            GOOGLE_API_KEY,
+            api_call_counter=api_call_counter,
+        )
+        found[query] = len(batch)
+        for place in batch:
+            place["niche_key"] = short
+            place["search_term"] = query
+            place_id = place.get("place_id")
+            if place_id and place_id in seen:
+                continue
+            if place_id:
+                seen.add(place_id)
+            places.append(place)
+    return places, found
+
+
+def _playwright_listings(session, config, keyword, city, state, coords):
+    """Maps listings for one keyword. Exact queries are searched as typed."""
+    if not getattr(config, "exact_queries", False):
+        return session.search_location(
+            keyword,
+            city,
+            state,
+            coords=coords,
+            max_pages=config.playwright_max_pages,
+            max_results=config.playwright_max_results_per_search,
+            area_expansion=config.playwright_area_expansion,
+        )
+    from playwright_discovery import expansion_points
+
+    short = places_keyword(keyword)
+    listings = session.search_listings(
+        short,
+        city,
+        state,
+        max_pages=config.playwright_max_pages,
+        max_results=config.playwright_max_results_per_search,
+        query=keyword,
+    )
+    remaining = config.playwright_max_results_per_search - len(listings)
+    for lat, lng in expansion_points(coords, config.playwright_area_expansion):
+        if remaining <= 0 or session.google_blocked:
+            break
+        extra = session.search_listings(
+            short,
+            city,
+            state,
+            max_pages=config.playwright_max_pages,
+            max_results=remaining,
+            query=f"{short} near {lat:.4f},{lng:.4f}",
+        )
+        listings.extend(extra)
+        remaining = config.playwright_max_results_per_search - len(listings)
+    return listings
+
+
 def gather_leads_api_manager(
     config,
     contacted_emails,
@@ -1150,8 +1468,11 @@ def gather_leads_api_manager(
     log_stage(3, "Discovery", "API Manager (Google Places)")
     for state, city, coords in config.locations:
         try:
+            location_keywords = keywords_for_location(config, city, state)
+            if getattr(config, "exact_queries", False) and not location_keywords:
+                continue
             pending, skipped = history.pending_keywords_for_location(
-                config.keywords,
+                location_keywords,
                 city,
                 state,
                 leadgen_type="api_manager",
@@ -1183,16 +1504,15 @@ def gather_leads_api_manager(
                 "Location search",
                 f"{city}, {state} coords={coords} keywords={len(pending)}",
             )
-            places = get_places(
+            places, found_counts = _collect_api_places(
+                config,
                 coords,
-                config.search_radius,
                 pending,
-                GOOGLE_API_KEY,
-                api_call_counter=api_call_counter,
+                api_call_counter,
             )
             # Count one completed search unit per pending keyword for this location.
             for keyword in pending:
-                found_for_kw = sum(1 for p in places if p.get("niche_key") == keyword)
+                found_for_kw = found_counts.get(keyword, 0)
                 history.record_search(
                     leadgen_type="api_manager",
                     keyword=keyword,
@@ -1339,8 +1659,11 @@ def gather_leads_playwright(
     try:
         for state, city, _coords in config.locations:
             loc = f"{city}, {state}"
+            location_keywords = keywords_for_location(config, city, state)
+            if getattr(config, "exact_queries", False) and not location_keywords:
+                continue
             pending, skipped = history.pending_keywords_for_location(
-                config.keywords,
+                location_keywords,
                 city,
                 state,
                 leadgen_type="playwright",
@@ -1365,14 +1688,13 @@ def gather_leads_playwright(
             for keyword in pending:
                 try:
                     log_step(3, 2, "Maps search", f"{keyword} × {city}, {state}")
-                    listings = session.search_location(
+                    listings = _playwright_listings(
+                        session,
+                        config,
                         keyword,
                         city,
                         state,
-                        coords=_coords,
-                        max_pages=config.playwright_max_pages,
-                        max_results=config.playwright_max_results_per_search,
-                        area_expansion=config.playwright_area_expansion,
+                        _coords,
                     )
                     if session.google_blocked and not listings:
                         logger.error(
@@ -1395,7 +1717,10 @@ def gather_leads_playwright(
                     searches_performed += 1
                     for stub in listings:
                         entry = dict(stub)
-                        entry["niche_key"] = keyword
+                        if getattr(config, "exact_queries", False):
+                            entry["niche_key"] = places_keyword(keyword)
+                        else:
+                            entry["niche_key"] = keyword
                         entry["search_term"] = keyword
                         entry["location_searched"] = loc
                         entry["source"] = "playwright"
@@ -1553,6 +1878,18 @@ def run_leadgen(config):
         f"mode={leadgen_type} objective={config.objective} "
         f"skip_searched={config.skip_searched}",
     )
+    if getattr(config, "exact_queries", False):
+        preview = ", ".join(config.keywords[:6])
+        if len(config.keywords) > 6:
+            preview = f"{preview} (+{len(config.keywords) - 6} more)"
+        log_step(1, 1, "Search strings", preview)
+        if getattr(config, "csv_output", ""):
+            log_step(
+                1,
+                2,
+                "Output files",
+                f"{config.json_output} and {config.csv_output}",
+            )
 
     if leadgen_type == "api_manager":
         if not GOOGLE_API_KEY or GOOGLE_API_KEY == "YOUR_GOOGLE_API_KEY":
@@ -1655,12 +1992,16 @@ def run_leadgen(config):
 
     log_stage(6, "Output", config.output_mode)
     flushed = bool(stats.get("flushed_incrementally"))
+    csv_path = getattr(config, "csv_output", "") or None
     if flushed and not config.lead_enrichment:
         log_step(6, 1, "Incremental output", "already saved/uploaded after each location")
     else:
-        if config.output_mode in ("json", "both"):
-            log_step(6, 1, "Save JSON", config.json_output)
-            save_results(total_rows, config.json_output)
+        if config.output_mode in ("json", "both") or csv_path:
+            detail = config.json_output
+            if csv_path:
+                detail = f"{config.json_output} and {csv_path}"
+            log_step(6, 1, "Save leads", detail)
+            save_results(total_rows, config.json_output, csv_path=csv_path)
             stats["saved"] = len(total_rows)
         if config.output_mode in ("dashboard", "both"):
             log_step(6, 2, "Dashboard bulk ingest", f"{len(total_rows)} leads")
@@ -1704,7 +2045,7 @@ def main():
         from niche_results import review_leads
         review_leads(json_path=args.json_path or "niche_leads_output.json")
         return
-    if getattr(args, "niche", None):
+    if is_catalog_niche_search(args):
         from niche_search import (
             config_from_leadgen,
             expand_locations,
@@ -1719,7 +2060,7 @@ def main():
         )
         niche_config = config_from_leadgen(
             base,
-            args.niche,
+            niche_terms(args)[0],
             extra={
                 "locations": locations,
                 "extra_keywords": args.extra_keywords or [],
@@ -1753,8 +2094,27 @@ def main():
         )
         run_niche_search(niche_config)
         return
+    if not _has_cli_overrides(args):
+        config = interactive_free_text_run()
+        if config is None:
+            print("Exiting.")
+            return
+        run_leadgen(config)
+        return
     config = resolve_config(args)
     if config is None:
         print("Exiting.")
         return
+    if wants_free_text(args):
+        try:
+            niches, keywords = free_text_inputs_from_args(args)
+            apply_free_text_search(
+                config,
+                niches,
+                keywords,
+                explicit_json=args.json_path is not None,
+            )
+        except EmptySearchInput as exc:
+            print(exc, file=sys.stderr)
+            raise SystemExit(2)
     run_leadgen(config)

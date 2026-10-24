@@ -55,6 +55,7 @@ flowchart LR
   scripts_opp_finder_v2 --> helper_scripts_http
   scripts_opp_finder_v2 --> helper_scripts_utils
   scripts_script_manager --> scripts_email_manager
+  scripts_script_manager --> scripts_lead_automation
   scripts_script_manager --> scripts_opp_finder_v2
   scripts_stock_analyzer --> helper_scripts_api_manager
   scripts_stock_analyzer --> helper_scripts_utils

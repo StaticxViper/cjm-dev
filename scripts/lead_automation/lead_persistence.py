@@ -3,8 +3,47 @@
 Executed into the leadgen module so imports and patches of leadgen.*
 keep resolving there. This file is not an import target.
 """
+import csv
+from pathlib import Path
 
-def save_results(rows, json_path):
+LEAD_CSV_FIELDS = (
+    "business_name",
+    "place_id",
+    "address",
+    "phone_google",
+    "phone_website",
+    "email",
+    "website",
+    "rating",
+    "user_ratings_total",
+    "business_status",
+    "lead_score",
+    "niche_key",
+    "search_term",
+    "location_searched",
+    "source",
+    "profile_url",
+    "owner_names",
+)
+
+
+def save_lead_csv(rows, csv_path):
+    """Write the current lead set to CSV. Caller picks a path that is not an older file."""
+    path = Path(csv_path)
+    if str(path.parent) not in ("", "."):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(LEAD_CSV_FIELDS), extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({
+                key: "" if row.get(key) is None else row.get(key)
+                for key in LEAD_CSV_FIELDS
+            })
+    logger.critical("Saved %d leads to %s", len(rows), path)
+
+
+def save_results(rows, json_path, csv_path=None):
     """Append lead rows to a JSON array file, deduping by place_id (or website+name)."""
     existing = []
     if os.path.exists(json_path):
@@ -41,6 +80,9 @@ def save_results(rows, json_path):
             return 0
 
     deduped.sort(key=_score_key)
+    json_file = Path(json_path)
+    if str(json_file.parent) not in ("", "."):
+        json_file.parent.mkdir(parents=True, exist_ok=True)
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(deduped, f, indent=2)
         f.write("\n")
@@ -48,6 +90,8 @@ def save_results(rows, json_path):
         logger.info("Appended and saved %d total leads to %s", len(deduped), json_path)
     else:
         logger.critical("Saved %d leads to %s", len(deduped), json_path)
+    if csv_path:
+        save_lead_csv(deduped, csv_path)
 
 
 def extract_real_email(raw_email_field):
@@ -148,8 +192,9 @@ def persist_lead_batch(rows, config, location_label=None, json_path=None):
         return saved, uploaded
     path = json_path or getattr(config, "json_output", None) or "leads_output.json"
     mode = getattr(config, "output_mode", "json")
-    if mode in ("json", "both"):
-        save_results(rows, path)
+    csv_path = getattr(config, "csv_output", "") or None
+    if mode in ("json", "both") or csv_path:
+        save_results(rows, path, csv_path=csv_path)
         saved = len(rows)
         if location_label:
             logger.critical("Saved %d leads after %s -> %s", saved, location_label, path)

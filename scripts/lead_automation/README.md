@@ -6,15 +6,19 @@ Local-business lead discovery, enrichment, and CRM ingest.
 
 `leadenrich.py` fills emails from Facebook via Apify. `leadenrich_playwright.py` researches the business on Google. `lead_automation.py` reads saved leads and calls CRM `create_lead`.
 
-**Inputs:** `keywords.json`, `coords.json`, `franchises.json`, `leadgen_settings.json`, and CLI flags (`--defaults`, `--leadgen-type`, `--objective`, locations). **Outputs:** `*leads_output*.json`, search history, and CRM leads when the output mode includes the dashboard.
+**Inputs:** free-text business niches and keyword strings (`--niche`, `--keywords`), optional presets in `keywords.json`, plus `coords.json`, `franchises.json`, `leadgen_settings.json`, and CLI flags (`--defaults`, `--leadgen-type`, `--objective`, locations). **Outputs:** `leads_YYYY-MM-DD_<niche>.json` and the matching `.csv` (existing files are kept; a taken name gets `_2`), search history, and CRM leads when the output mode includes the dashboard. `keywords.json` is not required.
 
 **Local run** from this directory:
 
 ```bash
+python leadgen.py
+python leadgen.py --free-text --niche "mobile dog grooming" --city "Cherry Hill" --state NJ
 python leadgen.py --defaults --leadgen-type playwright --state NJ
 python leadenrich.py --json-path leads_output.json
 python lead_automation.py
 ```
+
+With no flags, `leadgen.py` asks for business niche(s) and keyword search string(s). Leave keywords blank and it searches `{niche} near {city}, {state}` for each location you pick. The same values are `--niche` and `--keywords` for GitHub Actions and Script Manager. Output files look like `leads_2026-10-21_mobile-dog-grooming.csv` and `.json`. A name that already exists gets `_2`. Type `presets` at the niche prompt to use `keywords.json` instead.
 
 **Script Manager:** `leadgen`, `leadenrich`, `leadenrich-playwright`, and `lead-ingest` (ingest is marked broken). `leadgen-new-business` is a planned alias. Dispatch any registered name with [`.github/workflows/script_manager.yml`](../../.github/workflows/script_manager.yml). Schedules use [script_manager_schedule.yml](../../.github/workflows/script_manager_schedule.yml).
 
