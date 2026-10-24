@@ -159,4 +159,4 @@ Inputs are `sites.json`, `criteria.json`, `skills.json`, and `presets.json`. Out
 
 ## GitHub Actions
 
-`.github/workflows/opp_finder_v2.yml` runs the unit tests on pull requests and a `workflow_dispatch` search. GitHub only shows `workflow_dispatch` after the workflow file is on the default branch (`main`). Until then, dispatching `opp_finder_v2.yml` will not work.
+`.github/workflows/ci.yml` runs `pytest unittests/` on every pull request and push to `main`. `.github/workflows/opp_finder_v2.yml` is a `workflow_dispatch` search only. GitHub only shows `workflow_dispatch` after the workflow file is on the default branch (`main`). Until then, dispatching `opp_finder_v2.yml` will not work.

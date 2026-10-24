@@ -72,14 +72,6 @@ on:
         required: false
         type: string
         default: ""
-  pull_request:
-    paths:
-      - "scripts/script_manager/**"
-      - ".github/workflows/script_manager.yml"
-      - ".github/workflows/script_manager_schedule.yml"
-      - "unittests/script_manager/**"
-      - "documentation/scripts/script_manager.md"
-      - "documentation/scripts/script_manager_actions.md"
 
 permissions:
   contents: read
@@ -90,25 +82,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: pip install -r requirements/requirements.txt
-      - name: Validate registry and CI secrets
-        run: python -m scripts.script_manager validate --ci-secrets
-      - name: Check schedule workflow drift
-        run: python -m scripts.script_manager schedules --check
-      - name: Script manager unit tests
-        run: python -m unittest discover -s unittests/script_manager -t .
-
   prepare:
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       contract_b64: ${{ steps.contract.outputs.contract_b64 }}
