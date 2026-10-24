@@ -213,8 +213,10 @@ Offline checks for the Apify Actor packages. They do not open Chromium or call c
 |-------------|----------------|
 | `test_city_data_actor` | Clementon input mapping, dataset fields, robots skip, longest-match Allow over a shorter Disallow |
 | `test_google_business_actor` | State required, Maps URL only, STRIKER and B&B Basecamp stay `no_match` with no candidate, Wegmans in Rochester matches and Whole Foods or a Williamsville Wegmans is omitted, a place-page redirect uses the heading, block flag skips enrichment |
+| `test_contractor_license_actor` | CA license hit and miss, AZ posting CSV, challenge and closed-portal rows are not billed |
+| `test_new_business_actor` | NY DOS fixture row, pipeline dedupe, enrichment charged only when a website or email is found, proxy only after a block, CAPTCHA and spend caps |
 
-Both modules run inside `ci.yml` with the rest of `unittests/`. They do not open Chromium or call the live sites. `apify_scripts.yml` can re-run them manually.
+These modules run inside `ci.yml` with the rest of `unittests/`. They do not open Chromium or call the live sites. `apify_scripts.yml` can re-run them manually.
 
 ## Test package: `unittests/script_manager/`
 

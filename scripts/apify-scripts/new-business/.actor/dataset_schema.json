@@ -1,0 +1,85 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Formed entities",
+    "fields": {
+      "entity_id": {"type": "string"},
+      "name": {"type": "string"},
+      "formation_date": {"type": "string"},
+      "type": {"type": "string"},
+      "address": {"type": "string"},
+      "county": {"type": "string"},
+      "state": {"type": "string"},
+      "website": {"type": "string"},
+      "email": {"type": "string"},
+      "source_url": {"type": "string"},
+      "sourceStatus": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"},
+      "enrichmentFound": {"type": "boolean"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["state", "entity_id", "name", "formation_date", "type", "county", "sourceStatus"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "state": {"label": "State", "format": "text"},
+          "entity_id": {"label": "Entity ID", "format": "text"},
+          "name": {"label": "Name", "format": "text"},
+          "formation_date": {"label": "Formed", "format": "text"},
+          "type": {"label": "Type", "format": "text"},
+          "county": {"label": "County", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "state",
+          "entity_id",
+          "name",
+          "formation_date",
+          "type",
+          "address",
+          "county",
+          "website",
+          "email",
+          "source_url",
+          "sourceStatus",
+          "enrichmentFound",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "state": {"label": "State", "format": "text"},
+          "entity_id": {"label": "Entity ID", "format": "text"},
+          "name": {"label": "Name", "format": "text"},
+          "formation_date": {"label": "Formed", "format": "text"},
+          "type": {"label": "Type", "format": "text"},
+          "address": {"label": "Address", "format": "text"},
+          "county": {"label": "County", "format": "text"},
+          "website": {"label": "Website", "format": "text"},
+          "email": {"label": "Email", "format": "text"},
+          "source_url": {"label": "Source URL", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "enrichmentFound": {"label": "Enrichment found", "format": "boolean"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}
