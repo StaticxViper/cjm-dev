@@ -74,22 +74,28 @@ def fetch_text(url, attempts=3, timeout=20):
     )
 
 
-async def push_charged_rows(rows, billable):
-    """Push every row. Charge ``result`` only when ``billable(row)`` is true.
+async def push_charged_rows(rows, billable, event_name=None):
+    """Push every row. Charge ``event_name`` only when ``billable(row)`` is true.
 
-    Pay per event, not pay per dataset item. no_match, blocked, and error
-    rows stay in the dataset and are not billed. An unknown event name is a
-    warning on the platform until Console pricing defines ``result``.
+    Pay per event, not pay per dataset item. The default event is ``result``
+    so existing Actors keep their Console event. A caller can pass another
+    primary event, such as ``license``. Misses, blocks, and errors stay in
+    the dataset and are not billed. An unknown event name is a warning on
+    the platform until Console pricing defines it.
     """
     from apify import Actor
 
+    charge_as = event_name or RESULT_EVENT
     log = logging.getLogger("apify")
     capped = False
     for row in rows or []:
         await Actor.push_data(row)
         if capped or not billable(row):
             continue
-        result = await Actor.charge(event_name=RESULT_EVENT)
+        result = await Actor.charge(event_name=charge_as)
         if getattr(result, "event_charge_limit_reached", False):
             capped = True
-            log.critical("Result charge limit reached. Later rows are saved and are not billed.")
+            log.critical(
+                "%s charge limit reached. Later rows are saved and are not billed.",
+                charge_as,
+            )
