@@ -25,11 +25,12 @@ def require_allowed_url(url: str, hosts: set[str]) -> str:
     if not url or not str(url).strip():
         raise SinkError("callback URL is empty")
     parsed = urlparse(url.strip())
-    if parsed.scheme != "https":
+    host = (parsed.hostname or "").lower()
+    loopback = host in {"127.0.0.1", "localhost", "::1"}
+    if parsed.scheme != "https" and not (parsed.scheme == "http" and loopback):
         raise SinkError("callback URL must use https")
     if parsed.username or parsed.password:
         raise SinkError("callback URL must not include userinfo")
-    host = (parsed.hostname or "").lower()
     if not host or host not in hosts:
         shown = host or "(missing)"
         raise SinkError(f"callback host {shown} is not allowlisted")

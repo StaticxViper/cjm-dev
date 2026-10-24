@@ -49,6 +49,7 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(contract.argv, ["--city", "Cherry Hill", "--flag"])
         self.assertEqual(contract.request_id, "abc123")
         self.assertTrue(contract.confirm)
+        self.assertEqual(contract.trigger, "workflow_dispatch")
 
     def test_repository_dispatch_reads_the_event_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -61,6 +62,7 @@ class ContractTests(unittest.TestCase):
                             "args": "--dry",
                             "outputs": "artifact,dashboard",
                             "confirm": True,
+                            "caller": "grok-bot",
                         }
                     }
                 ),
@@ -72,6 +74,8 @@ class ContractTests(unittest.TestCase):
                     "SCRIPT_MANAGER_EVENT_PATH": str(event),
                     "SCRIPT_MANAGER_INPUT_SCRIPT": "",
                     "SCRIPT_MANAGER_RUN_ID": "99",
+                    "SCRIPT_MANAGER_ACTOR": "StaticxViper",
+                    "SCRIPT_MANAGER_RUN_URL": "https://github.com/StaticxViper/cjm-dev/actions/runs/99",
                 }
             )
         self.assertEqual(contract.script, "poster")
@@ -79,6 +83,10 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(contract.outputs, ["artifact", "dashboard"])
         self.assertEqual(contract.request_id, "99")
         self.assertTrue(contract.confirm)
+        self.assertEqual(contract.trigger, "repository_dispatch")
+        self.assertEqual(contract.actor, "StaticxViper")
+        self.assertEqual(contract.caller, "grok-bot")
+        self.assertEqual(contract.run_url, "https://github.com/StaticxViper/cjm-dev/actions/runs/99")
 
     def test_bad_script_name_is_usage(self):
         proc = run_cli(
@@ -149,6 +157,8 @@ class ContractTests(unittest.TestCase):
             written = json.loads(summary.read_text(encoding="utf-8"))
             self.assertEqual(written["request_id"], "req-9")
             self.assertEqual(written["exit_code"], 0)
+            self.assertEqual(written["trigger"]["event"], "workflow_dispatch")
+            self.assertIsNotNone(written["trigger"])
             loaded = read_contract(path)
             self.assertEqual(loaded.argv, ["one"])
 
@@ -191,3 +201,65 @@ class ContractTests(unittest.TestCase):
             self.assertEqual(body["request_id"], "req-reject")
             self.assertIn("script is required", body["message"])
             self.assertIn("request_id=req-reject", output.read_text(encoding="utf-8"))
+
+    def test_schedule_trigger_records_schedule_as_the_caller(self):
+        contract = build_contract(
+            {
+                "SCRIPT_MANAGER_EVENT_NAME": "workflow_call",
+                "SCRIPT_MANAGER_INPUT_TRIGGER": "schedule",
+                "SCRIPT_MANAGER_INPUT_SCRIPT": "poster",
+                "SCRIPT_MANAGER_ACTOR": "StaticxViper",
+                "SCRIPT_MANAGER_CALLER": "StaticxViper",
+                "SCRIPT_MANAGER_INPUT_REQUEST_ID": "schedule-poster-1",
+                "SCRIPT_MANAGER_RUN_URL": "https://github.com/StaticxViper/cjm-dev/actions/runs/1",
+            }
+        )
+        self.assertEqual(contract.trigger, "schedule")
+        self.assertEqual(contract.caller, "schedule")
+        self.assertEqual(contract.actor, "StaticxViper")
+
+    def test_expected_rejection_exits_zero_and_keeps_the_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp) / "resolve.json"
+            output = Path(tmp) / "github-output.txt"
+            proc = run_cli(
+                [
+                    "resolve",
+                    "no-such-script",
+                    "--accept-rejection",
+                    "--github-output",
+                    "--summary-json",
+                    str(summary),
+                ],
+                env={"GITHUB_OUTPUT": str(output)},
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            body = json.loads(summary.read_text(encoding="utf-8"))
+            self.assertEqual(body["exit_code"], 64)
+            self.assertEqual(body["failure_kind"], "unknown_script")
+            self.assertIn("rejected=true", output.read_text(encoding="utf-8"))
+            child = run_cli(
+                ["run", "exits", "--accept-rejection", "--non-interactive", "--no-dotenv", "--", "2"]
+            )
+            self.assertEqual(child.returncode, 2, child.stderr)
+
+    def test_cancelled_summary_names_the_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "script-manager-artifact" / "run.json"
+            proc = run_cli(
+                ["stage-cancelled", "--dest", str(dest)],
+                env={
+                    "SCRIPT_MANAGER_REQUEST_ID": "req-cancel",
+                    "SCRIPT_MANAGER_SCRIPT": "ci-ping",
+                    "SCRIPT_MANAGER_EVENT_NAME": "workflow_dispatch",
+                    "SCRIPT_MANAGER_ACTOR": "StaticxViper",
+                    "SCRIPT_MANAGER_RUN_ID": "42",
+                    "SCRIPT_MANAGER_RUN_URL": "https://github.com/StaticxViper/cjm-dev/actions/runs/42",
+                },
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            body = json.loads(dest.read_text(encoding="utf-8"))
+            self.assertEqual(body["failure_kind"], "cancelled")
+            self.assertEqual(body["request_id"], "req-cancel")
+            self.assertEqual(body["trigger"]["event"], "workflow_dispatch")
+            self.assertEqual(body["run_url"], "https://github.com/StaticxViper/cjm-dev/actions/runs/42")

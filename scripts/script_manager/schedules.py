@@ -86,23 +86,45 @@ def _normalize(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
-def due_matrix(registry: Registry, now: datetime | None = None, grace_minutes: int = GRACE_MINUTES) -> dict:
+def due_matrix(
+    registry: Registry,
+    now: datetime | None = None,
+    grace_minutes: int = GRACE_MINUTES,
+    cron: str | None = None,
+) -> dict:
+    """Scripts to run.
+
+    A GitHub ``schedule`` event passes the cron that fired. That match ignores
+    the clock, because the runner often starts long after the minute GitHub
+    promised. A manual run keeps the grace window.
+    """
+    chosen = (cron or "").strip()
+    if chosen:
+        parse_cron(chosen)
+        matched = [
+            script
+            for script in scheduled_scripts(registry)
+            if script.schedule["cron"].strip() == chosen
+        ]
+        return {"include": [_due_row(script) for script in matched]}
     moment = now or datetime.now(timezone.utc)
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=timezone.utc)
     moment = moment.astimezone(timezone.utc).replace(second=0, microsecond=0)
     include = []
     for script in scheduled_scripts(registry):
-        cron = script.schedule["cron"].strip()
-        if is_due(cron, moment, grace_minutes):
-            include.append(
-                {
-                    "script": script.name,
-                    "confirm": bool(script.schedule.get("confirm")),
-                    "outputs": "",
-                }
-            )
+        expression = script.schedule["cron"].strip()
+        if is_due(expression, moment, grace_minutes):
+            include.append(_due_row(script))
     return {"include": include}
+
+
+def _due_row(script: Script) -> dict:
+    return {
+        "script": script.name,
+        "confirm": bool(script.schedule.get("confirm")),
+        "outputs": "",
+    }
 
 
 def is_due(expression: str, now: datetime, grace_minutes: int = GRACE_MINUTES) -> bool:

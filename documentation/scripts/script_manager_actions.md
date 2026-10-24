@@ -55,26 +55,40 @@ gh workflow run script_manager.yml -R StaticxViper/cjm-dev \
   -f script=ci-ping -f request_id=ping-1
 ```
 
-Grok bot routines use that dispatch API on the bot's own schedule.
+Grok bot routines use that dispatch API on the bot's own schedule. A `caller` string in `client_payload` is stored on the run.
 
-Cron comes from each script's `schedule.cron`. The schedule workflow asks the manager who is due, then calls this workflow. A schedule run passes `confirm=true` only when that entry sets `"confirm": true`.
+Cron comes from each script's `schedule.cron`. The schedule workflow asks the manager who is due, then calls this workflow with `trigger: schedule`. A schedule run passes `confirm=true` only when that entry sets `"confirm": true`.
 
-The same script never overlaps itself (`script-manager-<name>`, in-progress runs are not cancelled).
+Runs are grouped by `request_id`, not by script name. Two triggers of the same script both run. A repeated `request_id` waits on `execute` instead of cancelling the earlier workflow before it can report anything. If GitHub does cancel a run after it has started, the `report-cancelled` job uploads `script-manager-<request_id>` with `failure_kind` `cancelled`.
+
+## Find a run
+
+Dispatch does not return a run id. Pass a `request_id` and look the run up with it. The run name is `script-manager <script> <request_id>`. The artifact name is `script-manager-<request_id>`. `run.json` includes `run_url`.
+
+```bash
+python -m scripts.script_manager lookup --request-id abc123 --repo StaticxViper/cjm-dev
+```
+
+`lookup` prints the `gh` commands and, when `GH_TOKEN`, `GITHUB_TOKEN`, or a public API response is available, the matching runs and artifacts. The same `run_url` is in the callback, dashboard, and email bodies.
 
 ## What the job does
 
 1. `contract` writes `contract.json` from the environment, or from the dispatch event file.
 2. `resolve` returns Playwright, timeout (capped at 360 minutes), output globs, declared env names, and the gates above.
 3. Chromium is installed only when resolve says it is needed.
-4. `run --from-contract contract.json --ci --non-interactive --json --env-scope declared --summary-json run.json --github-summary`
+4. `run --from-contract contract.json --ci --non-interactive --json --env-scope declared --summary-json run.json --github-summary --accept-rejection`
 5. `sinks` delivers the summary. Sink errors are appended to `run.json` and the job summary. The job still fails when the script itself failed.
 
-A refused run still uploads `script-manager-<request_id>`. `contract` or `resolve` writes the summary, and the prepare job uploads it when that job fails. `run.json` then has `request_id`, `exit_code`, `failure_kind` (`unknown_script`, `confirmation_required`, `missing_env`, `not_runnable`, `usage`), and `message`.
+A refused run still uploads `script-manager-<request_id>`. `contract` or `resolve` writes the summary. Expected refusals (`usage` exit 2, `unknown_script` exit 64, `confirmation_required` exit 68) keep that exit code in `run.json` and the job summary, and the workflow ends successfully so GitHub does not send a failure email. Other refusals (`missing_env`, `not_runnable`, `registry_invalid`) and a real script failure still fail the workflow. The job summary labels the result `ok`, `rejected`, `cancelled`, or `failed`.
+
+`run.json` includes `request_id`, `exit_code`, `failure_kind`, `message`, and `trigger`.
 
 On a run that starts, `run.json` also has:
 
 | Field | Meaning |
 |-------|---------|
+| `trigger` | Object with `event` (`workflow_dispatch`, `repository_dispatch`, `schedule`, `workflow_call`, or `cli`), `actor` (the GitHub user), and `caller` (payload `caller`, or `schedule` for a cron run). |
+| `run_id` / `run_url` | This Actions run, when the workflow supplied them. |
 | `data` | The script's stdout when the whole stream is one JSON object or array, and it is under 1 MB. Otherwise `null`. |
 | `stdout_tail` / `stderr_tail` | The last 8000 bytes of each stream. |
 | `output_files` | Contents of declared output files (JSON when the file is an object or array, otherwise text). Capped at 20 files, 200 KB each, 1 MB total. |
@@ -94,7 +108,7 @@ Modules live in `scripts/script_manager/sinks/`. Each one defines `send(run_resu
 | `callback` | Signed POST to `callback_url`. |
 | `email` | Summary mail through `scripts/email_manager/email_manager.py`. |
 
-Signed posts set `X-Script-Manager-Signature` to the hex HMAC-SHA256 of the raw body, using `SCRIPT_MANAGER_CALLBACK_SECRET`. The URL must be `https`, must not include a username or password, and its host must be an exact match in the repo variable `SCRIPT_MANAGER_CALLBACK_HOSTS` (comma-separated). Anything else is rejected. Redirects are not followed.
+Signed posts set `X-Script-Manager-Signature` to the hex HMAC-SHA256 of the raw body, using `SCRIPT_MANAGER_CALLBACK_SECRET`. The URL must be `https`, must not include a username or password, and its host must be an exact match in the repo variable `SCRIPT_MANAGER_CALLBACK_HOSTS` (comma-separated). `http` is accepted only for `127.0.0.1`, `localhost`, or `::1`, and only when that host is on the allowlist, so CI can call a local server. Anything else is rejected. Redirects are not followed.
 
 Dashboard and property-portal URLs use that same allowlist. A missing URL, secret, or a rejected host is a sink error. It does not replace the script's exit code.
 
@@ -153,7 +167,19 @@ python -m scripts.script_manager schedules --check
 
 `--write` rewrites the cron block in `script_manager_schedule.yml`. `--check` fails when that block drifts. Commit the workflow file with the registry change.
 
-`--due` lists scripts whose cron matched in the last 90 minutes. That grace covers a delayed GitHub schedule. Only active, `ci_allowed` scripts are included.
+`--due` lists scripts whose cron matched in the last 90 minutes. That grace is for a manual run of the schedule workflow. A GitHub `schedule` event passes `--cron` from `github.event.schedule`, so a runner that starts hours late still runs the scripts for the cron that fired. Only active, `ci_allowed` scripts are included.
+
+The first scheduled firing, [run 39999894902](https://github.com/StaticxViper/cjm-dev/actions/runs/39999894902) on 2026-10-23 at 18:01 UTC, started about four hours after `0 14 * * 1-5`. The 90-minute clock check did not match, the `run` job was skipped, and `stock-analyzer` did not start. Later schedule events use the cron expression instead of the clock.
+
+## Failure notifications
+
+GitHub mails the repository owner when a workflow run fails. These were the sources of those emails:
+
+| Source | What happened |
+|--------|----------------|
+| Expected Script Manager refusals | [Unknown script](https://github.com/StaticxViper/cjm-dev/actions/runs/39885213133) and [missing confirm](https://github.com/StaticxViper/cjm-dev/actions/runs/39885214954) exited 64 and 68. The workflow was red even though the manager did what it should. Those exits now finish green. |
+| Cancelled duplicate | [run 39885211301](https://github.com/StaticxViper/cjm-dev/actions/runs/39885211301) was cancelled because concurrency kept one pending run per script name. Grouping is by `request_id` now, and a cancel that reaches a runner uploads `failure_kind: cancelled`. |
+| Daily Stock Analysis | That workflow failed on every weekday through [2026-10-22](https://github.com/StaticxViper/cjm-dev/actions/runs/39829476725) (`stock_analyzer.py` exited 1). It is not on `main` anymore, so it no longer schedules. A real `stock-analyzer` failure from Script Manager still fails the run and still sends mail. |
 
 ## Add a sink
 

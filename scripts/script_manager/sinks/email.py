@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from scripts.email_manager.email_manager import build_email, send_email
+from scripts.script_manager import exit_codes
 from scripts.script_manager.sinks import SinkError
 
 
@@ -23,9 +24,14 @@ def send(run_result: dict, config: dict) -> None:
     recipients = [part.strip() for part in recipient.split(",") if part.strip()]
     name = run_result.get("name") or "script"
     request_id = run_result.get("request_id") or ""
+    trigger = run_result.get("trigger") if isinstance(run_result.get("trigger"), dict) else {}
     lines = [
         f"script: {name}",
         f"request_id: {request_id}",
+        f"result: {exit_codes.result_label(run_result)}",
+        f"trigger: {trigger.get('event')}",
+        f"caller: {trigger.get('caller')}",
+        f"run_url: {run_result.get('run_url') or ''}",
         f"exit_code: {run_result.get('exit_code')}",
         f"failure_kind: {run_result.get('failure_kind')}",
         f"duration_s: {run_result.get('duration_s')}",

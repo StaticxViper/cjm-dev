@@ -157,7 +157,7 @@ The message lists names. Logs, dry-run output, `info`, the run summary, and `--g
 | 124 | Timed out. The process tree is stopped. |
 | 130 | Interrupted. |
 
-A script can exit with one of these numbers itself. The run summary's `failure_kind` is `child_exit` in that case, and one of `unknown_script`, `registry_invalid`, `missing_env`, `not_runnable`, `confirmation_required`, `would_prompt`, `timeout`, or `interrupted` when the manager stopped first. Success uses `null`.
+A script can exit with one of these numbers itself. The run summary's `failure_kind` is `child_exit` in that case, and one of `unknown_script`, `registry_invalid`, `missing_env`, `not_runnable`, `confirmation_required`, `would_prompt`, `timeout`, `interrupted`, or `cancelled` when the manager stopped first. Success uses `null`. On GitHub, exit 2, 64, and 68 are recorded in `run.json` and the workflow still succeeds. The other non-zero results fail the workflow. Details are in [script_manager_actions.md](script_manager_actions.md).
 
 The summary is one JSON line on stdout. `--summary-json` writes the same object to a file. `outputs` are the registry globs that exist after the run. `duration_s` is `finished_at` minus `started_at`.
 
