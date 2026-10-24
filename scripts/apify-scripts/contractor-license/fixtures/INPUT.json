@@ -1,0 +1,10 @@
+{
+  "state": "CA",
+  "licenseNo": "99999999",
+  "name": "",
+  "trade": "",
+  "maxResults": 5,
+  "maxRequests": 4,
+  "delaySeconds": 2,
+  "headless": true
+}
