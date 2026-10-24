@@ -640,7 +640,7 @@ class TestFiltersExportAndIngest(unittest.TestCase):
         saved = []
         uploaded = []
 
-        def fake_save(rows, path):
+        def fake_save(rows, path, csv_path=None):
             saved.append([row["place_id"] for row in rows])
 
         def fake_send(rows):
