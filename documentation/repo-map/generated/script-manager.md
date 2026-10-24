@@ -14,6 +14,7 @@ flowchart LR
   scripts_script_manager_cli_py__cmd_contract["_cmd_contract"]
   scripts_script_manager_cli_py__cmd_help["_cmd_help"]
   scripts_script_manager_cli_py__cmd_info["_cmd_info"]
+  scripts_script_manager_cli_py__cmd_lookup["_cmd_lookup"]
   scripts_script_manager_cli_py__cmd_resolve["_cmd_resolve"]
   scripts_script_manager_cli_py__cmd_run["_cmd_run"]
   scripts_script_manager_cli_py__cmd_schedules["_cmd_schedules"]
@@ -21,6 +22,7 @@ flowchart LR
   scripts_script_manager_cli_py__cmd_validate["_cmd_validate"]
   scripts_script_manager_cli_py__print_table["_print_table"]
   scripts_script_manager_cli_py__run_smoke["_run_smoke"]
+  scripts_script_manager_cli_py__trigger_from_contract["_trigger_from_contract"]
   scripts_script_manager_cli_py__write_contract_failure["_write_contract_failure"]
   scripts_script_manager_cli_py_line["line"]
   scripts_script_manager_cli_py_main["main"]
@@ -34,6 +36,7 @@ flowchart LR
   scripts_script_manager_contract_py_resolve_payload["resolve_payload"]
   scripts_script_manager_contract_py_run_options_from_contract["run_options_from_contract"]
   scripts_script_manager_contract_py_selected_sinks["selected_sinks"]
+  scripts_script_manager_contract_py_trigger_view["trigger_view"]
   scripts_script_manager_contract_py_write_contract["write_contract"]
   scripts_script_manager_contract_py_write_github_output["write_github_output"]
   scripts_script_manager_discovery_py["scripts/script_manager/discovery.py"]
@@ -50,6 +53,8 @@ flowchart LR
   scripts_script_manager_envcheck_py_missing_names["missing_names"]
   scripts_script_manager_envcheck_py_playwright_needed["playwright_needed"]
   scripts_script_manager_envcheck_py_triggered_rules["triggered_rules"]
+  scripts_script_manager_lookup_py["scripts/script_manager/lookup.py"]
+  scripts_script_manager_lookup_py_lookup["lookup"]
   scripts_script_manager_menus_session_py["scripts/script_manager/menus/session.py"]
   scripts_script_manager_menus_session_py_run_session["run_session"]
   scripts_script_manager_registry_py["scripts/script_manager/registry.py"]
@@ -84,6 +89,7 @@ flowchart LR
   scripts_script_manager_cli_py --> scripts_script_manager_contract_py
   scripts_script_manager_cli_py --> scripts_script_manager_discovery_py
   scripts_script_manager_cli_py --> scripts_script_manager_envcheck_py
+  scripts_script_manager_cli_py --> scripts_script_manager_lookup_py
   scripts_script_manager_cli_py --> scripts_script_manager_menus_session_py
   scripts_script_manager_cli_py --> scripts_script_manager_registry_py
   scripts_script_manager_cli_py --> scripts_script_manager_runner_py
@@ -121,6 +127,7 @@ flowchart LR
   scripts_script_manager_cli_py__cmd_info --> scripts_script_manager___init___py_repo_root
   scripts_script_manager_cli_py__cmd_info --> scripts_script_manager_runner_py_status_refusal
   scripts_script_manager_cli_py__cmd_info --> scripts_script_manager_runner_py_system_dep_status
+  scripts_script_manager_cli_py__cmd_lookup --> scripts_script_manager_lookup_py_lookup
   scripts_script_manager_cli_py__cmd_resolve --> scripts_script_manager_contract_py_read_contract
   scripts_script_manager_cli_py__cmd_resolve --> scripts_script_manager___init___py_repo_root
   scripts_script_manager_cli_py__cmd_resolve --> scripts_script_manager_contract_py_resolve_payload
@@ -142,6 +149,7 @@ flowchart LR
   scripts_script_manager_cli_py__cmd_validate --> scripts_script_manager___init___py_repo_root
   scripts_script_manager_cli_py__run_smoke --> scripts_script_manager_runner_py_run_script
   scripts_script_manager_cli_py__run_smoke --> scripts_script_manager_runner_py_smoke_import
+  scripts_script_manager_cli_py__trigger_from_contract --> scripts_script_manager_contract_py_trigger_view
   scripts_script_manager_cli_py__write_contract_failure --> scripts_script_manager_contract_py_write_github_output
   scripts_script_manager_cli_py_main --> scripts_script_manager_registry_py_bundled_registry_path
   scripts_script_manager_cli_py_main --> scripts_script_manager_registry_py_load_registry
@@ -174,14 +182,12 @@ flowchart LR
   scripts_script_manager_cli_py__cmd_validate --> scripts_script_manager_cli_py_validate_inventory
   scripts_script_manager_cli_py__print_table --> scripts_script_manager_cli_py_line
   scripts_script_manager_contract_py_resolve_payload --> scripts_script_manager_contract_py_run_options_from_contract
+  scripts_script_manager_contract_py_resolve_payload --> scripts_script_manager_contract_py_trigger_view
+  scripts_script_manager_contract_py_run_options_from_contract --> scripts_script_manager_contract_py_trigger_view
   scripts_script_manager_discovery_py_is_ignored --> scripts_script_manager_discovery_py_glob_match
   scripts_script_manager_discovery_py_unregistered_scripts --> scripts_script_manager_discovery_py_is_ignored
   scripts_script_manager_envcheck_py_build_child_env --> scripts_script_manager_envcheck_py_apply_env_scope
   scripts_script_manager_envcheck_py_build_child_env --> scripts_script_manager_envcheck_py_env_scope_mode
-  scripts_script_manager_envcheck_py_build_child_env --> scripts_script_manager_envcheck_py_load_dotenv_file
-  scripts_script_manager_envcheck_py_build_child_env --> scripts_script_manager_envcheck_py_merged_env
-  scripts_script_manager_envcheck_py_missing_names --> scripts_script_manager_envcheck_py_is_set
-  scripts_script_manager_envcheck_py_missing_names --> scripts_script_manager_envcheck_py_triggered_rules
 
 %% call edges capped at 80
 ```
