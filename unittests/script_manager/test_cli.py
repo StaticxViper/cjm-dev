@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from scripts.script_manager import repo_root
-from scripts.script_manager.registry import bundled_registry_path, load_registry
+from scripts.script_manager.registry import Script, bundled_registry_path, load_registry
 from scripts.script_manager.runner import smoke_import
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "registry.json"
@@ -155,17 +155,17 @@ class CliTests(unittest.TestCase):
         self.assertEqual(strict.returncode, 0, strict.stdout + strict.stderr)
 
     def test_smoke_reports_logger_import_failure(self):
-        registry = load_registry(bundled_registry_path())
-        for name in (
-            "blog-automation",
-            "webhook-manager",
-            "json-formatter",
-            "lead-ingest",
-            "lovable-automation",
-        ):
-            code, detail = smoke_import(repo_root(), registry.get(name))
-            self.assertNotEqual(code, 0, detail)
-            self.assertIn("setup_logger", detail)
+        script = Script(
+            name="broken-import",
+            description="fixture",
+            status="broken",
+            entry_type="path",
+            entry_path="unittests/script_manager/fixtures/broken_import.py",
+        )
+        code, detail = smoke_import(repo_root(), script)
+        self.assertNotEqual(code, 0, detail)
+        self.assertIn("ImportError", detail)
+        self.assertIn("setup_logger_missing", detail)
 
     def test_summary_json_and_github_summary(self):
         import tempfile

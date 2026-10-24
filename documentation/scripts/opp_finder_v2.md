@@ -76,9 +76,8 @@ Detection looks for captcha widgets, "verify you are human", Cloudflare challeng
 
 ## CI
 
-`.github/workflows/opp_finder_v2.yml` has two jobs:
+`.github/workflows/ci.yml` runs `pytest unittests/` on every pull request and on every push to `main`, including this package.
 
-- Pull requests that touch this package run `pytest unittests/opp_finder_v2`.
-- `workflow_dispatch` runs the CLI against the public API/RSS ids by default, uploads `opp-finder-v2-results`, and writes the top 10 rows to the job summary. It never passes `--allow-login`.
+`.github/workflows/opp_finder_v2.yml` is manual only. `workflow_dispatch` runs the CLI against the public API/RSS ids by default, uploads `opp-finder-v2-results`, and writes the top 10 rows to the job summary. It never passes `--allow-login`.
 
 `workflow_dispatch` can be started only after this file is on the default branch (`main`). A copy that exists only on a feature branch will not appear in the Actions list.

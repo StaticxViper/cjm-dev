@@ -1,28 +1,9 @@
 name: Apify Actor tests
 
+# Pull request and main-branch tests run in ci.yml. This workflow is manual only.
+
 on:
-  pull_request:
-    paths:
-      - "scripts/apify-scripts/**"
-      - "unittests/apify_scripts/**"
-      - "scripts/city_data/**"
-      - "scripts/lead_automation/crm_enrich_match.py"
-      - "scripts/lead_automation/crm_enrich_robots.py"
-      - "scripts/lead_automation/playwright_discovery.py"
-      - "requirements/requirements.txt"
-      - ".github/workflows/apify_scripts.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "scripts/apify-scripts/**"
-      - "unittests/apify_scripts/**"
-      - "scripts/city_data/**"
-      - "scripts/lead_automation/crm_enrich_match.py"
-      - "scripts/lead_automation/crm_enrich_robots.py"
-      - "scripts/lead_automation/playwright_discovery.py"
-      - "requirements/requirements.txt"
-      - ".github/workflows/apify_scripts.yml"
+  workflow_dispatch:
 
 jobs:
   test:
