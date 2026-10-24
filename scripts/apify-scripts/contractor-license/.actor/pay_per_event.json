@@ -1,0 +1,10 @@
+{
+  "actorChargeEvents": {
+    "license": {
+      "eventTitle": "Found license",
+      "eventDescription": "Charged when a contractor license record is found. not_found, unsupported, captcha, robots, and error rows are saved and not billed.",
+      "eventPriceUsd": 0.05,
+      "isPrimaryEvent": true
+    }
+  }
+}

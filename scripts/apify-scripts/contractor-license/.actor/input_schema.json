@@ -1,0 +1,75 @@
+{
+  "title": "Contractor license lookup",
+  "description": "One state per run. Provide a license number, a business name, a trade, or a combination. CAPTCHA states return a status row and are not billed.",
+  "type": "object",
+  "schemaVersion": 1,
+  "required": ["state"],
+  "properties": {
+    "state": {
+      "title": "State",
+      "type": "string",
+      "description": "Two-letter state code. CA reads the CSLB open file. AZ, NJ, and PA are adapters that stop when the source is a challenge or a closed portal.",
+      "editor": "select",
+      "enum": ["CA", "AZ", "NJ", "PA"],
+      "enumTitles": [
+        "California (CSLB)",
+        "Arizona (ROC)",
+        "New Jersey (DCA)",
+        "Pennsylvania (HIC)"
+      ]
+    },
+    "licenseNo": {
+      "title": "License number",
+      "type": "string",
+      "description": "Board license or registration number. Matched exactly, ignoring spaces and leading zeros.",
+      "editor": "textfield",
+      "prefill": "99999999"
+    },
+    "name": {
+      "title": "Business name",
+      "type": "string",
+      "description": "Business name. Punctuation and company suffixes such as LLC are ignored. Combined with the license number and trade when more than one is set.",
+      "editor": "textfield"
+    },
+    "trade": {
+      "title": "Trade or class",
+      "type": "string",
+      "description": "Classification code (B-1 and B1 match) or a class description such as Roofing. A trade-only search returns at most maxResults rows.",
+      "editor": "textfield"
+    },
+    "maxResults": {
+      "title": "Max licenses",
+      "type": "integer",
+      "description": "Cap on found licenses pushed for this run. Default 25, maximum 50. Extra matches are not billed.",
+      "editor": "number",
+      "default": 25,
+      "minimum": 1,
+      "maximum": 50
+    },
+    "maxRequests": {
+      "title": "Max HTTP requests",
+      "type": "integer",
+      "description": "Cap including robots.txt. CA needs 2. AZ needs up to 3 when the posting page is served. Default 4, maximum 8.",
+      "editor": "number",
+      "default": 4,
+      "minimum": 1,
+      "maximum": 8
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Default 2.",
+      "editor": "number",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Kept for the shared Actor contract. This Actor does not launch a browser.",
+      "editor": "checkbox",
+      "default": true
+    }
+  }
+}

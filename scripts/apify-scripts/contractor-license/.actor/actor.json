@@ -1,0 +1,24 @@
+{
+  "actorSpecification": 1,
+  "name": "contractor-license",
+  "title": "Contractor License Lookup",
+  "description": "Public-record contractor license lookup. California uses the CSLB open file. Challenged or closed state portals return a status row and are not billed.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "dockerContextDir": "../../../..",
+  "readme": "../README.md",
+  "changelog": "./CHANGELOG.md",
+  "input": "./input_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "minMemoryMbytes": 512,
+  "maxMemoryMbytes": 4096,
+  "defaultMemoryMbytes": 1024,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 600,
+    "memoryMbytes": 1024
+  }
+}

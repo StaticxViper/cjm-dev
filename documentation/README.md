@@ -45,7 +45,7 @@ The published diagrams are at <https://staticxviper.github.io/cjm-dev/repo-map/>
 | City-data scraper | [scripts/city_data_scraper.md](scripts/city_data_scraper.md) |
 | Grocery price sync | [scripts/grocery.md](scripts/grocery.md) |
 | Opportunity finder v2 | [scripts/opp_finder_v2.md](scripts/opp_finder_v2.md) |
-| Apify Actors (city-data, Google Maps) | [../scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
+| Apify Actors (city-data, Google Maps, contractor license) | [../scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
 
 ## Helper scripts
 

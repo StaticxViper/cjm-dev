@@ -7,6 +7,7 @@ Playwright scrapers packaged for the Apify Marketplace. Issue #128. Local CLIs s
 | [`_template/`](_template/) | Copy this for a new Actor | — |
 | [`city-data/`](city-data/) | Phase 1 | [`scripts/city_data/`](../city_data/) (issue #99) |
 | [`google-business/`](google-business/) | Phase 1 | Maps session in [`scripts/lead_automation/playwright_discovery.py`](../lead_automation/playwright_discovery.py); match rules from issue #127 |
+| [`contractor-license/`](contractor-license/) | Public records | CA CSLB open CSV. AZ, NJ, and PA adapters stop on a challenge or a closed portal. Issue #155. |
 | [`home-services/`](home-services/) | Phase 1 | Wraps the google-business matcher and Maps session. Niche and area leads with website email, quality, and intent score |
 
 Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one is a copy of `_template/` after Phase 1 is accepted. Instagram already has a Store Actor we call from `helper_scripts/api_manager`; a first-party listing is a separate decision.
@@ -41,7 +42,7 @@ Do this only when a listing is requested. `APIFY_TOKEN` is the CLI / `apify push
 2. In the Actor directory, `apify push`.
 3. Run the committed `fixtures/INPUT.json` once on the platform (private build). Confirm dataset rows and key-value `SUMMARY`.
 4. Paste the Actor `README.md` into the Store listing. Set categories in the Console (they are not an `actor.json` field). Suggested starting points are in each README.
-5. Set the Console pricing model to pay per event using `.actor/pay_per_event.json`. Charge `result` only for a successful city profile or an accepted Maps match. Do not enable pay per dataset item.
+5. Set the Console pricing model to pay per event using `.actor/pay_per_event.json`. Charge `result` only for a successful city profile or an accepted Maps match. Charge `license` only for a found contractor license. Do not enable pay per dataset item.
 6. Choose a private listing or a public one. Public Google Business needs the ToS / robots section left intact.
 7. Save a sample dataset export and a screenshot with the listing. Update `.actor/CHANGELOG.md`.
 
@@ -51,7 +52,7 @@ Actors package the local Playwright CLIs for the Apify platform. Input is the Ac
 
 ## Rules that stay in force
 
-- Playwright only for these Actors. No paid Maps or Places call in `google-business` or `home-services`.
+- Playwright only for city-data, google-business, and home-services. No paid Maps or Places call in `google-business` or `home-services`. `contractor-license` is HTTP open data: it does not launch Chromium, rotate proxies, or solve CAPTCHAs.
 - Respect robots.txt with `scripts/lead_automation/crm_enrich_robots.py` (longest match). Google web search (`/search`) is never requested.
 - On a block page, current Actors push a `blocked` row and stop. Proxy rotation and CAPTCHA solving may be used when a target requires them. Spend caps and billing details can land in a follow-up. The Maps session launches Chromium with `--disable-blink-features=AutomationControlled`.
 - Do not change CLI flags, defaults, or env loading in `scripts/lead_automation/` or `scripts/city_data/`.
