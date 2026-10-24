@@ -21,6 +21,8 @@ __pycache__/
 *log.txt
 *.log
 *leads_output*
+leads_*.json
+leads_*.csv
 *property_urls.json
 
 # Local Apify CLI storage (apify run)
