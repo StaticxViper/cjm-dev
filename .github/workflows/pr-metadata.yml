@@ -1,0 +1,66 @@
+name: PR metadata
+
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  set-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+
+            // ---- EDIT THIS: whatever you want after the branch name ----
+            const SUFFIX = "ready for review";
+
+            // 1. Find linked issues (via "Closes #123" or the sidebar link)
+            const q = `query($owner:String!,$repo:String!,$num:Int!){
+              repository(owner:$owner,name:$repo){
+                pullRequest(number:$num){
+                  closingIssuesReferences(first:10){
+                    nodes{ number title labels(first:50){ nodes{ name } } }
+                  }
+                }
+              }
+            }`;
+            const res = await github.graphql(q, { owner, repo, num: pr.number });
+            let issues = res.repository.pullRequest.closingIssuesReferences.nodes;
+
+            // 2. Fallback: branch named like "123-fix-login" or "feature/123-fix-login"
+            if (issues.length === 0) {
+              const m = pr.head.ref.match(/(?:^|\/)(\d+)[-_]/);
+              if (m) {
+                const { data } = await github.rest.issues.get({
+                  owner, repo, issue_number: Number(m[1]),
+                });
+                issues = [{
+                  number: data.number,
+                  title: data.title,
+                  labels: { nodes: data.labels.map(l => ({ name: l.name })) },
+                }];
+              }
+            }
+
+            // 3. Copy labels from issues to the PR
+            const labels = [...new Set(issues.flatMap(i => i.labels.nodes.map(l => l.name)))];
+            if (labels.length) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: pr.number, labels,
+              });
+            }
+
+            // 4. Set the title only on first open (prevents loops / overwriting your edits)
+            if (context.payload.action === "opened") {
+              await github.rest.pulls.update({
+                owner, repo, pull_number: pr.number,
+                title: `${pr.head.ref} - ${SUFFIX}`,
+              });
+            }

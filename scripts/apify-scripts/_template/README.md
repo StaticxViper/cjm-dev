@@ -9,7 +9,7 @@ This packaging is issue #128. The city-data CLI is issue #99. Google match rules
 Every Actor is a copy of this folder:
 
 - `.actor/actor.json` sets `dockerContextDir` to the repo root (`../../../..` from `.actor/`) and points at the Actor `Dockerfile`.
-- `.actor/input_schema.json` keeps `headless` (default true). Do not add a proxy field. Do not rotate proxies, IPs, or user agents, and do not add stealth plugins.
+- `.actor/input_schema.json` keeps `headless` (default true). Add a proxy field when the target needs one.
 - `.actor/dataset_schema.json` documents dataset columns, including nested objects, with an Overview and a Detail view.
 - `.actor/actor.json` sets `defaultRunOptions.timeoutSecs`. A published Actor adds `.actor/pay_per_event.json` and charges `result` only for a successful row.
 - `src/__main__.py` runs `asyncio.run(main())`. `src/main.py` uses `async with Actor` and runs sync Playwright inside `asyncio.to_thread`.
@@ -22,7 +22,7 @@ Shared behavior:
 
 - Default headless, including on the platform. The base image already provides a virtual display if a run is headed.
 - Delays stay in the source session. Do not tighten them in the Actor.
-- A block page pushes one `blocked` or `error` row, writes key-value `SUMMARY`, and the run exits 0. Do not solve CAPTCHAs.
+- A block page pushes one `blocked` or `error` row, writes key-value `SUMMARY`, and the run exits 0. Proxy rotation and CAPTCHA solving may be used when a target requires them. Spend caps can land in a follow-up.
 - One dataset item per input city or query, via `Actor.push_data`.
 - `APIFY_TOKEN` publishes. `APIFY_API_KEY` is the existing consumer key. Neither is hardcoded.
 
