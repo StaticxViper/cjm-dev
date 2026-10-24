@@ -43,6 +43,11 @@ _INPUT_CALLBACK = "SCRIPT_MANAGER_INPUT_CALLBACK_URL"
 _EVENT_NAME = "SCRIPT_MANAGER_EVENT_NAME"
 _EVENT_PATH = "SCRIPT_MANAGER_EVENT_PATH"
 _RUN_ID = "SCRIPT_MANAGER_RUN_ID"
+_ACTOR = "SCRIPT_MANAGER_ACTOR"
+_CALLER = "SCRIPT_MANAGER_CALLER"
+_RUN_URL = "SCRIPT_MANAGER_RUN_URL"
+_INPUT_TRIGGER = "SCRIPT_MANAGER_INPUT_TRIGGER"
+_TRIGGER_EVENTS = {"workflow_dispatch", "repository_dispatch", "schedule", "workflow_call", "cli"}
 
 
 class ContractError(Exception):
@@ -60,6 +65,10 @@ class Contract:
     dry_run: bool
     callback_url: str
     trigger: str
+    actor: str = ""
+    caller: str = ""
+    run_url: str = ""
+    run_id: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -72,6 +81,10 @@ class Contract:
             "dry_run": self.dry_run,
             "callback_url": self.callback_url,
             "trigger": self.trigger,
+            "actor": self.actor,
+            "caller": self.caller,
+            "run_url": self.run_url,
+            "run_id": self.run_id,
         }
 
 
@@ -101,6 +114,11 @@ def build_contract(env: dict | None = None) -> Contract:
     confirm = _as_bool(_prefer(source.get(_INPUT_CONFIRM), payload.get("confirm")))
     dry_run = _as_bool(_prefer(source.get(_INPUT_DRY_RUN), payload.get("dry_run")))
     callback_url = _first(source.get(_INPUT_CALLBACK), payload.get("callback_url"))
+    trigger = _trigger_event(source, event_name)
+    actor = _first(source.get(_ACTOR))
+    caller = _first(payload.get("caller"), source.get(_CALLER), actor)
+    if trigger == "schedule":
+        caller = _first(payload.get("caller")) or "schedule"
     return Contract(
         script=script,
         args=raw_args,
@@ -110,7 +128,11 @@ def build_contract(env: dict | None = None) -> Contract:
         confirm=confirm,
         dry_run=dry_run,
         callback_url=callback_url,
-        trigger=event_name or "cli",
+        trigger=trigger,
+        actor=actor,
+        caller=caller,
+        run_url=_first(source.get(_RUN_URL)),
+        run_id=_first(source.get(_RUN_ID)),
     )
 
 
@@ -150,7 +172,20 @@ def read_contract(path: Path) -> Contract:
         dry_run=bool(data.get("dry_run")),
         callback_url=data.get("callback_url") if isinstance(data.get("callback_url"), str) else "",
         trigger=data.get("trigger") if isinstance(data.get("trigger"), str) else "",
+        actor=data.get("actor") if isinstance(data.get("actor"), str) else "",
+        caller=data.get("caller") if isinstance(data.get("caller"), str) else "",
+        run_url=data.get("run_url") if isinstance(data.get("run_url"), str) else "",
+        run_id=data.get("run_id") if isinstance(data.get("run_id"), str) else "",
     )
+
+
+def trigger_view(contract: Contract) -> dict:
+    """Event, GitHub actor, and caller stored on run.json. Never a bare null."""
+    return {
+        "event": contract.trigger or None,
+        "actor": contract.actor or None,
+        "caller": contract.caller or None,
+    }
 
 
 def contract_b64(contract: Contract) -> str:
@@ -167,6 +202,9 @@ def run_options_from_contract(contract: Contract, **overrides) -> RunOptions:
         ci=True,
         env_scope="declared",
         request_id=contract.request_id,
+        trigger=trigger_view(contract),
+        run_url=contract.run_url or None,
+        run_id=contract.run_id or None,
     )
     for key, value in overrides.items():
         setattr(options, key, value)
@@ -188,6 +226,9 @@ def resolve_payload(repo: Path, registry: Registry, contract: Contract) -> tuple
             "exit_code": exit_codes.UNKNOWN_SCRIPT,
             "failure_kind": "unknown_script",
             "request_id": contract.request_id,
+            "trigger": trigger_view(contract),
+            "run_url": contract.run_url or None,
+            "run_id": contract.run_id or None,
             "message": f"unknown script {contract.script!r}",
             "data": None,
             "stdout_tail": "",
@@ -220,6 +261,9 @@ def resolve_payload(repo: Path, registry: Registry, contract: Contract) -> tuple
         "confirm": contract.confirm,
         "dry_run": contract.dry_run,
         "request_id": contract.request_id,
+        "trigger": trigger_view(contract),
+        "run_url": contract.run_url or None,
+        "run_id": contract.run_id or None,
         "exit_code": code,
         "failure_kind": None if code == 0 else exit_codes.failure_kind_for(code, child_finished=False),
         "message": message,
@@ -273,6 +317,15 @@ def _selected_output_names(script: Script, contract: Contract) -> list[str]:
     if contract.outputs is None:
         return script.effective_default_outputs()
     return list(contract.outputs)
+
+
+def _trigger_event(env: dict, event_name: str) -> str:
+    explicit = _first(env.get(_INPUT_TRIGGER))
+    if explicit in _TRIGGER_EVENTS:
+        return explicit
+    if event_name in _TRIGGER_EVENTS:
+        return event_name
+    return "cli"
 
 
 def _client_payload(env: dict, event_name: str) -> dict:

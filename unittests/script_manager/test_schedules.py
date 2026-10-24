@@ -40,6 +40,9 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(matrix["include"], [{"script": "poster", "confirm": True, "outputs": ""}])
         later = due_matrix(registry, now=moment.replace(hour=18))
         self.assertEqual(later["include"], [])
+        # A late GitHub schedule still names the cron that fired.
+        late = due_matrix(registry, now=moment.replace(hour=18), cron="0 14 * * 1-5")
+        self.assertEqual(late["include"], [{"script": "poster", "confirm": True, "outputs": ""}])
 
     def test_real_schedule_workflow_matches_the_registry(self):
         registry = load_registry(bundled_registry_path())
@@ -120,3 +123,15 @@ class ScheduleTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+
+    def test_workflows_queue_by_request_and_schedule_by_cron(self):
+        manager = (REPO / ".github/workflows/script_manager.yml").read_text(encoding="utf-8")
+        schedule = (REPO / SCHEDULE_WORKFLOW).read_text(encoding="utf-8")
+        self.assertIn("group: script-manager-${{ needs.prepare.outputs.request_id || github.run_id }}", manager)
+        self.assertNotIn("group: script-manager-${{ inputs.script", manager)
+        self.assertIn("--accept-rejection", manager)
+        self.assertIn("stage-cancelled", manager)
+        self.assertIn("SCRIPT_MANAGER_ACTOR", manager)
+        self.assertIn("trigger: schedule", schedule)
+        self.assertIn('"$SCRIPT_MANAGER_CRON"', schedule)
+        self.assertNotIn("group: script-manager-${{ matrix.script }}", schedule)

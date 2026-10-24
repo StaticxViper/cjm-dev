@@ -61,6 +61,9 @@ class RunOptions:
     skip_confirm: bool = False
     process_env: dict[str, str] | None = None
     request_id: str | None = None
+    trigger: dict | None = None
+    run_url: str | None = None
+    run_id: str | None = None
 
 
 def decide_noninteractive(explicit_noninteractive: bool, explicit_interactive: bool, process: dict | None = None) -> bool:
@@ -128,6 +131,9 @@ def blank_summary(name: str, status: str | None, started: datetime) -> dict:
         "timed_out": False,
         "dry_run": False,
         "request_id": None,
+        "trigger": None,
+        "run_url": None,
+        "run_id": None,
         "message": "",
         "data": None,
         "stdout_tail": "",
@@ -429,6 +435,9 @@ def run_script(repo: Path, script: Script, options: RunOptions) -> dict:
     summary = blank_summary(script.name, script.status, started)
     summary["dry_run"] = options.dry_run
     summary["request_id"] = options.request_id
+    summary["trigger"] = options.trigger or {"event": "cli", "actor": None, "caller": None}
+    summary["run_url"] = options.run_url
+    summary["run_id"] = options.run_id
     if options.non_interactive is None:
         non_interactive = decide_noninteractive(False, False, options.process_env)
     else:
@@ -630,9 +639,13 @@ def _append_github_summary(summary: dict) -> None:
         return
     missing = ", ".join(summary.get("env_missing") or []) or "none"
     failure = summary.get("failure_kind")
+    trigger = summary.get("trigger") if isinstance(summary.get("trigger"), dict) else {}
     text = (
-        f"### script-manager: {summary.get('name')}\n\n"
+        f"### script-manager: {summary.get('name')} ({exit_codes.result_label(summary)})\n\n"
         f"- request_id: {summary.get('request_id')}\n"
+        f"- trigger: {trigger.get('event')}\n"
+        f"- caller: {trigger.get('caller')}\n"
+        f"- run_url: {summary.get('run_url')}\n"
         f"- exit_code: {summary.get('exit_code')}\n"
         f"- failure_kind: {failure}\n"
         f"- duration_s: {summary.get('duration_s')}\n"
