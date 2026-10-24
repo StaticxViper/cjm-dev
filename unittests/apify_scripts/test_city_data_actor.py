@@ -141,7 +141,6 @@ class TestCityDataset(unittest.TestCase):
         actor = json.loads((_SRC.parent / ".actor" / "actor.json").read_text(encoding="utf-8"))
         self.assertEqual(actor["defaultRunOptions"]["timeoutSecs"], 600)
         form = json.loads((_SRC.parent / ".actor" / "input_schema.json").read_text(encoding="utf-8"))
-        self.assertNotIn("proxyConfiguration", form["properties"])
         fields = form["properties"]["fields"]
         self.assertEqual(fields["editor"], "select")
         self.assertIn("population", fields["items"]["enum"])
@@ -156,4 +155,3 @@ class TestCityDataset(unittest.TestCase):
         self.assertGreater(event["eventPriceUsd"], 0)
         runtime = (_SRC / "runtime.py").read_text(encoding="utf-8")
         self.assertNotIn("def fetch_text", runtime)
-        self.assertNotIn("unused_proxy_note", runtime)

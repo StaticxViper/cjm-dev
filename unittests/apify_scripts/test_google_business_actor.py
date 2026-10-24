@@ -96,12 +96,9 @@ class TestGoogleInput(unittest.TestCase):
         self.assertIn("search_location", text)
         self.assertIn("enrich_listing", text)
         self.assertIn("select_match", text)
-        self.assertNotIn("proxyConfiguration", text)
-        self.assertNotIn("unused_proxy_note", (_SRC / "runtime.py").read_text(encoding="utf-8"))
         actor = json.loads((_SRC.parent / ".actor" / "actor.json").read_text(encoding="utf-8"))
         self.assertEqual(actor["defaultRunOptions"]["timeoutSecs"], 900)
         form = json.loads((_SRC.parent / ".actor" / "input_schema.json").read_text(encoding="utf-8"))
-        self.assertNotIn("proxyConfiguration", form["properties"])
         self.assertEqual(form["properties"]["queries"]["prefill"][0]["name"], "Wegmans Food Markets")
         dataset = json.loads((_SRC.parent / ".actor" / "dataset_schema.json").read_text(encoding="utf-8"))
         for key in ("query", "decision", "score", "breakdown", "hardRejects", "candidate", "emails"):

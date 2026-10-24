@@ -14,7 +14,7 @@ Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one i
 
 1. Copy `_template/` to `scripts/apify-scripts/<name>/`.
 2. Rename `name` / `title` / `description` in `.actor/actor.json`.
-3. Extend the input and dataset schemas. Keep `headless`. Do not add a proxy field. Declare dataset fields for nested objects and add a Detail view next to Overview. Use `editor: "select"` when a field is a list of known values.
+3. Extend the input and dataset schemas. Keep `headless`. Add a proxy field when the target needs one. Declare dataset fields for nested objects and add a Detail view next to Overview. Use `editor: "select"` when a field is a list of known values.
 4. Replace `src/main.py`. Call the existing scraper inside `asyncio.to_thread`. Import it; do not move or rewrite the CLI. `src/runtime.py` re-exports `scripts/apify-scripts/runtime.py`.
 5. Add `COPY` lines to the Dockerfile for the modules you import, copy `scripts/apify-scripts/runtime.py`, and set `CJM_REPO_ROOT=/home/myuser/repo`. Set `defaultRunOptions.timeoutSecs`.
 6. Write the marketplace `README.md` from the template headings.
@@ -52,5 +52,5 @@ Actors package the local Playwright CLIs for the Apify platform. Input is the Ac
 
 - Playwright only for these Actors. No paid Maps or Places call in `google-business`.
 - Respect robots.txt with `scripts/lead_automation/crm_enrich_robots.py` (longest match). Google web search (`/search`) is never requested.
-- On a block page, push a `blocked` row and stop. No CAPTCHA solving, proxy rotation, or extra stealth flags. The Maps session already launches Chromium with `--disable-blink-features=AutomationControlled`; do not add more.
+- On a block page, current Actors push a `blocked` row and stop. Proxy rotation and CAPTCHA solving may be used when a target requires them. Spend caps and billing details can land in a follow-up. The Maps session launches Chromium with `--disable-blink-features=AutomationControlled`.
 - Do not change CLI flags, defaults, or env loading in `scripts/lead_automation/` or `scripts/city_data/`.

@@ -93,7 +93,7 @@ Google’s terms restrict automated extraction. A robots.txt `Allow` is not perm
 
 `https://www.google.com/robots.txt` is read first and evaluated with longest-match rules (`crm_enrich_robots.py`). Under those rules, `/maps/search/` and `/maps/place/` can be allowed while `Disallow: /maps/` is also present, and `/search` stays disallowed. This Actor never requests `https://www.google.com/search`. Python’s `urllib.robotparser` is not used, because it hides the more specific Maps `Allow` lines.
 
-If Google returns a block page, the current query is pushed as `blocked`, remaining queries are skipped, and the run exits successfully. The Actor does not solve CAPTCHAs, rotate proxies or user agents, or add stealth plugins. Chromium still starts with the existing `--disable-blink-features=AutomationControlled` flag from `BusinessDiscoverySession`.
+If Google returns a block page, the current query is pushed as `blocked`, remaining queries are skipped, and the run exits successfully. Proxy rotation and CAPTCHA solving may be used when a target requires them. Spend caps can land in a follow-up. Chromium starts with `--disable-blink-features=AutomationControlled` from `BusinessDiscoverySession`.
 
 ## Limitations
 
