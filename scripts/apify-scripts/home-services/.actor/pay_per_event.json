@@ -1,0 +1,20 @@
+{
+  "actorChargeEvents": {
+    "place": {
+      "eventTitle": "Accepted place",
+      "eventDescription": "Charged when a listing is an accepted match under the issue #127 rules. Rejected, blocked, empty, and error rows are saved and not billed.",
+      "eventPriceUsd": 0.05,
+      "isPrimaryEvent": true
+    },
+    "email-found": {
+      "eventTitle": "Email found",
+      "eventDescription": "Charged only when website enrichment returns a validated email for an accepted place. A miss, a robots skip, or a failed fetch is not billed.",
+      "eventPriceUsd": 0.03
+    },
+    "score": {
+      "eventTitle": "Lead score",
+      "eventDescription": "Charged only when an accepted place receives a lead score. Scoring that does not produce a number is not billed.",
+      "eventPriceUsd": 0.02
+    }
+  }
+}

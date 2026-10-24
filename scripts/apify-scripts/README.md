@@ -8,6 +8,7 @@ Playwright scrapers packaged for the Apify Marketplace. Issue #128. Local CLIs s
 | [`city-data/`](city-data/) | Phase 1 | [`scripts/city_data/`](../city_data/) (issue #99) |
 | [`google-business/`](google-business/) | Phase 1 | Maps session in [`scripts/lead_automation/playwright_discovery.py`](../lead_automation/playwright_discovery.py); match rules from issue #127 |
 | [`contractor-license/`](contractor-license/) | Public records | CA CSLB open CSV. AZ, NJ, and PA adapters stop on a challenge or a closed portal. Issue #155. |
+| [`home-services/`](home-services/) | Phase 1 | Wraps the google-business matcher and Maps session. Niche and area leads with website email, quality, and intent score |
 | [`new-business/`](new-business/) | Entity filings | Verified NY, PA, and CO open-data feeds from [`scripts/lead_automation/new_business_pipeline.py`](../lead_automation/new_business_pipeline.py). |
 
 Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one is a copy of `_template/` after Phase 1 is accepted. Instagram already has a Store Actor we call from `helper_scripts/api_manager`; a first-party listing is a separate decision.
@@ -52,7 +53,7 @@ Actors package the local Playwright CLIs for the Apify platform. Input is the Ac
 
 ## Rules that stay in force
 
-- Playwright only for city-data and google-business. No paid Maps or Places call in `google-business`. `contractor-license` is HTTP open data: it does not launch Chromium, rotate proxies, or solve CAPTCHAs. `new-business` is HTTP open data and does not launch Chromium. It may use Apify Proxy datacenter only after a direct request is blocked, and a CAPTCHA solve only after that proxy retry is still a challenge, when `allowCaptcha` is true and the spend cap covers it.
+- Playwright only for city-data, google-business, and home-services. No paid Maps or Places call in `google-business` or `home-services`. `contractor-license` is HTTP open data: it does not launch Chromium, rotate proxies, or solve CAPTCHAs. `new-business` is HTTP open data and does not launch Chromium. It may use Apify Proxy datacenter only after a direct request is blocked, and a CAPTCHA solve only after that proxy retry is still a challenge, when `allowCaptcha` is true and the spend cap covers it.
 - Respect robots.txt with `scripts/lead_automation/crm_enrich_robots.py` (longest match). Google web search (`/search`) is never requested. A robots disallow is not retried through a proxy.
-- On a block page, current Actors push a `blocked` row and stop. `new-business` stops the same way when the proxy budget is gone or CAPTCHA is off, and it honors `maxSpendUsd` and `maxProxyCostUsd`. The Maps session launches Chromium with `--disable-blink-features=AutomationControlled`.
+- On a block page, current Actors push a `blocked` row and stop. Proxy rotation and CAPTCHA solving may be used when a target requires them. `new-business` honors `maxSpendUsd` and `maxProxyCostUsd`, and it stops when the proxy budget is gone or CAPTCHA is off. The Maps session launches Chromium with `--disable-blink-features=AutomationControlled`.
 - Do not change CLI flags, defaults, or env loading in `scripts/lead_automation/` or `scripts/city_data/`.

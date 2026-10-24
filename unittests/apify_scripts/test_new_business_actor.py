@@ -17,12 +17,31 @@ _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "new_business"
 _NY = _REPO / "unittests" / "lead_automation" / "fixtures" / "new_business" / "ny_active_corporations" / "payload.json"
 _PA = _REPO / "unittests" / "lead_automation" / "fixtures" / "new_business" / "pa_registered_businesses" / "payload.json"
 
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
+# Other Actor tests import mapping/fetch/runtime by short name. Load this
+# Actor's modules without leaving those names bound for the rest of the suite.
+_ACTOR_MODULES = ("spend", "runtime", "sources", "fetch", "mapping")
 
-mapping = importlib.import_module("mapping")
-fetch_mod = importlib.import_module("fetch")
-spend = importlib.import_module("spend")
+
+def _load_actor():
+    saved = {name: sys.modules.pop(name) for name in _ACTOR_MODULES if name in sys.modules}
+    inserted = str(_SRC) not in sys.path[:1]
+    if inserted:
+        sys.path.insert(0, str(_SRC))
+    try:
+        return {name: importlib.import_module(name) for name in _ACTOR_MODULES}
+    finally:
+        for name in _ACTOR_MODULES:
+            sys.modules.pop(name, None)
+        sys.modules.update(saved)
+        if inserted and sys.path and sys.path[0] == str(_SRC):
+            sys.path.pop(0)
+
+
+_actor = _load_actor()
+mapping = _actor["mapping"]
+fetch_mod = _actor["fetch"]
+spend = _actor["spend"]
+sources = _actor["sources"]
 
 
 def _text(name):
@@ -270,9 +289,8 @@ class TestDedupe(unittest.TestCase):
         from new_business_dedupe import dedupe_new_businesses
         from new_business_sources.base import resolve_fixture_dates
         from new_business_sources.open_data import OpenDataAdapter
-        from sources import entity_sources
 
-        entry = entity_sources(["NY"])[0][0]
+        entry = sources.entity_sources(["NY"])[0][0]
         adapter = OpenDataAdapter(entry)
         records = adapter.parse_payload(
             resolve_fixture_dates(payload),
@@ -554,10 +572,8 @@ class TestPricingFile(unittest.TestCase):
 
 def _ny_with_website():
     mapping.prepare_imports()
-    from sources import load_entries
-
     entries = []
-    for entry in load_entries():
+    for entry in sources.load_entries():
         if entry.get("id") != "ny_active_corporations":
             continue
         cloned = json.loads(json.dumps(entry))
