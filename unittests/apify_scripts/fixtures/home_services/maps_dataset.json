@@ -1,0 +1,32 @@
+[
+  {
+    "business_name": "Aqua Leak Pros",
+    "address": "10 East Ave, Rochester, NY 14604",
+    "phone": "(212) 555-0100",
+    "website": "https://aqualeakpros.com/",
+    "rating": 4.8,
+    "review_count": 32,
+    "category": "Pool leak detection",
+    "place_id": "place-aqua"
+  },
+  {
+    "business_name": "Aqua Leak Pros",
+    "address": "5275 Main St, Williamsville, NY 14221",
+    "phone": "(212) 555-0199",
+    "website": "https://williamsville.example/",
+    "rating": 4.2,
+    "review_count": 10,
+    "category": "Pool leak detection",
+    "place_id": "place-will"
+  },
+  {
+    "business_name": "Leslie's Pool Supplies",
+    "address": "40 East Ave, Rochester, NY 14604",
+    "phone": "(212) 555-0188",
+    "website": "https://lesliespool.example/",
+    "rating": 4.1,
+    "review_count": 80,
+    "category": "Pool supply store",
+    "place_id": "place-leslie"
+  }
+]

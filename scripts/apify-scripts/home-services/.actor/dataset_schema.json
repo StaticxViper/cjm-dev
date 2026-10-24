@@ -1,0 +1,109 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Home services leads",
+    "fields": {
+      "business": {"type": "string"},
+      "phone": {"type": "string"},
+      "website": {"type": "string"},
+      "rating": {"type": "number"},
+      "review_count": {"type": "number"},
+      "email": {"type": "string"},
+      "website_quality": {"type": "number"},
+      "website_label": {"type": "string"},
+      "website_status": {"type": "string"},
+      "lead_score": {"type": "number"},
+      "intent_signals": {"type": "array"},
+      "decision": {"type": "string"},
+      "match_score": {"type": "number"},
+      "hardRejects": {"type": "array"},
+      "niche": {"type": "string"},
+      "area": {
+        "type": "object",
+        "properties": {
+          "region": {"type": "string"},
+          "city": {"type": "string"},
+          "county": {"type": "string"},
+          "state": {"type": "string"},
+          "cities": {"type": "array"}
+        }
+      },
+      "search_term": {"type": "string"},
+      "sourceStatus": {"type": "string"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["business", "decision", "lead_score", "email", "rating", "review_count", "sourceStatus"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "business": {"label": "Business", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "lead_score": {"label": "Lead score", "format": "number"},
+          "email": {"label": "Email", "format": "text"},
+          "rating": {"label": "Rating", "format": "number"},
+          "review_count": {"label": "Reviews", "format": "number"},
+          "sourceStatus": {"label": "Source status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "business",
+          "phone",
+          "website",
+          "rating",
+          "review_count",
+          "email",
+          "website_quality",
+          "website_label",
+          "website_status",
+          "lead_score",
+          "intent_signals",
+          "decision",
+          "match_score",
+          "hardRejects",
+          "niche",
+          "area",
+          "search_term",
+          "sourceStatus",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "business": {"label": "Business", "format": "text"},
+          "phone": {"label": "Phone", "format": "text"},
+          "website": {"label": "Website", "format": "text"},
+          "rating": {"label": "Rating", "format": "number"},
+          "review_count": {"label": "Reviews", "format": "number"},
+          "email": {"label": "Email", "format": "text"},
+          "website_quality": {"label": "Website quality", "format": "number"},
+          "website_label": {"label": "Website label", "format": "text"},
+          "website_status": {"label": "Website status", "format": "text"},
+          "lead_score": {"label": "Lead score", "format": "number"},
+          "intent_signals": {"label": "Intent signals", "format": "array"},
+          "decision": {"label": "Decision", "format": "text"},
+          "match_score": {"label": "Match score", "format": "number"},
+          "hardRejects": {"label": "Hard rejects", "format": "array"},
+          "niche": {"label": "Niche", "format": "text"},
+          "area": {"label": "Area", "format": "object"},
+          "search_term": {"label": "Search term", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}

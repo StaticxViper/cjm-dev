@@ -1,0 +1,11 @@
+{
+  "niche": "pool_specialists",
+  "area": "Rochester, NY",
+  "maxItems": 5,
+  "maxSearches": 1,
+  "maxResults": 3,
+  "includeEmail": true,
+  "includeWebsiteQuality": true,
+  "includeScore": true,
+  "headless": true
+}
