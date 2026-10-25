@@ -32,3 +32,5 @@ prepare_imports = _runtime.prepare_imports
 fetch_text = _runtime.fetch_text
 push_charged_rows = _runtime.push_charged_rows
 RESULT_EVENT = _runtime.RESULT_EVENT
+for _access_name in _runtime.ACCESS_NAMES:
+    globals()[_access_name] = getattr(_runtime, _access_name)

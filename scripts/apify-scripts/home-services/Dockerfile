@@ -13,6 +13,7 @@ COPY --chown=myuser:myuser ${ACTOR_PATH_IN_DOCKER_CONTEXT}/ ./
 
 ENV CJM_REPO_ROOT=/home/myuser/repo
 COPY --chown=myuser:myuser scripts/apify-scripts/runtime.py /home/myuser/repo/scripts/apify-scripts/runtime.py
+COPY --chown=myuser:myuser scripts/apify-scripts/access.py /home/myuser/repo/scripts/apify-scripts/access.py
 COPY --chown=myuser:myuser scripts/apify-scripts/google-business/src/__init__.py /home/myuser/repo/scripts/apify-scripts/google-business/src/__init__.py
 COPY --chown=myuser:myuser scripts/apify-scripts/google-business/src/mapping.py /home/myuser/repo/scripts/apify-scripts/google-business/src/mapping.py
 COPY --chown=myuser:myuser scripts/apify-scripts/google-business/src/runtime.py /home/myuser/repo/scripts/apify-scripts/google-business/src/runtime.py

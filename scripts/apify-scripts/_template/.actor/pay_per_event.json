@@ -1,0 +1,20 @@
+{
+  "actorChargeEvents": {
+    "result": {
+      "eventTitle": "Result",
+      "eventDescription": "Charged only for a successful row. Misses, blocks, and errors are saved and not billed.",
+      "eventPriceUsd": 0.01,
+      "isPrimaryEvent": true
+    },
+    "proxy": {
+      "eventTitle": "Proxy request",
+      "eventDescription": "Charged when a request is retried through Apify Proxy after a direct request is blocked. Direct requests are free.",
+      "eventPriceUsd": 0.01
+    },
+    "captcha": {
+      "eventTitle": "CAPTCHA solve",
+      "eventDescription": "Charged only when a solver returns a token after the proxy retry is still a challenge. A disabled or unconfigured solve is not billed.",
+      "eventPriceUsd": 1.0
+    }
+  }
+}

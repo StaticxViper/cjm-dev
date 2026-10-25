@@ -862,10 +862,11 @@ def _should_block_request(request):
 class CityDataSession:
     """One Playwright browser reused for the whole scrape run."""
 
-    def __init__(self, headless=True, timeout_ms=30000, delay_seconds=1.5):
+    def __init__(self, headless=True, timeout_ms=30000, delay_seconds=1.5, proxy=None):
         self.headless = headless
         self.timeout_ms = timeout_ms
         self.delay_seconds = delay_seconds
+        self.proxy = proxy
         self._playwright = None
         self._browser = None
         self._page = None
@@ -906,7 +907,10 @@ class CityDataSession:
             if self._playwright is None:
                 self._playwright = sync_playwright().start()
             if self._browser is None:
-                self._browser = self._playwright.chromium.launch(headless=self.headless)
+                launch_kwargs = {"headless": self.headless}
+                if self.proxy:
+                    launch_kwargs["proxy"] = self.proxy
+                self._browser = self._playwright.chromium.launch(**launch_kwargs)
             self._page = self._browser.new_page(
                 user_agent=USER_AGENT,
                 viewport={"width": 1280, "height": 720},

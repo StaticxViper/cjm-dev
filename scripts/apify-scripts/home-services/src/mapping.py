@@ -787,6 +787,8 @@ def _default_session(settings):
     prepare_imports()
     from playwright_discovery import BusinessDiscoverySession
 
+    # TODO: wire scripts/apify-scripts/access.py so a Maps block can escalate
+    # through Apify Proxy under maxSpendUsd, maxProxyCostUsd, and allowCaptcha.
     return BusinessDiscoverySession(headless=settings["headless"])
 
 

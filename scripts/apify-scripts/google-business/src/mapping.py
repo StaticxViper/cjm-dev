@@ -8,9 +8,32 @@ from __future__ import annotations
 from urllib.parse import quote_plus
 
 try:
-    from .runtime import iso_now, prepare_imports
+    from .runtime import (
+        access_summary,
+        after_proxy,
+        block_page,
+        escalate,
+        iso_now,
+        prepare_imports,
+        stop_message,
+    )
 except ImportError:
-    from runtime import iso_now, prepare_imports
+    from runtime import (
+        access_summary,
+        after_proxy,
+        block_page,
+        escalate,
+        iso_now,
+        prepare_imports,
+        stop_message,
+    )
+
+# Matches .actor/pay_per_event.json. The shared ladder adds proxy and captcha.
+PRICES_USD = {
+    "result": 0.05,
+    "proxy": 0.01,
+    "captcha": 1.00,
+}
 
 GOOGLE_ROBOTS_URL = "https://www.google.com/robots.txt"
 MAPS_SEARCH_PREFIX = "https://www.google.com/maps/search/"
@@ -471,3 +494,118 @@ def summarize(rows):
         "blocked": blocked,
         "errors": errors,
     }
+
+
+def _close_session(session):
+    closer = getattr(session, "close", None)
+    if closer:
+        closer()
+
+
+def _blocked_query(query, stop):
+    return status_row(query, "blocked", "blocked", error=stop_message(stop))
+
+
+def run_maps(queries, settings, zip_county, npa_state, policy, open_session, proxy_url_fn):
+    """Maps queries on a direct session. A block escalates once through Apify Proxy.
+
+    open_session(None) is the direct browser. open_session(proxy_url) is the
+    retry. proxy_url_fn is called only after a block. Later queries stay on
+    that proxy session and each one counts as a proxy event.
+    """
+    holder = {"session": open_session(None)}
+    proxy_state = {"url": None}
+    rows = []
+
+    def ensure_proxy():
+        if proxy_state["url"] is None:
+            proxy_state["url"] = (proxy_url_fn() if proxy_url_fn else "") or ""
+            if not proxy_state["url"]:
+                return False
+            _close_session(holder["session"])
+            holder["session"] = open_session(proxy_state["url"])
+        return holder["session"] is not None
+
+    def proxy(url, token=None, query=None):
+        del token
+        if not ensure_proxy():
+            return {
+                "status": 0,
+                "text": "",
+                "error": "proxy_unavailable",
+                "content_type": "text/html",
+                "url": url,
+            }
+        listings, blocked = collect_listings(holder["session"], query)
+        if blocked:
+            page = block_page(holder["session"], url)
+            page["listings"] = []
+            return page
+        return {
+            "status": 200,
+            "text": "",
+            "error": None,
+            "content_type": "text/html",
+            "url": maps_query_url(query.get("name") or ""),
+            "listings": list(listings or []),
+            "via": "proxy",
+        }
+
+    try:
+        for query in queries:
+            page_url = maps_query_url(query.get("name") or "")
+            if proxy_state["url"]:
+                if not policy.ledger.can("proxy"):
+                    rows.append(_blocked_query(query, "budget"))
+                    break
+                listings, blocked = collect_listings(holder["session"], query)
+                if not policy.commit_proxy():
+                    rows.append(_blocked_query(query, "budget"))
+                    break
+                if not blocked:
+                    rows.append(score_query(query, listings, settings, zip_county, npa_state))
+                    continue
+                final, stop = after_proxy(
+                    policy,
+                    block_page(holder["session"], page_url).get("url") or page_url,
+                    block_page(holder["session"], page_url),
+                    lambda url, token=None, query=query: proxy(url, token=token, query=query),
+                )
+                if stop:
+                    rows.append(_blocked_query(query, stop))
+                    break
+                rows.append(score_query(
+                    query,
+                    final.get("listings") or [],
+                    settings,
+                    zip_county,
+                    npa_state,
+                ))
+                continue
+
+            listings, blocked = collect_listings(holder["session"], query)
+            if not blocked:
+                rows.append(score_query(query, listings, settings, zip_county, npa_state))
+                continue
+            page = block_page(holder["session"], page_url)
+            final, stop = escalate(
+                policy,
+                page.get("url") or page_url,
+                page,
+                lambda url, token=None, query=query: proxy(url, token=token, query=query),
+            )
+            if stop:
+                rows.append(_blocked_query(query, stop))
+                break
+            rows.append(score_query(
+                query,
+                final.get("listings") or [],
+                settings,
+                zip_county,
+                npa_state,
+            ))
+    finally:
+        _close_session(holder["session"])
+    summary = summarize(rows)
+    summary.update(access_summary(policy.settings, policy.ledger))
+    return rows, summary

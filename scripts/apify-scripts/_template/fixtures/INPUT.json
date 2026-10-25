@@ -1,3 +1,9 @@
 {
-  "headless": true
+  "headless": true,
+  "maxSpendUsd": 5,
+  "maxProxyCostUsd": 0.5,
+  "allowCaptcha": false,
+  "proxyConfiguration": {
+    "useApifyProxy": false
+  }
 }
