@@ -16,9 +16,12 @@ Short guides live next to the code. Longer notes stay in this folder.
 | Apify Actors | [scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
 | Script Manager | [scripts/script_manager/README.md](../scripts/script_manager/README.md) |
 | Shared helpers | [helper_scripts/README.md](../helper_scripts/README.md) |
+| Apps hub | [apps/README.md](apps/README.md) |
 | Repo map | [repo-map/overview.md](repo-map/overview.md) |
 
 The published diagrams are at <https://staticxviper.github.io/cjm-dev/repo-map/>.
+
+Project pages (how it works, changelog, and links to those diagrams) are at <https://staticxviper.github.io/cjm-dev/apps/>. Source of truth for these pages is cjm-dev; other repos are linked only. See [apps/README.md](apps/README.md).
 
 ## Scripts
 

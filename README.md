@@ -32,7 +32,7 @@ Full details: [documentation/setup.md](documentation/setup.md)
 - [`helper_scripts/`](helper_scripts/) holds shared modules: HTTP (`http`), HTML and URL signals (`web`), names and phones (`text`), Maps identity (`maps`), CRM JSON-RPC (`crm`), Playwright pacing (`browser`), plus [`api_manager`](helper_scripts/api_manager/) and [`utils/logger`](helper_scripts/utils/logger/).
 - [`unittests/`](unittests/) mirrors those tools.
 - [`documentation/`](documentation/) has the longer per-script guides.
-- [`portfolio/`](portfolio/) is the Moulton site. The repo map is a separate Pages path and is not in that site's nav.
+- [`portfolio/`](portfolio/) is the Moulton site. The [apps hub](documentation/apps/README.md) and the [repo map](documentation/repo-map/overview.md) are published with that site and linked from its navigation.
 
 ### Main tools
 
@@ -53,6 +53,7 @@ Per-script guides live in [`documentation/`](documentation/). Folder READMEs are
 - **[Documentation index](documentation/README.md)** — links to every script, helper module, folder README, and test guide
 - **[Setup guide](documentation/setup.md)** — detailed new-environment instructions
 - **[Unit tests](documentation/testing/unittests.md)** — how to run tests
+- **[Apps hub](https://staticxviper.github.io/cjm-dev/apps/)** — one page per project for how it works now and what changed. Source: [`documentation/apps/`](documentation/apps/). Other repos are linked only.
 - **[Repo map](https://staticxviper.github.io/cjm-dev/repo-map/)** — import and call diagrams. Source: [`documentation/repo-map/`](documentation/repo-map/). Regenerate with `python scripts/repo_map/generate.py` and check drift with `python scripts/repo_map/generate.py --check`.
 
 ## Current Focus
