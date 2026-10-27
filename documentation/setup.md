@@ -78,7 +78,7 @@ STOCK_INGEST_TOKEN=
 LEAD_INGEST_KEY=
 CRM_MCP_MV_LLC=
 MVLLC_LOGS_KEY=
-CHIKARA_REALMS_SECRET=
+CHIKARA_REALMS_SECRET=  # API Manager name only; the blog repo is StaticxViper/chikararealms
 
 # Lovable (optional)
 LOVABLE_API_KEY=
@@ -95,7 +95,7 @@ Most scripts add the repo root to `sys.path` automatically. A few behaviors diff
 | Run from | Scripts |
 |----------|---------|
 | **Repo root** | `stock_analyzer` (reads `scripts/stock_analyzer/previous_run_date.txt`) |
-| **Script folder** | `blog_automation`, `leadgen`, `lead_automation`, `json_formatter`, `lovable_automation`, `webhook_manager`, `property_listing_gen` |
+| **Script folder** | `leadgen`, `lead_automation`, `json_formatter`, `lovable_automation`, `webhook_manager`, `property_listing_gen` |
 | **Either** | `clip_generator`, `montage_builder` (paths via `--base-dir` or `MOTO_VIDS_BASE`) |
 
 In CI, stock analysis uses:

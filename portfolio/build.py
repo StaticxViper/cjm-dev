@@ -7,6 +7,8 @@ import shutil
 from pathlib import Path
 
 from og_card import write_og_png
+from pages_shell import render_site_page
+from render_apps import portfolio_slugs, render_apps, validate_catalog, load_catalog
 from resume_pdf import build_resume
 
 ROOT = Path(__file__).resolve().parent
@@ -24,14 +26,6 @@ PAGES = (
     ("about.html", "about"),
     ("resume.html", "resume"),
     ("contact.html", "contact"),
-)
-NAV = (
-    ("index.html", "Home"),
-    ("projects.html", "Projects"),
-    ("experience.html", "Experience"),
-    ("about.html", "About"),
-    ("resume.html", "Resume"),
-    ("contact.html", "Contact"),
 )
 
 
@@ -92,9 +86,14 @@ def render_link(project: dict) -> str:
     return f'<p class="work-link"><a href="{esc(url)}"{attributes}>{esc(label)}{note}</a></p>'
 
 
-def render_work(project: dict) -> str:
+def render_work(project: dict, docs_slug: str = "") -> str:
     tech = (project.get("tech") or "").strip()
     tech_html = f'<p class="tech">{esc(tech)}</p>' if tech else ""
+    docs = ""
+    if docs_slug:
+        docs = (
+            f'<p class="work-link"><a href="apps/{esc(docs_slug)}/index.html">How it works</a></p>'
+        )
     return f"""
             <article class="work">
               {render_mark(project)}
@@ -105,7 +104,10 @@ def render_work(project: dict) -> str:
                 </div>
                 {tech_html}
                 <p>{esc(project["description"])}</p>
-                {render_link(project)}
+                <div class="link-row">
+                  {render_link(project)}
+                  {docs}
+                </div>
               </div>
             </article>
     """
@@ -181,14 +183,6 @@ def render_plain_list(items: list[str]) -> str:
     return '<ul class="plain-list">' + "".join(f"<li>{esc(item)}</li>" for item in items) + "</ul>"
 
 
-def render_nav(active: str) -> str:
-    items = []
-    for filename, label in NAV:
-        current = ' aria-current="page"' if filename == active else ""
-        items.append(f'<li><a href="{filename}"{current}>{label}</a></li>')
-    return "<ul>" + "".join(items) + "</ul>"
-
-
 def render_contact_items(contact: dict, *, include_phone: bool) -> str:
     rows = [
         ("Email", f'<a href="mailto:{esc(contact["email"])}">{esc(contact["email"])}</a>'),
@@ -209,84 +203,21 @@ def render_contact_items(contact: dict, *, include_phone: bool) -> str:
 def layout(content: dict, filename: str, body: str) -> str:
     page_key = dict(PAGES)[filename]
     page = content["pages"][page_key]
-    site = content["siteUrl"]
-    if not site.endswith("/"):
-        site += "/"
-    canonical = site if filename == "index.html" else site + filename
-    image = site + "og.png"
-    title = esc(page["title"])
-    description = esc(page["description"])
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title}</title>
-  <meta name="description" content="{description}">
-  <meta name="author" content="{esc(content["name"])}">
-  <meta name="theme-color" content="#070b0a">
-  <link rel="canonical" href="{esc(canonical)}">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="{title}">
-  <meta property="og:description" content="{description}">
-  <meta property="og:url" content="{esc(canonical)}">
-  <meta property="og:image" content="{esc(image)}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="{esc(content["brand"])}">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{title}">
-  <meta name="twitter:description" content="{description}">
-  <meta name="twitter:image" content="{esc(image)}">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="site.css">
-</head>
-<body>
-  <a class="skip" href="#content">Skip to content</a>
-  <header class="site-header">
-    <div class="wrap header-inner">
-      <a class="brand" href="index.html">{esc(content["brand"])}</a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
-      <nav id="site-nav" class="site-nav" aria-label="Primary">
-        {render_nav(filename)}
-      </nav>
-    </div>
-  </header>
-  <main id="content">
-    <div class="wrap">
-      {body}
-    </div>
-  </main>
-  <footer class="site-footer">
-    <div class="wrap footer-inner">
-      <p>{esc(content["brand"])} · {esc(content["holdingCompany"])}</p>
-      <p>{esc(content["location"])}</p>
-    </div>
-  </footer>
-  <script>
-    const toggle = document.querySelector(".nav-toggle");
-    const nav = document.querySelector("#site-nav");
-    toggle.addEventListener("click", () => {{
-      const open = nav.classList.toggle("is-open");
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-      toggle.textContent = open ? "Close" : "Menu";
-    }});
-    nav.addEventListener("click", (event) => {{
-      if (event.target.closest("a")) {{
-        nav.classList.remove("is-open");
-        toggle.setAttribute("aria-expanded", "false");
-        toggle.textContent = "Menu";
-      }}
-    }});
-  </script>
-</body>
-</html>
-"""
+    canonical = "" if filename == "index.html" else filename
+    return render_site_page(
+        content,
+        title=page["title"],
+        description=page["description"],
+        canonical_path=canonical,
+        body=body,
+        active=page_key,
+        depth=0,
+    )
 
 
-def page_home(content: dict, projects: list[dict]) -> str:
+def page_home(content: dict, projects: list[dict], docs: dict[str, str]) -> str:
     featured = [project for project in projects if project["featured"]]
-    work = "\n".join(render_work(project) for project in featured)
+    work = "\n".join(render_work(project, docs.get(project["name"], "")) for project in featured)
     featured_block = ""
     if featured:
         featured_block = f"""
@@ -317,11 +248,13 @@ def page_home(content: dict, projects: list[dict]) -> str:
     """
 
 
-def page_projects(content: dict, projects: list[dict]) -> str:
+def page_projects(content: dict, projects: list[dict], docs: dict[str, str]) -> str:
     groups = []
     for status in STATUSES:
         items = [project for project in projects if project["status"] == status]
-        body = "\n".join(render_work(project) for project in items) if items else '<p class="empty">Nothing in this group yet.</p>'
+        body = "\n".join(
+            render_work(project, docs.get(project["name"], "")) for project in items
+        ) if items else '<p class="empty">Nothing in this group yet.</p>'
         groups.append(
             f"""
       <section class="section" id="{status}" aria-labelledby="{status}-heading">
@@ -338,6 +271,7 @@ def page_projects(content: dict, projects: list[dict]) -> str:
       <header class="page-intro">
         <h1>Projects</h1>
         {intro_html}
+        <p class="work-link"><a href="apps/index.html">How the apps work</a></p>
       </header>
       {''.join(groups)}
     """
@@ -495,10 +429,12 @@ def check(content: dict, pages: dict[str, str], resume_path: Path, og_path: Path
 def build() -> None:
     content = load_content()
     validate(content)
+    validate_catalog(load_catalog(), content)
+    docs = portfolio_slugs()
     projects = shown_projects(content)
     pages = {
-        "index.html": layout(content, "index.html", page_home(content, projects)),
-        "projects.html": layout(content, "projects.html", page_projects(content, projects)),
+        "index.html": layout(content, "index.html", page_home(content, projects, docs)),
+        "projects.html": layout(content, "projects.html", page_projects(content, projects, docs)),
         "experience.html": layout(content, "experience.html", page_experience(content)),
         "about.html": layout(content, "about.html", page_about(content)),
         "resume.html": layout(content, "resume.html", page_resume(content)),
@@ -527,8 +463,12 @@ def build() -> None:
     copy_logos(projects)
     (DIST / ".nojekyll").write_text("", encoding="utf-8")
     check(content, pages, DIST / resume_name, DIST / "og.png")
+    app_pages = render_apps()
     hidden = sum(1 for project in content["projects"] if not project["show"])
-    print(f"Built {len(pages)} pages, {len(projects)} shown, {hidden} hidden, and {resume_name}")
+    print(
+        f"Built {len(pages)} pages, {len(projects)} shown, {hidden} hidden, "
+        f"{app_pages} app pages, and {resume_name}"
+    )
 
 
 if __name__ == "__main__":

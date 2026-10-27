@@ -102,4 +102,11 @@ Open `portfolio/dist/index.html` and check the other pages, including a narrow w
 
 [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) builds the site and deploys it to GitHub Pages when `main` is pushed. You can also run it by hand from the Actions tab (workflow_dispatch).
 
+The same build publishes the apps hub at `apps/` and the repo map at `repo-map/`. Both are in the site navigation. App notes are authored in [`documentation/apps/`](../documentation/apps/README.md). Source of truth for these pages is cjm-dev; other repos are linked only. A full local preview also renders the map:
+
+```bash
+python portfolio/build.py
+python scripts/repo_map/generate.py --pages portfolio/dist/repo-map
+```
+
 The repository Pages source has to be **GitHub Actions** (Settings → Pages → Build and deployment → Source). The first successful run of this workflow publishes [https://staticxviper.github.io/cjm-dev/](https://staticxviper.github.io/cjm-dev/).

@@ -3,7 +3,7 @@
 
 Write the diagrams with ``python scripts/repo_map/generate.py``.
 ``--check`` exits non-zero when ``documentation/repo-map/generated/`` drifts.
-``--pages DIR`` writes static HTML that loads Mermaid from a CDN.
+``--pages DIR`` writes static HTML in the Moulton site shell. Mermaid loads from a CDN.
 """
 from __future__ import annotations
 
@@ -441,126 +441,76 @@ def write_generated(directory: Path | None = None) -> None:
 
 
 def write_pages(dest: Path) -> None:
-    """Render overview, data-flow, and generated diagrams to static HTML."""
+    """Render overview, data-flow, and generated diagrams in the site shell."""
+    import sys
+
+    sys.path.insert(0, str(REPO / "portfolio"))
+    from pages_shell import SOURCE_NOTE, esc, load_content, markdown_to_html, render_site_page
+
+    content = load_content()
     dest.mkdir(parents=True, exist_ok=True)
-    pages = [("overview.md", "Overview"), ("data-flow.md", "Data flow")]
-    generated = sorted(GENERATED.glob("*.md"))
-    pages.extend((path.name, path.stem) for path in generated)
-    written = []
-    for filename, _title in [("overview.md", "Overview"), ("data-flow.md", "Data flow")]:
+    entries: list[tuple[str, str, str]] = []
+    for filename, title in (("overview.md", "Overview"), ("data-flow.md", "Data flow")):
         source = REPO / "documentation" / "repo-map" / filename
-        html_name = filename.replace(".md", ".html")
-        _write_html(dest / html_name, source.stem, _markdown_html(source.read_text(encoding="utf-8")))
-        written.append((html_name, source.stem.replace("-", " ").title()))
-    for path in generated:
-        html_name = path.name.replace(".md", ".html")
-        _write_html(dest / html_name, path.stem, _markdown_html(path.read_text(encoding="utf-8")))
-        written.append((html_name, path.stem.replace("-", " ").title()))
+        text = source.read_text(encoding="utf-8")
+        entries.append((filename.replace(".md", ".html"), title, text))
+    for path in sorted(GENERATED.glob("*.md")):
+        title = path.stem.replace("-", " ").title()
+        entries.append((path.name.replace(".md", ".html"), title, path.read_text(encoding="utf-8")))
+
     items = "\n".join(
-        f'<li><a href="{_label(name)}">{_label(title)}</a></li>' for name, title in written
+        f'<li><a href="{esc(html_name)}">{esc(title)}</a></li>'
+        for html_name, title, _text in entries
     )
-    body = (
-        "<h1>Repo map</h1>"
-        "<p>Import and call diagrams for cjm-dev. "
-        "This path is not part of the Moulton portfolio navigation.</p>"
-        f"<ul>{items}</ul>"
-    )
-    _write_html(dest / "index.html", "Repo map", body)
-
-
-def _write_html(path: Path, title: str, body: str) -> None:
-    path.write_text(
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-        f"<title>{_label(title)}</title>\n"
-        '<script type="module">\n'
-        '  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";\n'
-        "  mermaid.initialize({ startOnLoad: true, securityLevel: \"strict\" });\n"
-        "</script>\n"
-        "<style>body{font-family:Georgia,serif;max-width:960px;margin:2rem auto;padding:0 1rem;}"
-        "pre.mermaid,pre.code{background:#f6f6f6;padding:1rem;overflow:auto;}"
-        "a{color:#163}</style>\n</head>\n<body>\n"
-        '<p><a href="index.html">Repo map</a></p>\n'
-        f"{body}\n</body>\n</html>\n",
+    index_body = f"""
+      <header class="page-intro">
+        <p class="eyebrow">Map</p>
+        <h1>Repo map</h1>
+        <p class="lede">Import and call diagrams for the code in this repo.</p>
+        <p class="truth">{esc(SOURCE_NOTE)}</p>
+        <p class="work-link"><a href="../apps/index.html">Apps hub</a></p>
+      </header>
+      <section class="section" aria-labelledby="diagrams-heading">
+        <h2 id="diagrams-heading">Diagrams</h2>
+        <ul class="plain-list">
+          {items}
+        </ul>
+      </section>
+    """
+    (dest / "index.html").write_text(
+        render_site_page(
+            content,
+            title="Repo map — Moulton",
+            description="Import and call diagrams for the code in cjm-dev.",
+            canonical_path="repo-map/index.html",
+            body=index_body,
+            active="map",
+            depth=1,
+        ),
         encoding="utf-8",
     )
-
-
-def _markdown_html(text: str) -> str:
-    html = []
-    lines = text.splitlines()
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        if line.startswith("```"):
-            lang = line[3:].strip()
-            block = []
-            index += 1
-            while index < len(lines) and not lines[index].startswith("```"):
-                block.append(lines[index])
-                index += 1
-            code = "\n".join(block)
-            css = "mermaid" if lang == "mermaid" else "code"
-            html.append(f'<pre class="{css}">{_escape(code)}</pre>')
-        elif line.startswith("### "):
-            html.append(f"<h3>{_inline(line[4:])}</h3>")
-        elif line.startswith("## "):
-            html.append(f"<h2>{_inline(line[3:])}</h2>")
-        elif line.startswith("# "):
-            html.append(f"<h1>{_inline(line[2:])}</h1>")
-        elif line.startswith("- "):
-            items = []
-            while index < len(lines) and lines[index].startswith("- "):
-                items.append(f"<li>{_inline(lines[index][2:])}</li>")
-                index += 1
-            html.append("<ul>" + "".join(items) + "</ul>")
-            continue
-        elif line.strip():
-            html.append(f"<p>{_inline(line)}</p>")
-        index += 1
-    return "\n".join(html)
-
-
-def _escape(value: str) -> str:
-    return (
-        value.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
-
-
-def _inline(value: str) -> str:
-    escaped = _escape(value).replace("**", "\x00")
-    bolded = []
-    open_bold = False
-    for char in escaped:
-        if char == "\x00":
-            bolded.append("</strong>" if open_bold else "<strong>")
-            open_bold = not open_bold
-            continue
-        bolded.append(char)
-    escaped = "".join(bolded)
-    out = []
-    index = 0
-    while index < len(escaped):
-        if escaped.startswith("`", index):
-            end = escaped.find("`", index + 1)
-            if end != -1:
-                out.append("<code>" + escaped[index + 1:end] + "</code>")
-                index = end + 1
-                continue
-        if escaped.startswith("[", index):
-            mid = escaped.find("](", index)
-            end = escaped.find(")", mid + 2) if mid != -1 else -1
-            if mid != -1 and end != -1:
-                label = escaped[index + 1:mid]
-                href = escaped[mid + 2:end]
-                out.append(f'<a href="{href}">{label}</a>')
-                index = end + 1
-                continue
-        out.append(escaped[index])
-        index += 1
-    return "".join(out)
+    for html_name, title, text in entries:
+        links = []
+        for name, label, _text in entries:
+            current = ' aria-current="page"' if name == html_name else ""
+            links.append(f'<a href="{esc(name)}"{current}>{esc(label)}</a>')
+        body = (
+            f'<nav class="layer-nav" aria-label="Diagrams">{"".join(links)}</nav>'
+            f'<div class="prose">{markdown_to_html(text, depth=1)}</div>'
+        )
+        (dest / html_name).write_text(
+            render_site_page(
+                content,
+                title=f"{title} — Repo map — Moulton",
+                description=f"{title} diagram for the cjm-dev repo map.",
+                canonical_path=f"repo-map/{html_name}",
+                body=body,
+                active="map",
+                depth=1,
+                mermaid="```mermaid" in text,
+            ),
+            encoding="utf-8",
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

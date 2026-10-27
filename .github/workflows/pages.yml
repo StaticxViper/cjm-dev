@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - "portfolio/**"
+      - "documentation/apps/**"
       - "documentation/repo-map/**"
       - "scripts/repo_map/**"
       - ".github/workflows/pages.yml"

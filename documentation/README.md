@@ -16,9 +16,12 @@ Short guides live next to the code. Longer notes stay in this folder.
 | Apify Actors | [scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
 | Script Manager | [scripts/script_manager/README.md](../scripts/script_manager/README.md) |
 | Shared helpers | [helper_scripts/README.md](../helper_scripts/README.md) |
+| Apps hub | [apps/README.md](apps/README.md) |
 | Repo map | [repo-map/overview.md](repo-map/overview.md) |
 
 The published diagrams are at <https://staticxviper.github.io/cjm-dev/repo-map/>.
+
+Project pages (how it works, changelog, and links to those diagrams) are at <https://staticxviper.github.io/cjm-dev/apps/>. Source of truth for these pages is cjm-dev; other repos are linked only. See [apps/README.md](apps/README.md).
 
 ## Scripts
 
@@ -26,7 +29,7 @@ The published diagrams are at <https://staticxviper.github.io/cjm-dev/repo-map/>
 |--------|-----|
 | Script manager | [scripts/script_manager.md](scripts/script_manager.md) |
 | Script manager on GitHub Actions | [scripts/script_manager_actions.md](scripts/script_manager_actions.md) |
-| Blog automation (Chikara Realms) | [scripts/blog_automation.md](scripts/blog_automation.md) |
+| Chikara Realms (separate repo) | [scripts/blog_automation.md](scripts/blog_automation.md) |
 | Lead generation | [scripts/leadgen.md](scripts/leadgen.md) |
 | New-business sources | [scripts/new_business_sources.md](scripts/new_business_sources.md) |
 | Niche lead search | [scripts/niche_search.md](scripts/niche_search.md) |
@@ -80,9 +83,9 @@ flowchart LR
 
 | Variable | Used by |
 |----------|---------|
-| `CHATGPT_API_KEY` | `blog_automation`, `api_manager` |
-| `PERPLEXITY_API_KEY` | `blog_automation`, `stock_analyzer`, `api_manager` |
-| `CHIKARA_REALMS_SECRET` | `blog_automation`, `api_manager` |
+| `CHATGPT_API_KEY` | `api_manager` |
+| `PERPLEXITY_API_KEY` | `stock_analyzer`, `api_manager` |
+| `CHIKARA_REALMS_SECRET` | `api_manager` (the blog itself is [StaticxViper/chikararealms](https://github.com/StaticxViper/chikararealms)) |
 | `GOOGLE_API_KEY` | `leadgen`, `api_manager` |
 | `LEAD_INGEST_KEY` | `leadenrich_playwright` (`--from-crm` export), `api_manager` |
 | `CRM_MCP_MV_LLC` | `leadgen`, `lead_automation`, `leadenrich`, `leadenrich_playwright` (CRM upload) |
@@ -109,7 +112,6 @@ flowchart LR
 
 | Working directory | Scripts |
 |-------------------|---------|
-| `scripts/chikara_realms/` | `blog_automation.py` |
 | `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `leadenrich_playwright.py`, `lead_automation.py` |
 | `scripts/zillow_automation/` | `property_listing_gen.py` |
 | `scripts/city_data/` | `city_data_scraper.py` |

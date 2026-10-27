@@ -191,14 +191,14 @@
     },
     {
       "name": "Chikara Realms",
-      "description": "A blog pipeline automated and powered by AI, written to promote personal development and investing.",
-      "kind": "script",
+      "description": "A blog on investing and mindset.",
+      "kind": "website",
       "status": "current",
       "show": true,
       "featured": true,
-      "tech": "Python",
-      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/chikara_realms",
-      "urlLabel": "View on GitHub",
+      "tech": "",
+      "url": "https://chikararealms.com",
+      "urlLabel": "Visit site",
       "logo": ""
     },
     {

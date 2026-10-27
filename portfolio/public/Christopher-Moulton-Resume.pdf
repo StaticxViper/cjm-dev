@@ -69,7 +69,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 8 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
 endobj
 8 0 obj
-<< /Length 5498 >>
+<< /Length 5384 >>
 stream
 0.071 0.196 0.184 rg 0 0 8 792 re f
 0.290 0.271 0.235 rg BT /F1 9.00 Tf 1 0 0 1 54.00 735.00 Tm (Christopher J. Moulton · Resume) Tj ET
@@ -100,8 +100,8 @@ stream
 0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 325.56 Tm (Collects Zillow listing URLs for ZIP codes through Apify.) Tj ET
 0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 313.36 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/zillow_automation) Tj ET
 0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 295.80 Tm (Chikara Realms) Tj ET
-0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 281.28 Tm (A blog pipeline automated and powered by AI, written to promote personal development and investing.) Tj ET
-0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 269.08 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/chikara_realms) Tj ET
+0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 281.28 Tm (A blog on investing and mindset.) Tj ET
+0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 269.08 Tm (https://chikararealms.com) Tj ET
 0.102 0.094 0.078 rg BT /F2 11.00 Tf 1 0 0 1 54.00 251.52 Tm (Stock analyzer) Tj ET
 0.102 0.094 0.078 rg BT /F1 10.00 Tf 1 0 0 1 54.00 237.00 Tm (Collects daily stock data and writes a Perplexity analysis to a dashboard.) Tj ET
 0.290 0.271 0.235 rg BT /F1 8.00 Tf 1 0 0 1 54.00 224.80 Tm (https://github.com/StaticxViper/cjm-dev/tree/main/scripts/stock_analyzer) Tj ET
@@ -181,10 +181,10 @@ xref
 0000000468 00000 n 
 0000006596 00000 n 
 0000006732 00000 n 
-0000012282 00000 n 
-0000012419 00000 n 
-0000017129 00000 n 
+0000012168 00000 n 
+0000012305 00000 n 
+0000017015 00000 n 
 trailer << /Size 12 /Root 1 0 R /Info 11 0 R >>
 startxref
-17258
+17144
 %%EOF
