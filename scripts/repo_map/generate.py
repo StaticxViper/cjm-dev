@@ -3,7 +3,7 @@
 
 Write the diagrams with ``python scripts/repo_map/generate.py``.
 ``--check`` exits non-zero when ``documentation/repo-map/generated/`` drifts.
-``--pages DIR`` writes static HTML in the Moulton site shell. Mermaid loads from a CDN.
+``--pages DIR`` writes static HTML in the portfolio site shell. Mermaid loads from a CDN.
 """
 from __future__ import annotations
 
@@ -445,7 +445,15 @@ def write_pages(dest: Path) -> None:
     import sys
 
     sys.path.insert(0, str(REPO / "portfolio"))
-    from pages_shell import SOURCE_NOTE, esc, load_content, markdown_to_html, render_site_page
+    from pages_shell import (
+        SOURCE_NOTE,
+        assert_public_copy,
+        esc,
+        load_content,
+        markdown_to_html,
+        page_title,
+        render_site_page,
+    )
 
     content = load_content()
     dest.mkdir(parents=True, exist_ok=True)
@@ -477,18 +485,17 @@ def write_pages(dest: Path) -> None:
         </ul>
       </section>
     """
-    (dest / "index.html").write_text(
-        render_site_page(
-            content,
-            title="Repo map — Moulton",
-            description="Import and call diagrams for the code in cjm-dev.",
-            canonical_path="repo-map/index.html",
-            body=index_body,
-            active="map",
-            depth=1,
-        ),
-        encoding="utf-8",
+    index_html = render_site_page(
+        content,
+        title=page_title(content, "Repo map"),
+        description="Import and call diagrams for the code in cjm-dev.",
+        canonical_path="repo-map/index.html",
+        body=index_body,
+        active="map",
+        depth=1,
     )
+    assert_public_copy(index_html, "repo-map/index.html")
+    (dest / "index.html").write_text(index_html, encoding="utf-8")
     for html_name, title, text in entries:
         links = []
         for name, label, _text in entries:
@@ -498,19 +505,18 @@ def write_pages(dest: Path) -> None:
             f'<nav class="layer-nav" aria-label="Diagrams">{"".join(links)}</nav>'
             f'<div class="prose">{markdown_to_html(text, depth=1)}</div>'
         )
-        (dest / html_name).write_text(
-            render_site_page(
-                content,
-                title=f"{title} — Repo map — Moulton",
-                description=f"{title} diagram for the cjm-dev repo map.",
-                canonical_path=f"repo-map/{html_name}",
-                body=body,
-                active="map",
-                depth=1,
-                mermaid="```mermaid" in text,
-            ),
-            encoding="utf-8",
+        page_html = render_site_page(
+            content,
+            title=page_title(content, title, "Repo map"),
+            description=f"{title} diagram for the cjm-dev repo map.",
+            canonical_path=f"repo-map/{html_name}",
+            body=body,
+            active="map",
+            depth=1,
+            mermaid="```mermaid" in text,
         )
+        assert_public_copy(page_html, f"repo-map/{html_name}")
+        (dest / html_name).write_text(page_html, encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:

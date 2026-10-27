@@ -1,6 +1,6 @@
-# Moulton
+# Portfolio
 
-Public site for Moulton, the name on the work of CJ Moulton and Moulton Ventures. It is a static site: HTML, one stylesheet, a social preview image, and a resume PDF. There is no backend.
+Personal portfolio and documentation site for Christopher J. Moulton (CJ Moulton). It is a static site: HTML, one stylesheet, a social preview image, and a resume PDF. There is no backend. The public pages use his name. They describe the work, the roles, and how the projects run.
 
 GitHub Pages publishes the built site at [https://staticxviper.github.io/cjm-dev/](https://staticxviper.github.io/cjm-dev/).
 

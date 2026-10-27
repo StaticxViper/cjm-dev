@@ -6,7 +6,7 @@ import json
 import shutil
 from pathlib import Path
 
-from pages_shell import SOURCE_NOTE, esc, load_content, markdown_to_html, rel, render_site_page
+from pages_shell import SOURCE_NOTE, esc, load_content, markdown_to_html, page_title, rel, render_site_page
 
 PORTFOLIO = Path(__file__).resolve().parent
 REPO = PORTFOLIO.parent
@@ -201,7 +201,7 @@ def _index_page(content: dict, projects: list[dict]) -> str:
     """
     return render_site_page(
         content,
-        title="Apps — Moulton",
+        title=page_title(content, "Apps"),
         description="How CJ's apps work, what changed, and where the code lives.",
         canonical_path="apps/index.html",
         body=body,
@@ -260,7 +260,7 @@ def _overview_page(content: dict, project: dict) -> str:
     """
     return render_site_page(
         content,
-        title=f"{project['name']} — Moulton",
+        title=page_title(content, project["name"]),
         description=project["summary"],
         canonical_path=f"apps/{slug}/index.html",
         body=body,
@@ -290,7 +290,7 @@ def _markdown_page(content: dict, project: dict, kind: str) -> str:
     """
     return render_site_page(
         content,
-        title=f"{project['name']} — {heading} — Moulton",
+        title=page_title(content, project["name"], heading),
         description=project["summary"],
         canonical_path=f"apps/{project['slug']}/{html_name}",
         body=body,

@@ -1,4 +1,4 @@
-"""Social preview card for the Moulton site. Uses only the Python standard library."""
+"""Social preview card for the portfolio site. Uses only the Python standard library."""
 
 from __future__ import annotations
 
@@ -107,6 +107,25 @@ def _build_glyphs() -> None:
         (30, 126),
         (16, 110),
     ]])
+    _register("P", 96, [
+        [(16, 132), (16, 12)],
+        [(16, 12), (52, 12)] + _arc(52, 42, 30, -math.pi / 2, math.pi / 2) + [(16, 72)],
+    ])
+    _register("F", 84, [
+        [(16, 12), (16, 132)],
+        [(16, 12), (74, 12)],
+        [(16, 68), (58, 68)],
+    ])
+    _register("I", 64, [
+        [(32, 12), (32, 132)],
+        [(10, 12), (54, 12)],
+        [(10, 132), (54, 132)],
+    ])
+    _register("A", 100, [
+        [(14, 132), (50, 12)],
+        [(50, 12), (86, 132)],
+        [(30, 84), (70, 84)],
+    ])
     _register(" ", 36, [])
     _register("·", 40, [_arc(20, 74, 5, 0, math.tau)])
 
@@ -171,15 +190,15 @@ def _text_width(text: str, scale: float) -> float:
 def write_og_png(path: Path) -> None:
     _build_glyphs()
     buffer = bytearray(GREEN * WIDTH * HEIGHT)
-    word = "Moulton"
-    word_scale = 1.05
+    word = "CJ Moulton"
+    word_scale = 0.92
     word_width = _text_width(word, word_scale)
     word_x = (WIDTH - word_width) / 2
-    word_y = 168
-    _draw_text(buffer, word, word_x, word_y, word_scale, 7.2, CREAM)
+    word_y = 150
+    _draw_text(buffer, word, word_x, word_y, word_scale, 6.4, CREAM)
 
-    line = "CJ MOULTON  ·  MOULTON VENTURES"
-    line_scale = 0.34
+    line = "PORTFOLIO"
+    line_scale = 0.48
     line_width = _text_width(line, line_scale)
     line_x = (WIDTH - line_width) / 2
     rule_y = word_y + 132 * word_scale + 36

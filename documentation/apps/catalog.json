@@ -19,8 +19,8 @@
       "diagrams": []
     },
     {
-      "slug": "mv-llc-admin",
-      "name": "MV LLC Admin Dashboard",
+      "slug": "personal-admin",
+      "name": "Personal admin dashboard",
       "summary": "Personal hub for APIs, webhooks, devices, goals, tasks, and analytics. The app code is not in this repo.",
       "code": "unrecorded",
       "portfolioName": "Personal admin dashboard",

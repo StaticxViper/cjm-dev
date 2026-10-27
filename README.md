@@ -32,7 +32,7 @@ Full details: [documentation/setup.md](documentation/setup.md)
 - [`helper_scripts/`](helper_scripts/) holds shared modules: HTTP (`http`), HTML and URL signals (`web`), names and phones (`text`), Maps identity (`maps`), CRM JSON-RPC (`crm`), Playwright pacing (`browser`), plus [`api_manager`](helper_scripts/api_manager/) and [`utils/logger`](helper_scripts/utils/logger/).
 - [`unittests/`](unittests/) mirrors those tools.
 - [`documentation/`](documentation/) has the longer per-script guides.
-- [`portfolio/`](portfolio/) is the Moulton site. The [apps hub](documentation/apps/README.md) and the [repo map](documentation/repo-map/overview.md) are published with that site and linked from its navigation.
+- [`portfolio/`](portfolio/) is the personal portfolio and documentation site for CJ Moulton. The [apps hub](documentation/apps/README.md) and the [repo map](documentation/repo-map/overview.md) are published with that site and linked from its navigation.
 
 ### Main tools
 
@@ -64,7 +64,7 @@ Per-script guides live in [`documentation/`](documentation/). Folder READMEs are
 
 ## Portfolio
 
-The Moulton site is in [`portfolio/`](portfolio/). Edit [`portfolio/content.json`](portfolio/content.json) to choose which websites, apps, and scripts are shown, then build and publish with GitHub Pages. Details: [portfolio/README.md](portfolio/README.md).
+The personal portfolio and documentation site is in [`portfolio/`](portfolio/). It is published under CJ Moulton. Edit [`portfolio/content.json`](portfolio/content.json) to choose which websites, apps, and scripts are shown, then build and publish with GitHub Pages. Details: [portfolio/README.md](portfolio/README.md).
 
 ## About Me
 

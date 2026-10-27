@@ -1,6 +1,6 @@
 # Apps hub
 
-Plain-English pages for each project, published with the Moulton site.
+Plain-English pages for each project, published with the personal portfolio.
 
 Source of truth for these pages is cjm-dev; other repos are linked only.
 
