@@ -11,7 +11,7 @@ python scripts/repo_map/generate.py --check
 
 `--check` exits non-zero when `documentation/repo-map/generated/` does not match the current imports. The unit test `unittests/repo_map/test_generate.py` runs that check.
 
-GitHub Pages publishes this folder at <https://staticxviper.github.io/cjm-dev/repo-map/>. [pages.yml](https://github.com/StaticxViper/cjm-dev/blob/main/.github/workflows/pages.yml) builds the Moulton portfolio and the [apps hub](https://staticxviper.github.io/cjm-dev/apps/), then renders these Markdown files to `portfolio/dist/repo-map/`. Map is a link in the site navigation.
+GitHub Pages publishes this folder at <https://staticxviper.github.io/cjm-dev/repo-map/>. [pages.yml](https://github.com/StaticxViper/cjm-dev/blob/main/.github/workflows/pages.yml) builds the personal portfolio and the [apps hub](https://staticxviper.github.io/cjm-dev/apps/), then renders these Markdown files to `portfolio/dist/repo-map/`. Map is a link in the site navigation.
 
 ## What each diagram is
 

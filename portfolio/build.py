@@ -1,4 +1,4 @@
-"""Generate the static Moulton site from portfolio/content.json."""
+"""Generate the personal portfolio site from portfolio/content.json."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 from og_card import write_og_png
-from pages_shell import render_site_page
+from pages_shell import assert_public_copy, render_site_page
 from render_apps import portfolio_slugs, render_apps, validate_catalog, load_catalog
 from resume_pdf import build_resume
 
@@ -43,10 +43,18 @@ def esc(value: str) -> str:
 
 
 def validate(content: dict) -> None:
-    required = ("brand", "holdingCompany", "positioning", "pages", "about", "projects", "contact")
+    required = ("brand", "name", "preferredName", "positioning", "pages", "about", "projects", "contact")
     missing = [key for key in required if key not in content]
     if missing:
         raise SystemExit(f"content.json is missing: {', '.join(missing)}")
+    if "holdingCompany" in content:
+        raise SystemExit("content.json must not include holdingCompany")
+    about = content["about"]
+    if "company" in about or "companyTitle" in about:
+        raise SystemExit("content.json about must describe the person, not a company block")
+    if not about.get("personTitle") or not about.get("person"):
+        raise SystemExit("content.json about needs personTitle and person")
+    assert_public_copy(CONTENT_PATH.read_text(encoding="utf-8"), "content.json")
     for filename, key in PAGES:
         page = content["pages"].get(key)
         if not page or not page.get("title") or not page.get("description"):
@@ -228,9 +236,10 @@ def page_home(content: dict, projects: list[dict], docs: dict[str, str]) -> str:
         </div>
       </section>
         """
+    eyebrow = content["pages"]["home"].get("eyebrow") or content["name"]
     return f"""
       <section class="hero" aria-labelledby="home-heading">
-        <p class="eyebrow">{esc(content["holdingCompany"])}</p>
+        <p class="eyebrow">{esc(eyebrow)}</p>
         <h1 id="home-heading">{esc(content["brand"])}</h1>
         <p class="lede">{esc(content["positioning"])}</p>
         <div class="actions">
@@ -316,7 +325,15 @@ def page_experience(content: dict) -> str:
 def page_about(content: dict) -> str:
     about = content["about"]
     person = "".join(f"<p>{esc(paragraph)}</p>" for paragraph in about["person"])
-    company = "".join(f"<p>{esc(paragraph)}</p>" for paragraph in about["company"])
+    site = ""
+    if about.get("siteTitle") and about.get("site"):
+        paragraphs = "".join(f"<p>{esc(paragraph)}</p>" for paragraph in about["site"])
+        site = f"""
+        <section aria-labelledby="site-heading">
+          <h2 id="site-heading">{esc(about["siteTitle"])}</h2>
+          {paragraphs}
+        </section>
+        """
     return f"""
       <header class="page-intro">
         <h1>About</h1>
@@ -326,10 +343,7 @@ def page_about(content: dict) -> str:
           <h2 id="person-heading">{esc(about["personTitle"])}</h2>
           {person}
         </section>
-        <section aria-labelledby="company-heading">
-          <h2 id="company-heading">{esc(about["companyTitle"])}</h2>
-          {company}
-        </section>
+        {site}
       </div>
     """
 
@@ -401,8 +415,9 @@ def check(content: dict, pages: dict[str, str], resume_path: Path, og_path: Path
     for status in STATUSES:
         if f'id="{status}"' not in projects_html:
             raise SystemExit(f"Projects page is missing the {status} group")
-    if "<h1>Moulton</h1>" not in home and "<h1 id=\"home-heading\">Moulton</h1>" not in home:
-        raise SystemExit("Home page is missing the Moulton heading")
+    heading = f'<h1 id="home-heading">{esc(content["brand"])}</h1>'
+    if heading not in home:
+        raise SystemExit("Home page is missing the portfolio heading")
     if "ASRC Federal" in home:
         raise SystemExit("Home page still contains the resume experience")
     if "Download resume (PDF)" not in pages["resume.html"]:
@@ -464,6 +479,8 @@ def build() -> None:
     (DIST / ".nojekyll").write_text("", encoding="utf-8")
     check(content, pages, DIST / resume_name, DIST / "og.png")
     app_pages = render_apps()
+    for path in sorted(DIST.rglob("*.html")):
+        assert_public_copy(path.read_text(encoding="utf-8"), path.relative_to(DIST).as_posix())
     hidden = sum(1 for project in content["projects"] if not project["show"])
     print(
         f"Built {len(pages)} pages, {len(projects)} shown, {hidden} hidden, "

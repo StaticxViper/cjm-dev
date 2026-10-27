@@ -1,6 +1,5 @@
 {
-  "brand": "Moulton",
-  "holdingCompany": "Moulton Ventures",
+  "brand": "CJ Moulton",
   "name": "Christopher J. Moulton",
   "preferredName": "CJ Moulton",
   "headline": "Senior Software Engineer",
@@ -9,33 +8,34 @@
   "siteUrl": "https://staticxviper.github.io/cjm-dev/",
   "resumeFile": "Christopher-Moulton-Resume.pdf",
   "generateResume": true,
-  "positioning": "Moulton is the public name of Moulton Ventures, CJ Moulton's holding company. This site is the record of the work.",
+  "positioning": "Personal portfolio for Christopher J. Moulton. Selected work, roles, and documentation for how the projects run.",
   "pages": {
     "home": {
-      "title": "Moulton",
-      "description": "Moulton is the public name of Moulton Ventures, the holding company of CJ Moulton."
+      "title": "CJ Moulton — Portfolio",
+      "description": "Personal portfolio and documentation for Christopher J. Moulton. Selected work, roles, and how the projects run.",
+      "eyebrow": "Portfolio"
     },
     "projects": {
-      "title": "Projects — Moulton",
-      "description": "Websites, apps, and scripts from Moulton, grouped as current, completed, and planned.",
+      "title": "Projects — CJ Moulton",
+      "description": "Websites, apps, and scripts by CJ Moulton, grouped as current, completed, and planned.",
       "intro": "Websites, apps, and scripts, grouped by where the work stands."
     },
     "experience": {
-      "title": "Experience — Moulton",
+      "title": "Experience — CJ Moulton",
       "description": "Roles, education, and skills for Christopher J. Moulton.",
       "intro": "Roles, companies, education, and skills."
     },
     "about": {
-      "title": "About — Moulton",
-      "description": "CJ Moulton and Moulton Ventures."
+      "title": "About — CJ Moulton",
+      "description": "Christopher J. Moulton, senior software engineer. Portfolio, roles, and project documentation."
     },
     "resume": {
-      "title": "Resume — Moulton",
+      "title": "Resume — CJ Moulton",
       "description": "Download the resume for Christopher J. Moulton and open the LinkedIn profile.",
       "intro": "A PDF resume for Christopher J. Moulton, and the LinkedIn profile."
     },
     "contact": {
-      "title": "Contact — Moulton",
+      "title": "Contact — CJ Moulton",
       "description": "Email, phone, LinkedIn, and GitHub for CJ Moulton."
     }
   },
@@ -45,9 +45,10 @@
       "CJ Moulton is a senior software engineer in Clementon, New Jersey. He designs and maintains automated test frameworks for mission-critical software, and he works with other teams so integration, regression, and end-to-end testing stay reliable.",
       "He earned an M.S. in Computer Science and a B.S. in Computer Science with a minor in Cyber Security from Felician University."
     ],
-    "companyTitle": "Moulton Ventures",
-    "company": [
-      "Moulton Ventures is his holding company. Moulton is the public name on the work."
+    "siteTitle": "This site",
+    "site": [
+      "This site is a personal portfolio and a documentation hub. It shows selected work, roles, and skills, and it explains how the projects run.",
+      "The scripts support business and automation work: lead search, listings, prices, and related tools. Notes stay in this repository. Other repositories are linked from here."
     ]
   },
   "bio": [
@@ -359,7 +360,7 @@
     },
     {
       "name": "Lead ingest",
-      "description": "Uploads a leads CSV to the Moulton Ventures CRM.",
+      "description": "Uploads a leads CSV into a CRM used for business outreach.",
       "kind": "script",
       "status": "current",
       "show": false,

@@ -1,4 +1,4 @@
-"""Shared HTML shell for the Moulton site, the apps hub, and the repo map."""
+"""Shared HTML shell for the portfolio, the apps hub, and the repo map."""
 
 from __future__ import annotations
 
@@ -35,6 +35,20 @@ def esc(value: str) -> str:
         .replace(">", "&gt;")
         .replace('"', "&quot;")
     )
+
+
+def page_title(content: dict, *parts: str) -> str:
+    return " — ".join((*parts, content["brand"]))
+
+
+def assert_public_copy(text: str, label: str) -> None:
+    """Reject holding-company and LLC wording on pages the site publishes."""
+    lowered = text.lower()
+    for phrase in ("moulton ventures", "holding company", "mv llc", "mv-llc", "llc"):
+        if phrase in lowered:
+            raise SystemExit(f"{label} still uses company branding ({phrase})")
+    if "— Moulton" in text or ">Moulton<" in text or 'content="Moulton"' in text:
+        raise SystemExit(f"{label} still uses Moulton as the company brand")
 
 
 def rel(depth: int, path: str) -> str:
@@ -120,7 +134,7 @@ def render_site_page(
   </main>
   <footer class="site-footer">
     <div class="wrap footer-inner">
-      <p>{esc(content["brand"])} · {esc(content["holdingCompany"])}</p>
+      <p>{esc(content["brand"])} · Portfolio</p>
       <p>{esc(content["location"])}</p>
     </div>
   </footer>
