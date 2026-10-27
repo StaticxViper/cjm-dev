@@ -9,12 +9,12 @@ This packaging is issue #128. The city-data CLI is issue #99. Google match rules
 Every Actor is a copy of this folder:
 
 - `.actor/actor.json` sets `dockerContextDir` to the repo root (`../../../..` from `.actor/`) and points at the Actor `Dockerfile`.
-- `.actor/input_schema.json` keeps `headless` (default true). Add a proxy field when the target needs one.
+- `.actor/input_schema.json` keeps `headless` (default true), `maxSpendUsd`, `maxProxyCostUsd`, `allowCaptcha`, and the proxy group (`proxyConfiguration`, plus optional `proxyGroups`).
 - `.actor/dataset_schema.json` documents dataset columns, including nested objects, with an Overview and a Detail view.
-- `.actor/actor.json` sets `defaultRunOptions.timeoutSecs`. A published Actor adds `.actor/pay_per_event.json` and charges `result` only for a successful row.
+- `.actor/actor.json` sets `defaultRunOptions.timeoutSecs`. `.actor/pay_per_event.json` charges `result` only for a successful row, `proxy` only after a blocked request is retried, and `captcha` only when a solver returns a token.
 - `src/__main__.py` runs `asyncio.run(main())`. `src/main.py` uses `async with Actor` and runs sync Playwright inside `asyncio.to_thread`.
-- `src/runtime.py` re-exports `scripts/apify-scripts/runtime.py` (repo imports, robots fetches with jittered retry on HTTP 429 / 5xx, timestamps, and the pay-per-event push). Business logic stays in the local CLIs and is imported, not moved.
-- `Dockerfile` uses `apify/actor-python-playwright:3.12`, user `myuser`, workdir `/home/myuser`, and `COPY --chown=myuser:myuser`. Do not pip-install a different Playwright build. Set `CJM_REPO_ROOT` when the image must import repo modules.
+- `src/runtime.py` re-exports `scripts/apify-scripts/runtime.py` (repo imports, robots fetches with jittered retry on HTTP 429 / 5xx, timestamps, the pay-per-event push, and the access ladder in `access.py`). Business logic stays in the local CLIs and is imported, not moved.
+- `Dockerfile` uses `apify/actor-python-playwright:3.12`, user `myuser`, workdir `/home/myuser`, and `COPY --chown=myuser:myuser`. Copy `scripts/apify-scripts/runtime.py` and `scripts/apify-scripts/access.py`. Do not pip-install a different Playwright build. Set `CJM_REPO_ROOT` when the image must import repo modules.
 - `requirements.txt` stays lean. `fixtures/INPUT.json` is the committed sample. Local `apify run` storage is gitignored.
 - `README.md` is the marketplace draft: what it does, input, output sample, limitations, robots / ToS, pricing placeholder.
 
@@ -22,7 +22,9 @@ Shared behavior:
 
 - Default headless, including on the platform. The base image already provides a virtual display if a run is headed.
 - Delays stay in the source session. Do not tighten them in the Actor.
-- A block page pushes one `blocked` or `error` row, writes key-value `SUMMARY`, and the run exits 0. Proxy rotation and CAPTCHA solving may be used when a target requires them. Spend caps can land in a follow-up.
+- A block page is retried once through Apify Proxy when `maxProxyCostUsd` and `maxSpendUsd` still have room. The proxy group comes from the input; an empty group uses datacenter. `Actor.create_proxy_configuration` runs on that retry, not before the first request.
+- A CAPTCHA solve runs only when the proxy retry is still a challenge, `allowCaptcha` is true, and the spend cap covers it. Otherwise the Actor pushes one `blocked` row, writes key-value `SUMMARY` (including spend at the amount actually committed), and exits 0.
+- `SUMMARY` on this skeleton records the caps, the proxy group a block would use, and zero spend. Copying the folder keeps that summary shape.
 - One dataset item per input city or query, via `Actor.push_data`.
 - `APIFY_TOKEN` publishes. `APIFY_API_KEY` is the existing consumer key. Neither is hardcoded.
 
@@ -50,7 +52,7 @@ Say which paths are requested, that robots.txt is checked with the longest-match
 
 ### Pricing
 
-Placeholder only. Compute units or pay-per-result. Not a live price.
+Pay per event from `.actor/pay_per_event.json`. `result` is the success row. `proxy` is a blocked request retried through Apify Proxy. `captcha` is a solve that returned a token. Blocked rows and direct requests are stored and not billed for those events. Replace the placeholder amounts when the listing is priced.
 
 ### Categories
 

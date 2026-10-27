@@ -220,9 +220,12 @@ def business_dedupe_key(entry):
 class BusinessDiscoverySession(GoogleBrowserCore):
     """One Playwright browser for multi-page Maps discovery."""
 
-    def __init__(self, delay=None, detail_delay=None, headless=True):
+    def __init__(self, delay=None, detail_delay=None, headless=True, proxy=None):
         super().__init__()
         self._headless = bool(headless)
+        self._proxy = proxy
+        self.last_block_html = ""
+        self.last_block_url = ""
         self._searches_done = 0
         self._details_done = 0
         self._delay = delay
@@ -261,10 +264,13 @@ class BusinessDiscoverySession(GoogleBrowserCore):
             return None
         try:
             self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.launch(
-                headless=self._headless,
-                args=["--disable-blink-features=AutomationControlled"],
-            )
+            launch_kwargs = {
+                "headless": self._headless,
+                "args": ["--disable-blink-features=AutomationControlled"],
+            }
+            if self._proxy:
+                launch_kwargs["proxy"] = self._proxy
+            self._browser = self._playwright.chromium.launch(**launch_kwargs)
             self._page = self._browser.new_page(
                 user_agent=FETCH_HEADERS["User-Agent"],
                 viewport={"width": 1280, "height": 900},
@@ -576,6 +582,8 @@ class BusinessDiscoverySession(GoogleBrowserCore):
                 logger.error(
                     "[Playwright] CAPTCHA or block page detected; skipping further searches"
                 )
+            self.last_block_html = html or ""
+            self.last_block_url = current_url or ""
             self.google_blocked = True
             self.stats["errors"] += 1
             return []
@@ -705,8 +713,12 @@ class BusinessDiscoverySession(GoogleBrowserCore):
             page.goto(url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT * 1000)
             time.sleep(1.8)
             self._dismiss_consent(page)
-            if is_google_block_page(page.content() or "", page.url or ""):
+            detail_html = page.content() or ""
+            detail_url = page.url or ""
+            if is_google_block_page(detail_html, detail_url):
                 logger.error("[Playwright] CAPTCHA or block page on detail view")
+                self.last_block_html = detail_html
+                self.last_block_url = detail_url
                 self.google_blocked = True
                 self.stats["errors"] += 1
                 return entry

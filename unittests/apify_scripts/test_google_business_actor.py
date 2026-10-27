@@ -108,6 +108,13 @@ class TestGoogleInput(unittest.TestCase):
         event = pricing["actorChargeEvents"]["result"]
         self.assertTrue(event["isPrimaryEvent"])
         self.assertGreater(event["eventPriceUsd"], 0)
+        self.assertEqual(set(pricing["actorChargeEvents"]), set(mapping.PRICES_USD))
+        for name, price in mapping.PRICES_USD.items():
+            self.assertEqual(pricing["actorChargeEvents"][name]["eventPriceUsd"], price)
+        for key in ("maxSpendUsd", "maxProxyCostUsd", "allowCaptcha", "proxyConfiguration"):
+            self.assertIn(key, form["properties"])
+        self.assertIn("charge_usage", (_SRC / "main.py").read_text(encoding="utf-8"))
+        self.assertIn("run_maps", (_SRC / "main.py").read_text(encoding="utf-8"))
 
 
 class TestGoogleDataset(unittest.TestCase):
@@ -350,3 +357,160 @@ class TestDirectPlace(unittest.TestCase):
             feed=0,
         )
         self.assertIsNone(session._direct_place_listing(place))
+
+
+class _RoundMaps:
+    def __init__(self, listings=None, blocked=False, html=""):
+        self.listings = listings or []
+        self.blocked = blocked
+        self.html = html
+        self.google_blocked = False
+        self.last_block_html = ""
+        self.last_block_url = ""
+        self.calls = []
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+    def search_location(self, keyword, city, state, coords=None, max_pages=1, max_results=5, area_expansion="off"):
+        self.calls.append("search")
+        if self.blocked:
+            self.google_blocked = True
+            self.last_block_html = self.html or "unusual traffic"
+            self.last_block_url = "https://www.google.com/sorry/index"
+            return []
+        return list(self.listings)
+
+    def enrich_listing(self, listing):
+        self.calls.append("enrich")
+        if self.google_blocked:
+            raise AssertionError("enrich_listing called after a block")
+        return dict(listing)
+
+
+def _maps_policy(**raw):
+    import runtime
+
+    access = runtime.read_access_settings(raw, prices_usd=mapping.PRICES_USD)
+    return runtime.AccessPolicy(access, solver=raw.get("solver"))
+
+
+class TestGoogleAccessLadder(unittest.TestCase):
+    def _queries(self, count=1):
+        settings = mapping.read_run_settings({"maxSearches": count, "includeEmails": False})
+        raw = [{
+            "name": "Wegmans Food Markets",
+            "city": "Rochester",
+            "state": "NY",
+            "maxResults": 1,
+        }]
+        if count > 1:
+            raw.append({
+                "name": "Other Market",
+                "city": "Rochester",
+                "state": "NY",
+                "maxResults": 1,
+            })
+        return mapping.queries_from_input({"queries": raw}, settings), settings
+
+    def _run(self, rounds, policy, proxy_url="http://user:secret@proxy.apify.com:8000"):
+        queue = list(rounds)
+        opened = []
+        asked = []
+        queries, settings = self._queries()
+
+        def open_session(proxy_url_value):
+            opened.append(proxy_url_value)
+            return queue.pop(0)
+
+        def proxy_url_fn():
+            asked.append(proxy_url)
+            return proxy_url
+
+        rows, summary = mapping.run_maps(
+            queries,
+            settings,
+            {},
+            {},
+            policy,
+            open_session,
+            proxy_url_fn,
+        )
+        return rows, summary, opened, asked
+
+    def test_direct_success_does_not_use_proxy(self):
+        rows, summary, opened, asked = self._run(
+            [_RoundMaps(listings=[{"business_name": "Wegmans", "profile_url": "https://www.google.com/maps/place/Wegmans/"}])],
+            _maps_policy(),
+        )
+        self.assertNotEqual(rows[0]["decision"], "blocked")
+        self.assertEqual(rows[0]["sourceStatus"], "ok")
+        self.assertEqual(opened, [None])
+        self.assertEqual(asked, [])
+        self.assertEqual(summary["proxyCharges"], 0)
+        self.assertEqual(summary["captchaCharges"], 0)
+
+    def test_block_escalates_to_proxy(self):
+        direct = _RoundMaps(blocked=True, html="unusual traffic")
+        proxied = _RoundMaps(listings=[{
+            "business_name": "Wegmans",
+            "profile_url": "https://www.google.com/maps/place/Wegmans/",
+        }])
+        rows, summary, opened, asked = self._run(
+            [direct, proxied],
+            _maps_policy(allowCaptcha=False),
+        )
+        self.assertNotEqual(rows[0]["decision"], "blocked")
+        self.assertEqual(len(asked), 1)
+        self.assertEqual(opened[0], None)
+        self.assertTrue(opened[1])
+        self.assertEqual(summary["proxyCharges"], 1)
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertTrue(direct.closed)
+        self.assertEqual(proxied.calls[0], "search")
+
+    def test_cap_hit_stops_cleanly(self):
+        direct = _RoundMaps(blocked=True, html="unusual traffic")
+        queries, settings = self._queries(count=2)
+        opened = []
+
+        def open_session(proxy_url_value):
+            opened.append(proxy_url_value)
+            return direct
+
+        def proxy_url_fn():
+            raise AssertionError("proxy must not be requested when the proxy cap is zero")
+
+        rows, summary = mapping.run_maps(
+            queries,
+            settings,
+            {},
+            {},
+            _maps_policy(maxProxyCostUsd=0, allowCaptcha=True),
+            open_session,
+            proxy_url_fn,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["decision"], "blocked")
+        self.assertEqual(rows[0]["sourceStatus"], "blocked")
+        self.assertIn("spend cap", rows[0]["error"].lower())
+        self.assertEqual(summary["status"], "blocked")
+        self.assertEqual(summary["proxyCharges"], 0)
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertEqual(opened, [None])
+        self.assertFalse(mapping.billable_row(rows[0]))
+
+    def test_captcha_disabled_pushes_blocked_row(self):
+        direct = _RoundMaps(blocked=True, html="unusual traffic")
+        proxied = _RoundMaps(blocked=True, html="<div class='g-recaptcha' data-sitekey='x'></div>")
+        rows, summary, _opened, asked = self._run(
+            [direct, proxied],
+            _maps_policy(allowCaptcha=False, solver=lambda url, html: "token-1"),
+        )
+        self.assertEqual(rows[0]["decision"], "blocked")
+        self.assertIn("CAPTCHA", rows[0]["error"])
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertEqual(summary["proxyCharges"], 1)
+        self.assertEqual(len(asked), 1)
+        self.assertEqual(summary["status"], "blocked")

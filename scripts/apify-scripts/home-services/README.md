@@ -87,7 +87,7 @@ Google’s terms restrict automated extraction. A robots.txt `Allow` is not perm
 
 Each business website is checked the same way before an email or quality fetch. A disallow, or a robots fetch that fails, skips those fetches. The place can still be saved. No email event is charged for that skip.
 
-If Google returns a block page, the current search is pushed as `blocked`, remaining searches are skipped, and the run exits successfully. The Actor does not rotate proxies and does not solve CAPTCHAs. Chromium starts with `--disable-blink-features=AutomationControlled` from `BusinessDiscoverySession`.
+If Google returns a block page, the current search is pushed as `blocked`, remaining searches are skipped, and the run exits successfully. This Actor does not yet call the shared proxy and CAPTCHA ladder in `scripts/apify-scripts/access.py`, so a block stops the run with no proxy or solve charge. Chromium starts with `--disable-blink-features=AutomationControlled` from `BusinessDiscoverySession`.
 
 ## Limitations
 

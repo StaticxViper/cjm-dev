@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3
+
+- A Maps block retries once through Apify Proxy when maxSpendUsd and maxProxyCostUsd still have room. CAPTCHA solving stays off unless allowCaptcha is true and the cap covers a solve.
+- Pay per event adds proxy ($0.01) and captcha ($1.00). Result stays the accepted-match charge.
+
 ## 0.2
 
 - A candidate has to share every brand token and the query city. A different business is omitted. A short Maps title that passed that check is scored as the query name, and the row still shows the Maps title.
