@@ -15,7 +15,6 @@ flowchart LR
   helper_scripts_web["helper_scripts/web"]
   scripts___init___py["scripts/__init__.py"]
   scripts_apify_scripts["scripts/apify-scripts"]
-  scripts_chikara_realms["scripts/chikara_realms"]
   scripts_ci_ping["scripts/ci_ping"]
   scripts_city_data["scripts/city_data"]
   scripts_email_manager["scripts/email_manager"]
@@ -32,8 +31,6 @@ flowchart LR
   scripts_zillow_automation["scripts/zillow_automation"]
   helper_scripts_api_manager --> helper_scripts_utils
   scripts_apify_scripts --> helper_scripts_http
-  scripts_chikara_realms --> helper_scripts_api_manager
-  scripts_chikara_realms --> helper_scripts_utils
   scripts_city_data --> helper_scripts_browser
   scripts_city_data --> helper_scripts_utils
   scripts_grocery --> helper_scripts_browser

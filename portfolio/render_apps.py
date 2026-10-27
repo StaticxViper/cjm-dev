@@ -105,8 +105,8 @@ def _validate_live(name: str, live: object) -> None:
 
 
 def _validate_diagrams(name: str, diagrams: object) -> None:
-    if not isinstance(diagrams, list) or not diagrams:
-        raise SystemExit(f"{name}: link at least one repo-map diagram")
+    if not isinstance(diagrams, list):
+        raise SystemExit(f"{name}: diagrams must be a list, or [] when this repo has no diagram")
     for diagram in diagrams:
         href = str(diagram.get("href") or "")
         label = str(diagram.get("label") or "")
@@ -213,7 +213,12 @@ def _index_page(content: dict, projects: list[dict]) -> str:
 
 def _index_card(project: dict) -> str:
     slug = project["slug"]
-    diagram = project["diagrams"][0]
+    diagram_link = ""
+    if project["diagrams"]:
+        diagram = project["diagrams"][0]
+        diagram_link = (
+            f'<p class="work-link"><a href="{rel(1, diagram["href"])}">{esc(diagram["label"])}</a></p>'
+        )
     return f"""
             <article class="work">
               <span class="mark" aria-hidden="true">{esc(project["name"][:1].upper())}</span>
@@ -229,7 +234,7 @@ def _index_card(project: dict) -> str:
                   <p class="work-link"><a href="{esc(slug)}/changelog.html">Changelog</a></p>
                   {_github_link(project)}
                   {_live_link(project)}
-                  <p class="work-link"><a href="{rel(1, diagram["href"])}">{esc(diagram["label"])}</a></p>
+                  {diagram_link}
                 </div>
               </div>
             </article>

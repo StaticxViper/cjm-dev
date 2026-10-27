@@ -56,7 +56,8 @@ class AppsHubTests(unittest.TestCase):
         self.assertIn("class=\"mermaid\"", how)
         self.assertIn("How it works", how)
         self.assertIn("Changelog", changelog)
-        self.assertIn("StaticxViper/cjm-dev", how)
+        self.assertIn("https://github.com/StaticxViper/chikararealms", how)
+        self.assertIn("https://chikararealms.com", how)
         self.assertNotIn("git submodule", how.lower())
 
     def test_site_links_and_nav_include_the_map(self):

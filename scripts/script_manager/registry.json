@@ -162,24 +162,6 @@
       "menu": "confirm"
     },
     {
-      "name": "blog-automation",
-      "description": "Generate the next Chikara Realms blog post from topic files",
-      "status": "broken",
-      "status_reason": "from helper_scripts.utils.logger import setup_logger fails (no __init__.py in helper_scripts/utils/logger)",
-      "entry": {"type": "path", "path": "scripts/chikara_realms/blog_automation.py"},
-      "cwd": "scripts/chikara_realms",
-      "env": {
-        "required": ["CHATGPT_API_KEY", "PERPLEXITY_API_KEY", "CHIKARA_REALMS_SECRET"],
-        "optional": ["MVLLC_LOGS_KEY"]
-      },
-      "needs_playwright": false,
-      "outputs": ["logs/**"],
-      "side_effects": ["external_api", "writes_repo_files"],
-      "stateful_files": ["scripts/chikara_realms/*_topics.json"],
-      "tags": ["content"],
-      "docs": "documentation/scripts/blog_automation.md"
-    },
-    {
       "name": "property-listing-gen",
       "ci_allowed": true,
       "description": "Collect Zillow listing URLs for ZIP codes via Apify",
