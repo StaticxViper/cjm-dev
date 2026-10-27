@@ -1,0 +1,87 @@
+[
+  {
+    "permit_": "B-EXAMPLE-1",
+    "permit_type": "PERMIT - RENOVATION",
+    "work_type": "Roof",
+    "work_description": "Tear off and re-roof with architectural shingles",
+    "issue_date": "2026-10-12T00:00:00.000",
+    "reported_cost": "18500",
+    "street_number": "100",
+    "street_direction": "N",
+    "street_name": "EXAMPLE AVE",
+    "latitude": "41.5",
+    "longitude": "-87.5",
+    "contact_1_type": "OWNER",
+    "contact_1_name": "Example Owner",
+    "contact_3_type": "GENERAL CONTRACTOR",
+    "contact_3_name": "Example Roofing Co"
+  },
+  {
+    "permit_": "B-EXAMPLE-1",
+    "permit_type": "PERMIT - RENOVATION",
+    "work_type": "Roof",
+    "work_description": "Tear off and re-roof with architectural shingles",
+    "issue_date": "2026-10-12T00:00:00.000",
+    "reported_cost": "18500",
+    "street_number": "100",
+    "street_direction": "N",
+    "street_name": "EXAMPLE AVE"
+  },
+  {
+    "permit_": "B-EXAMPLE-2",
+    "permit_type": "PERMIT - EASY PERMIT",
+    "work_type": "Siding",
+    "work_description": "Install vinyl siding",
+    "issue_date": "2026-10-02T00:00:00.000",
+    "reported_cost": "400",
+    "street_number": "200",
+    "street_direction": "S",
+    "street_name": "EXAMPLE ST",
+    "contact_1_type": "GENERAL CONTRACTOR",
+    "contact_1_name": "Example Siding Co"
+  },
+  {
+    "permit_": "B-EXAMPLE-3",
+    "permit_type": "PERMIT - RENOVATION",
+    "work_type": "Roof",
+    "work_description": "New roof",
+    "issue_date": "2025-01-15T00:00:00.000",
+    "reported_cost": "9000",
+    "street_number": "300",
+    "street_direction": "W",
+    "street_name": "EXAMPLE BLVD"
+  },
+  {
+    "permit_": "B-EXAMPLE-4",
+    "permit_type": "PERMIT - NEW CONSTRUCTION",
+    "work_type": "Pool",
+    "work_description": "In-ground swimming pool",
+    "issue_date": "2026-10-18T00:00:00.000",
+    "reported_cost": "42000",
+    "street_number": "400",
+    "street_direction": "E",
+    "street_name": "EXAMPLE RD"
+  },
+  {
+    "permit_": "B-EXAMPLE-5",
+    "permit_type": "PERMIT - EASY PERMIT",
+    "work_type": "Fence",
+    "work_description": "Repair decker gate",
+    "issue_date": "2026-10-11T00:00:00.000",
+    "reported_cost": "2000",
+    "street_number": "500",
+    "street_direction": "N",
+    "street_name": "EXAMPLE PL"
+  },
+  {
+    "permit_": "B-EXAMPLE-6",
+    "permit_type": "PERMIT - EASY PERMIT",
+    "work_type": "Deck",
+    "work_description": "Build a wood deck",
+    "issue_date": "2026-10-19T00:00:00.000",
+    "reported_cost": "8000",
+    "street_number": "600",
+    "street_direction": "W",
+    "street_name": "EXAMPLE CT"
+  }
+]

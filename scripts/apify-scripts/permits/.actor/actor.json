@@ -1,0 +1,24 @@
+{
+  "actorSpecification": 1,
+  "name": "permits",
+  "title": "Building Permit Leads",
+  "description": "Recent building permits from verified city open-data portals for contractor and exterior-cleaning leads.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "dockerContextDir": "../../../..",
+  "readme": "../README.md",
+  "changelog": "./CHANGELOG.md",
+  "input": "./input_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "minMemoryMbytes": 512,
+  "maxMemoryMbytes": 4096,
+  "defaultMemoryMbytes": 1024,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 900,
+    "memoryMbytes": 1024
+  }
+}

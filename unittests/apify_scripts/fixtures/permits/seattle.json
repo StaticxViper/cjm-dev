@@ -1,0 +1,35 @@
+[
+  {
+    "permitnum": "7000001-CN",
+    "permittypedesc": "Addition/Alteration",
+    "description": "Replace roof shingles",
+    "estprojectcost": "15000",
+    "issueddate": "2026-10-11T00:00:00.000",
+    "originaladdress1": "10 EXAMPLE ST",
+    "originalcity": "SEATTLE",
+    "originalstate": "WA",
+    "originalzip": "98101",
+    "latitude": "47.5",
+    "longitude": "-122.5",
+    "contractorcompanyname": "Example Seattle Roofing",
+    "link": {"url": "https://services.seattle.gov/portal/example/7000001-CN"}
+  },
+  {
+    "permitnum": "7000001-CN",
+    "permittypedesc": "Addition/Alteration",
+    "description": "Replace roof shingles",
+    "estprojectcost": "15000",
+    "issueddate": "2026-10-11T00:00:00.000"
+  },
+  {
+    "permitnum": "7000002-CN",
+    "permittypedesc": "Addition/Alteration",
+    "description": "New deck at the rear yard",
+    "estprojectcost": "8000",
+    "issueddate": "2026-10-15T00:00:00.000",
+    "originaladdress1": "20 EXAMPLE AVE",
+    "originalcity": "SEATTLE",
+    "originalstate": "WA",
+    "originalzip": "98102"
+  }
+]

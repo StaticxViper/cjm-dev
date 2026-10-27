@@ -1,0 +1,160 @@
+{
+  "sources": [
+    {
+      "id": "chicago_building_permits",
+      "name": "Chicago building permits",
+      "category": "City building permits",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["IL"], "counties": ["Cook"], "cities": ["Chicago"]},
+      "endpoint": "https://data.cityofchicago.org/resource/ydr8-5enu.json",
+      "url": "https://data.cityofchicago.org/resource/ydr8-5enu.json",
+      "record_url": "https://data.cityofchicago.org/resource/ydr8-5enu.json?permit_={id}",
+      "query": {
+        "style": "socrata",
+        "date_column": "issue_date",
+        "extra_where": "",
+        "text_columns": ["work_description", "permit_type", "work_type"]
+      },
+      "field_map": {
+        "permit_id": "permit_",
+        "issued_date": "issue_date",
+        "description": "work_description",
+        "value_usd": "reported_cost",
+        "address": ["street_number", "street_direction", "street_name"],
+        "lat": "latitude",
+        "lng": "longitude"
+      },
+      "type_fields": ["permit_type", "work_type"],
+      "contact_slots": 15,
+      "constants": {"city": "Chicago", "state": "IL"},
+      "rate_limit": {"min_delay_s": 2.0, "max_delay_s": 5.0, "max_requests_per_run": 3, "page_size": 50},
+      "terms_checked": {
+        "date": "2026-10-26",
+        "note": "City of Chicago Data Portal SODA. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. Public open data, not a certified permit record. Owner and contractor names are copied only from contact slots whose contact_N_type says owner or contractor."
+      },
+      "notes": "Verified 2026-10-26: a $limit=1 query ordered by issue_date returned permit_, issue_date, reported_cost, work_description, permit_type, work_type, latitude, and longitude, plus contact_1_type through contact_3_type. contact_15_type is a real column. The extract has no property ZIP, so zip is left blank. No contractor license column."
+    },
+    {
+      "id": "seattle_building_permits",
+      "name": "Seattle building permits",
+      "category": "City building permits",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["WA"], "counties": ["King"], "cities": ["Seattle"]},
+      "endpoint": "https://data.seattle.gov/resource/76t5-zqzr.json",
+      "url": "https://data.seattle.gov/resource/76t5-zqzr.json",
+      "record_url": "https://data.seattle.gov/resource/76t5-zqzr.json?permitnum={id}",
+      "query": {
+        "style": "socrata",
+        "date_column": "issueddate",
+        "extra_where": "",
+        "text_columns": ["description", "permittypedesc"]
+      },
+      "field_map": {
+        "permit_id": "permitnum",
+        "issued_date": "issueddate",
+        "type": "permittypedesc",
+        "description": "description",
+        "value_usd": "estprojectcost",
+        "address": "originaladdress1",
+        "city": "originalcity",
+        "state": "originalstate",
+        "zip": "originalzip",
+        "lat": "latitude",
+        "lng": "longitude",
+        "contractor_name": "contractorcompanyname",
+        "source_url": "link"
+      },
+      "constants": {"city": "Seattle", "state": "WA"},
+      "rate_limit": {"min_delay_s": 2.0, "max_delay_s": 5.0, "max_requests_per_run": 3, "page_size": 50},
+      "terms_checked": {
+        "date": "2026-10-26",
+        "note": "City of Seattle open data SODA. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. Public open data, not a certified permit record. This extract publishes a contractor company and does not publish an owner name."
+      },
+      "notes": "Verified 2026-10-26: issueddate, estprojectcost, original address, zip, latitude, and longitude returned for a recently issued permit. contractorcompanyname is populated on rows where the city filled it. link.url is the public record page. No owner column."
+    },
+    {
+      "id": "austin_issued_permits",
+      "name": "Austin issued construction permits",
+      "category": "City building permits",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["TX"], "counties": ["Travis"], "cities": ["Austin"]},
+      "endpoint": "https://data.austintexas.gov/resource/3syk-w9eu.json",
+      "url": "https://data.austintexas.gov/resource/3syk-w9eu.json",
+      "record_url": "https://data.austintexas.gov/resource/3syk-w9eu.json?permit_number={id}",
+      "query": {
+        "style": "socrata",
+        "date_column": "issue_date",
+        "extra_where": "",
+        "text_columns": ["description", "permit_type_desc", "work_class"]
+      },
+      "field_map": {
+        "permit_id": "permit_number",
+        "issued_date": "issue_date",
+        "description": "description",
+        "value_usd": "total_job_valuation",
+        "address": "original_address1",
+        "city": "original_city",
+        "state": "original_state",
+        "zip": "original_zip",
+        "lat": "latitude",
+        "lng": "longitude",
+        "contractor_name": "contractor_company_name",
+        "source_url": "link"
+      },
+      "type_fields": ["permit_type_desc", "work_class"],
+      "constants": {"city": "Austin", "state": "TX"},
+      "rate_limit": {"min_delay_s": 2.0, "max_delay_s": 5.0, "max_requests_per_run": 3, "page_size": 50},
+      "terms_checked": {
+        "date": "2026-10-26",
+        "note": "Austin Open Data SODA. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. Public open data, not a certified permit record. No owner column on this extract."
+      },
+      "notes": "Verified 2026-10-26: issue_date, total_job_valuation, contractor_company_name, description, latitude, and longitude returned for a permit issued in October 2026. link.url is the public permit search page."
+    },
+    {
+      "id": "los_angeles_building_permits",
+      "name": "Los Angeles building permits",
+      "category": "City building permits",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["CA"], "counties": ["Los Angeles"], "cities": ["Los Angeles"]},
+      "endpoint": "https://data.lacity.org/resource/pi9x-tg5x.json",
+      "url": "https://data.lacity.org/resource/pi9x-tg5x.json",
+      "record_url": "https://data.lacity.org/resource/pi9x-tg5x.json?permit_nbr={id}",
+      "query": {
+        "style": "socrata",
+        "date_column": "issue_date",
+        "extra_where": "",
+        "text_columns": ["work_desc", "permit_type", "permit_sub_type"]
+      },
+      "field_map": {
+        "permit_id": "permit_nbr",
+        "issued_date": "issue_date",
+        "description": "work_desc",
+        "value_usd": "valuation",
+        "address": "primary_address",
+        "zip": "zip_code",
+        "lat": "lat",
+        "lng": "lon"
+      },
+      "type_fields": ["permit_type", "permit_sub_type"],
+      "constants": {"city": "Los Angeles", "state": "CA"},
+      "rate_limit": {"min_delay_s": 2.0, "max_delay_s": 5.0, "max_requests_per_run": 3, "page_size": 50},
+      "terms_checked": {
+        "date": "2026-10-26",
+        "note": "Los Angeles Open Data SODA resource pi9x-tg5x. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. Public open data, not a certified permit record. This extract has no contractor or owner column."
+      },
+      "notes": "Verified 2026-10-26: issue_date, valuation, work_desc, primary_address, zip_code, lat, and lon returned for a permit issued 2026-10-24. Resource nbyu-2ha9 responded 403 and is not used."
+    }
+  ]
+}

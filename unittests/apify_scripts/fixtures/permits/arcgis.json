@@ -1,0 +1,16 @@
+{
+  "features": [
+    {
+      "attributes": {
+        "PERMITID": "AG-1",
+        "ISSUED": "2026-10-09",
+        "PERMITTYPE": "Roof",
+        "DESCRIPTION": "Re-roof shingles",
+        "VALUE": 11000,
+        "ADDRESS": "1 Example St",
+        "ZIP": "10001"
+      },
+      "geometry": {"x": -73.9, "y": 40.7}
+    }
+  ]
+}
