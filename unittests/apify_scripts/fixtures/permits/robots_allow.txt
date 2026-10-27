@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /
+Allow: /resource/
+Allow: /arcgis/
+Allow: /issued
+Crawl-delay: 1

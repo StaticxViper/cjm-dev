@@ -10,6 +10,7 @@ Playwright scrapers packaged for the Apify Marketplace. Issue #128. Local CLIs s
 | [`contractor-license/`](contractor-license/) | Public records | CA CSLB open CSV. AZ, NJ, and PA adapters stop on a challenge or a closed portal. Issue #155. |
 | [`home-services/`](home-services/) | Phase 1 | Wraps the google-business matcher and Maps session. Niche and area leads with website email, quality, and intent score |
 | [`new-business/`](new-business/) | Entity filings | Verified NY, PA, and CO open-data feeds from [`scripts/lead_automation/new_business_pipeline.py`](../lead_automation/new_business_pipeline.py). |
+| [`permits/`](permits/) | Building permits | Verified Chicago, Seattle, Austin, and Los Angeles Socrata feeds. Reuses [`new_business_sources`](../lead_automation/new_business_sources/) open-data and HTML-table adapters. |
 
 Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one is a copy of `_template/` after Phase 1 is accepted. Instagram already has a Store Actor we call from `helper_scripts/api_manager`; a first-party listing is a separate decision.
 
@@ -43,7 +44,7 @@ Do this only when a listing is requested. `APIFY_TOKEN` is the CLI / `apify push
 2. In the Actor directory, `apify push`.
 3. Run the committed `fixtures/INPUT.json` once on the platform (private build). Confirm dataset rows and key-value `SUMMARY`.
 4. Paste the Actor `README.md` into the Store listing. Set categories in the Console (they are not an `actor.json` field). Suggested starting points are in each README.
-5. Set the Console pricing model to pay per event using `.actor/pay_per_event.json`. Charge `result` only for a successful city profile or an accepted Maps match. Charge `license` only for a found contractor license. Charge `business` only for a returned entity and `enrichment` only when a website or email is found. Charge `proxy` only after a blocked request was retried through Apify Proxy, and `captcha` only when a solver returns a token. Do not enable pay per dataset item.
+5. Set the Console pricing model to pay per event using `.actor/pay_per_event.json`. Charge `result` only for a successful city profile or an accepted Maps match. Charge `license` only for a found contractor license. Charge `business` only for a returned entity and `enrichment` only when a website or email is found. Charge `permit` only for a pushed building permit. Charge `proxy` only after a blocked request was retried through Apify Proxy, and `captcha` only when a solver returns a token. Do not enable pay per dataset item.
 6. Choose a private listing or a public one. Public Google Business needs the ToS / robots section left intact.
 7. Save a sample dataset export and a screenshot with the listing. Update `.actor/CHANGELOG.md`.
 
@@ -61,11 +62,11 @@ Proxy rotation and CAPTCHA solving are allowed when a target needs them to retur
 
 `maxSpendUsd` caps result, proxy, and CAPTCHA events together. `maxProxyCostUsd` caps proxy events and is clamped to the spend cap. `0` skips the proxy retry. `allowCaptcha` defaults to false. When a cap is hit, solving is off, or no solver is configured, push one `blocked` row and exit 0. Do not keep retrying and do not hide the cost inside the developer account. Charge `proxy` and `captcha` through pay per event. A solve is billed only when a solver returns a token. Data rows stay success-only charges. Direct requests are free.
 
-Shared helpers live in `scripts/apify-scripts/access.py` (`Actor.create_proxy_configuration` on escalate, the block ladder, the spend ledger, and the proxy / CAPTCHA charge). `city-data` and `google-business` call them. `new-business` follows the same ladder in its HTTP fetch. `home-services` still stops on a block with no proxy charge until it calls that module. `contractor-license` returns a status row when a portal shows a challenge and does not spend to get past it.
+Shared helpers live in `scripts/apify-scripts/access.py` (`Actor.create_proxy_configuration` on escalate, the block ladder, the spend ledger, and the proxy / CAPTCHA charge). `city-data`, `google-business`, and `permits` call them. `new-business` follows the same ladder in its HTTP fetch. `home-services` still stops on a block with no proxy charge until it calls that module. `contractor-license` returns a status row when a portal shows a challenge and does not spend to get past it.
 
 ## Rules that stay in force
 
-- Playwright only for city-data, google-business, and home-services. No paid Maps or Places call in `google-business` or `home-services`. `contractor-license` and `new-business` are HTTP and do not launch Chromium.
+- Playwright only for city-data, google-business, and home-services. No paid Maps or Places call in `google-business` or `home-services`. `contractor-license`, `new-business`, and `permits` are HTTP and do not launch Chromium.
 - Respect robots.txt with `scripts/lead_automation/crm_enrich_robots.py` (longest match). Google web search (`/search`) is never requested. A robots disallow is not retried through a proxy.
 - Keep the delays from the source session. Do not add stealth plugins. The Maps session still launches Chromium with `--disable-blink-features=AutomationControlled`.
 - Say in the Actor README when a run may use a proxy or a solve, and note the site terms.

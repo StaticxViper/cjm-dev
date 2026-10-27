@@ -1,0 +1,30 @@
+[
+  {
+    "permit_number": "2026-EXAMPLE BP",
+    "permit_type_desc": "Building Permit",
+    "work_class": "Roof",
+    "description": "Express: Re-roof",
+    "issue_date": "2026-10-20T00:00:00.000",
+    "total_job_valuation": "12000",
+    "original_address1": "30 EXAMPLE DR",
+    "original_city": "AUSTIN",
+    "original_state": "TX",
+    "original_zip": "78701",
+    "latitude": "30.5",
+    "longitude": "-97.5",
+    "contractor_company_name": "Example Austin Roofing",
+    "link": {"url": "https://abc.austintexas.gov/web/permit/example"}
+  },
+  {
+    "permit_number": "2026-POOL BP",
+    "permit_type_desc": "Building Permit",
+    "work_class": "Pool",
+    "description": "Pool plaster",
+    "issue_date": "2026-10-05T00:00:00.000",
+    "total_job_valuation": "30000",
+    "original_address1": "40 EXAMPLE LN",
+    "original_city": "AUSTIN",
+    "original_state": "TX",
+    "original_zip": "78702"
+  }
+]

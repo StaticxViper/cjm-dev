@@ -1,0 +1,136 @@
+{
+  "title": "Building permit leads",
+  "description": "Verified city open-data feeds. Chicago, Seattle, Austin, and Los Angeles are live. An unknown source id returns an error row and is not billed.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "sources": {
+      "title": "Sources",
+      "type": "array",
+      "description": "Preset source ids. Leave empty to query every verified feed. Chicago, Seattle, Austin, and Los Angeles were checked on 2026-10-26.",
+      "editor": "select",
+      "items": {
+        "type": "string",
+        "enum": [
+          "chicago_building_permits",
+          "seattle_building_permits",
+          "austin_issued_permits",
+          "los_angeles_building_permits"
+        ],
+        "enumTitles": [
+          "Chicago building permits",
+          "Seattle building permits",
+          "Austin issued construction permits",
+          "Los Angeles building permits"
+        ]
+      }
+    },
+    "dateFrom": {
+      "title": "Issued from",
+      "type": "string",
+      "description": "Keep permits issued on or after this date (YYYY-MM-DD). Default is 30 days before the run.",
+      "editor": "textfield",
+      "prefill": "2026-09-26"
+    },
+    "dateTo": {
+      "title": "Issued through",
+      "type": "string",
+      "description": "Keep permits issued on or before this date (YYYY-MM-DD). Default is the run date.",
+      "editor": "textfield",
+      "prefill": "2026-10-26"
+    },
+    "permitTypes": {
+      "title": "Permit types",
+      "type": "array",
+      "description": "Optional. Matched against the permit type and description. Roof also matches reroof and shingle. Leave empty for every type.",
+      "editor": "select",
+      "items": {
+        "type": "string",
+        "enum": ["roof", "siding", "pool", "deck", "solar", "new construction"],
+        "enumTitles": ["Roof", "Siding", "Pool", "Deck", "Solar", "New construction"]
+      }
+    },
+    "minValue": {
+      "title": "Minimum value (USD)",
+      "type": "number",
+      "description": "Drop permits below this job value. Default 0 keeps every value, including rows the city left blank. A minimum above 0 drops blank values.",
+      "editor": "number",
+      "default": 0,
+      "minimum": 0
+    },
+    "maxItems": {
+      "title": "Max permits",
+      "type": "integer",
+      "description": "Cap on permit rows pushed for this run, after dedupe. Default 50, maximum 200. Status rows do not count toward this cap and are not billed.",
+      "editor": "number",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 200
+    },
+    "maxRequests": {
+      "title": "Max HTTP requests",
+      "type": "integer",
+      "description": "Cap on requests, including robots.txt and a proxy retry. Default 24, maximum 80.",
+      "editor": "number",
+      "default": 24,
+      "minimum": 1,
+      "maximum": 80
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Default 2, which covers the Crawl-delay of 1 on the SODA robots files. The pause jitters upward by up to 2 seconds.",
+      "editor": "number",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "Stop charging when the next permit, proxy, or CAPTCHA event would pass this amount. Default 5, maximum 100. Later permit rows are saved and are not billed.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "maxProxyCostUsd": {
+      "title": "Max proxy spend (USD)",
+      "type": "number",
+      "description": "Cap on proxy events alone. Default 0.50. A direct request is always tried first. Proxy is used only after a block, and only when this cap and maxSpendUsd both still have room. 0 skips the proxy retry.",
+      "editor": "number",
+      "default": 0.5,
+      "minimum": 0,
+      "maximum": 20
+    },
+    "allowCaptcha": {
+      "title": "Allow CAPTCHA solving",
+      "type": "boolean",
+      "description": "Default false. When false, a challenge after the proxy retry pushes a blocked row and exits without a solve charge. When true, a solve is attempted only if the proxy retry is still a challenge and maxSpendUsd covers the captcha event. This Actor does not ship a paid solver, so an unconfigured solve pushes blocked and is not billed.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Kept for the shared Actor contract. This Actor does not launch a browser.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "proxyConfiguration": {
+      "title": "Proxy group",
+      "type": "object",
+      "description": "Apify Proxy group used only after a direct request is blocked. Leave Apify Proxy off so the first attempt stays direct. Empty groups use datacenter. Residential is used only when this field selects it.",
+      "editor": "proxy",
+      "default": {
+        "useApifyProxy": false
+      }
+    },
+    "proxyGroups": {
+      "title": "Proxy groups",
+      "type": "array",
+      "description": "Optional group names, such as DATACENTER or RESIDENTIAL. Used after a block when proxyConfiguration has no apifyProxyGroups. The first request stays direct.",
+      "editor": "stringList"
+    }
+  }
+}
