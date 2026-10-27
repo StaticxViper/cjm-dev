@@ -46,7 +46,7 @@ With no subcommand, a terminal opens `menu`. A pipe still prints usage and exits
 
 `menu` is the only place that asks which script to run and which flags to use. Each main script has its own screen:
 
-- Leadgen keeps keyword, location, settings, niche search, new-business, and niche-review choices. A run is queued as normal leadgen flags. Settings still write `scripts/lead_automation/leadgen_settings.json`.
+- Leadgen option 1 asks for free-text niches and keyword strings, then locations. `presets` still offers `keywords.json`. A run is queued as `--free-text`, `--niche`, and `--keywords`. Settings still write `scripts/lead_automation/leadgen_settings.json`. Option 5 is still the configured micro-niche search.
 - Opp finder keeps search, presets, and skill toggles. A run is queued as `--preset` or `--employment` / `--keywords` flags. The registry status stays planned, so the queue asks before it runs.
 - Clip generator lists ride folders. Montage builder asks for a theme and a count.
 - Other main scripts get a flag menu from the registry, or a confirm screen when they take no arguments. Blank answers skip a flag. An extra-args line is there for anything the prompts do not list.
@@ -55,7 +55,7 @@ The home screen can add several scripts, remove one, then run the queue. A non-z
 
 These scripts do not get a menu: broken scripts, `api-manager-selftest`, `ci-ping`, the `leadgen-new-business` alias (it is a leadgen choice), `grocery-sync` (same program as `grocery-cli`), and `opp-finder` (not in this checkout).
 
-`python leadgen.py` with no flags, and the same for opp finder, the clip generator, and the montage builder, exits 2 and points at this menu. `python leadgen.py --defaults ...` and every other flagged command still run on their own.
+`python leadgen.py` with no flags asks for business niches and keyword strings, then runs. Opp finder, the clip generator, and the montage builder still exit 2 and point at this menu. `python leadgen.py --defaults ...` and every other flagged command still run on their own. `--niche` and `--keywords` accept the same free text as the prompts.
 
 The ShopRite store picker still waits inside the grocery child after the browser opens. The grocery menu only queues `--set-shoprite-store`.
 

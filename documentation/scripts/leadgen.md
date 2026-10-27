@@ -25,7 +25,7 @@ The `email` objective (and `either`/`both` when email is still missing) uses [em
 
 | File | Description |
 |------|-------------|
-| `keywords.json` | Search keywords (keys used as categories) |
+| `keywords.json` | Optional preset keywords. A search does not need this file |
 | `coords.json` | Lat/lng for search center. Cherry Hill is `39.9526,-75.1652`, which is the same point as Philadelphia (`39.952584,-75.165222`). Coordinate searches for Cherry Hill are centered on Philadelphia. Text queries (`{keyword} near {city}, {state}`) still say Cherry Hill. |
 | `franchises.json` | Franchise/chain name and domain blocklists |
 | `leadgen_settings.json` | Persisted run defaults (leadgen type, Playwright page limits, area expansion, skip-searched, history path, min score, reviews, franchise filter, `objective`, require website, lead enrichment, output, JSON path) |
@@ -70,11 +70,17 @@ python leadgen.py --force-research --defaults   # ignore history; re-run searche
 ```bash
 cd scripts/lead_automation
 
-# Interactive menu (run or customize defaults)
+# Interactive: type a niche and optional keyword strings, then pick locations
 python leadgen.py
 
-# Non-interactive with saved/hardcoded defaults
+# Non-interactive with saved/hardcoded defaults (keywords.json presets, fixed output name)
 python leadgen.py --defaults
+
+# Free-text niche in one city. Keywords are built as "mobile dog grooming near Cherry Hill, NJ"
+python leadgen.py --free-text --niche "mobile dog grooming" --city "Cherry Hill" --state NJ
+
+# Exact search strings. Niches still name the output file
+python leadgen.py --niche "pressure washing, window cleaning" --keywords "pressure washing near Cherry Hill NJ"
 
 # Custom non-interactive
 python leadgen.py --min-score 80 --output both --city "Cherry Hill"
@@ -86,13 +92,38 @@ python leadgen.py --objective either
 python leadgen.py --objective both
 ```
 
+### Interactive prompts
+
+`python leadgen.py` with no flags asks for:
+
+1. **Business niche(s)** — free text, comma-separated (`pressure washing, window cleaning`). Empty input is rejected. `presets` opens the optional `keywords.json` picker instead.
+2. **Keyword search string(s)** — free text, comma-separated (`pressure washing near Cherry Hill NJ`). Leave this blank and each niche is searched as `{niche} near {city}, {state}` in the locations you pick.
+3. **Locations** — all cities, whole states, or city numbers from `coords.json`.
+
+The script searches those strings and runs the normal filters, franchise exclusion, website and email checks, and scoring. A niche does not have to exist in `niches.json` or `keywords.json`.
+
+Script Manager option **1) Run (type a niche and location)** asks the same questions and queues `--free-text`, `--niche`, and `--keywords`.
+
+### Output file names
+
+Free-text runs write both JSON and CSV in the current output folder:
+
+```text
+leads_2026-10-21_pressure-washing.json
+leads_2026-10-21_pressure-washing.csv
+```
+
+The niche is slugified (lowercase, hyphens, no special characters). Up to three niches are joined (`pressure-washing-window-cleaning`). More than three, or a very long slug, uses `multi-niche`. If that name already exists, the next file is `leads_2026-10-21_pressure-washing_2.csv` (and the matching `.json`). Pass `--json-path` to choose a path yourself.
+
 ### Interactive menu
+
+The Script Manager screen is still:
 
 ```
 === Lead Generation ===
   Current: playwright | objective=phone | min score 55 | output json
 
-1) Run (choose keywords & locations)
+1) Run (type a niche and location)
 2) Settings (save defaults, do not run)
 3) High-volume preset (Playwright, area expansion, no Facebook enrich)
 4) Exit
@@ -100,17 +131,15 @@ python leadgen.py --objective both
 6) New-business discovery
 ```
 
-- **Option 1** — keyword discovery. Forces `discovery_mode` to `standard` for that run, even if a saved setting says `new-business`. Load `leadgen_settings.json` (or hardcoded defaults), prompt for keywords and locations with numbered submenus, show a volume estimate, then confirm (`Y` run, `n` cancel, `s` tweak settings).
+- **Option 1** — free-text niche and keyword discovery. Forces `discovery_mode` to `standard` for that run, even if a saved setting says `new-business`. Blank keywords are built from the niche and the selected locations. `presets` still offers `keywords.json`.
 - **Option 2** — numbered settings menu (enter a number to change one value, Enter to save). Writes `leadgen_settings.json` and returns to the menu without running. Keywords and locations are never persisted.
 - **Option 3** — apply a high-volume Playwright preset (20 pages, 400 results/search, light area expansion, phone objective, min reviews 0, Facebook enrichment off) and optionally run.
-- **Option 5** — [Niche Lead Search](niche_search.md): pick a micro-niche, search multiple queries, score website-prospect intent, then review/filter/export. Does not replace option 1.
+- **Option 5** — [Niche Lead Search](niche_search.md): pick a configured micro-niche from `niches.json`, search its queries, score website-prospect intent, then review/filter/export. This is separate from option 1. A typed niche that is not in `niches.json` stays on option 1 and uses the normal lead criteria.
 - **Option 6** — new-business discovery. Prompts for locations, max age, and minimum new-business score, then searches enabled public registration and license sources. Does not run the keyword Maps search. Dashboard output is refused.
-
-**Keywords** — choose all, an industry group (home exterior, auto, professional, …), numbers/ranges (`1-8,12`), or a name search.
 
 **Locations** — choose all cities, whole states (`NJ, PA` or state numbers), or city numbers/ranges.
 
-The confirm screen estimates search count and typical unique-business yield so it is obvious when a run will produce hundreds vs thousands of leads.
+The confirm screen shows the search strings and the dated output paths.
 
 ### CLI flags
 
@@ -133,11 +162,12 @@ The confirm screen estimates search count and typical unique-business yield so i
 | `--require-email` / `--no-require-email` | Legacy alias; combined with `--require-phone` and normalized to `objective` |
 | `--lead-enrichment` / `--no-lead-enrichment` | Post-scrape enrichment: Facebook in API mode, Google/Playwright in Playwright mode (default on) |
 | `--output {json,csv,dashboard,both}` | Output destination. Standard mode: `both` is JSON + dashboard; `csv` warns and writes JSON. New-business mode: `both` is JSON + CSV; `dashboard` warns and writes JSON + CSV |
-| `--json-path PATH` | JSON output path |
-| `--keywords kw1 kw2` | Keyword subset from `keywords.json` |
+| `--json-path PATH` | JSON output path. When omitted on a free-text run, the file is `leads_YYYY-MM-DD_<niche>.json` |
+| `--keywords kw1 kw2` | Free-text keyword search strings. Repeat values or separate them with commas. Not limited to `keywords.json` |
 | `--city "City Name"` | Filter to specific cities (repeatable) |
 | `--state NJ` | Filter to coords.json state codes (repeatable, comma-separated OK) |
-| `--niche ID` | Run [Niche Lead Search](niche_search.md) instead of the keyword job |
+| `--niche TEXT` | Business niche, repeatable or comma-separated (`mobile dog grooming`). A single `niches.json` id or display name still runs [Niche Lead Search](niche_search.md) unless `--free-text` or `--keywords` is also set |
+| `--free-text` | Force the normal lead criteria for `--niche` / `--keywords`, even when the niche name matches `niches.json` |
 | `--review-leads` | Open the niche results reviewer |
 | `--zip ZIP` | Extra ZIP locations for niche search (repeatable) |
 | `--radius INT` | Niche search radius in meters |

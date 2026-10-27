@@ -33,7 +33,7 @@
       "needs_playwright": "conditional",
       "playwright_when_args_any": ["--leadgen-type=playwright"],
       "timeout_seconds": 14400,
-      "outputs": ["scripts/lead_automation/*leads_output*.json", "logs/**"],
+      "outputs": ["scripts/lead_automation/*leads_output*.json", "scripts/lead_automation/leads_*.json", "scripts/lead_automation/leads_*.csv", "logs/**"],
       "side_effects": ["external_api", "external_post"],
       "stateful_files": [
         "scripts/lead_automation/leadgen_search_history.json",

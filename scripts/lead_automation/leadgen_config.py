@@ -69,7 +69,21 @@ CONTACTED_FILE = "contacted.txt"
 
 _LEADGEN_DIR = Path(__file__).resolve().parent
 SETTINGS_PATH = _LEADGEN_DIR / "leadgen_settings.json"
-KEYWORD_CATEGORIES = json.load(open(_LEADGEN_DIR / "keywords.json"))
+
+
+def _load_optional_json(path, fallback):
+    """Load a JSON object. Missing keyword presets must not block a search."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return fallback
+    if not isinstance(data, type(fallback)):
+        return fallback
+    return data
+
+
+KEYWORD_CATEGORIES = _load_optional_json(_LEADGEN_DIR / "keywords.json", {})
 COORDS_DATA = json.load(open(_LEADGEN_DIR / "coords.json"))
 FRANCHISE_DATA = json.load(open(_LEADGEN_DIR / "franchises.json"))
 CONTACT_PAGE_PATHS = (
@@ -229,6 +243,9 @@ class LeadgenConfig:
     nb_seen_path: str = "new_business_seen.json"
     nb_enrichment_cache_path: str = "new_business_enrichment_cache.json"
     nb_enrichment_ttl_days: int = 30
+    niches: list = field(default_factory=list)
+    exact_queries: bool = False
+    csv_output: str = ""
 
 
 def load_saved_settings(path=None):
@@ -556,20 +573,23 @@ def estimate_discovery_volume(config):
         getattr(config, "playwright_area_expansion", "off")
     )
     areas = area_search_multiplier(expansion) if leadgen_type == "playwright" else 1
-    searches = n_kw * n_loc * areas
+    exact = bool(getattr(config, "exact_queries", False))
+    pairs = n_kw if exact else n_kw * n_loc
+    searches = pairs * areas
     # Maps typically returns 40–120 unique listings per query; area overlap is high.
     per_query_low = 40 if leadgen_type == "playwright" else 20
     per_query_high = 120 if leadgen_type == "playwright" else 60
     discovered_low = searches * per_query_low
     discovered_high = searches * per_query_high
     # Unique after cross-city overlap, then quality filters (~20–50% keep).
-    unique_low = max(n_kw * n_loc * 15, int(discovered_low * 0.15))
+    unique_low = max(pairs * 15, int(discovered_low * 0.15))
     unique_high = max(unique_low, int(discovered_high * 0.45))
     return {
         "keywords": n_kw,
         "locations": n_loc,
         "areas_per_search": areas,
         "searches": searches,
+        "exact_queries": exact,
         "discovered_low": discovered_low,
         "discovered_high": discovered_high,
         "unique_low": unique_low,

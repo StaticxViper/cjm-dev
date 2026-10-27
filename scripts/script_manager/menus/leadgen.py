@@ -107,7 +107,7 @@ def configure(script=None, *, reader=input, writer=print, repo: Path | None = No
             f"  Current: {settings['leadgen_type']} | objective={settings['objective']} | "
             f"min score {settings['min_score']} | output {settings['output_mode']}",
         )
-        say(writer, "1) Run (choose keywords and locations)")
+        say(writer, "1) Run (type a niche and location)")
         say(writer, "2) Settings (save defaults, do not run)")
         say(writer, "3) High-volume preset (Playwright, area expansion, no Facebook enrich)")
         say(writer, "4) Back")
@@ -128,7 +128,7 @@ def configure(script=None, *, reader=input, writer=print, repo: Path | None = No
             preset = _high_volume(settings)
             _save_settings(preset, settings_path, writer)
             say(writer, "Applied high-volume Playwright preset.")
-            if not yes(ask(reader, "Choose keywords and locations and add to the queue? [Y/n]: "), True):
+            if not yes(ask(reader, "Type a niche and location and add to the queue? [Y/n]: "), True):
                 continue
             return _standard_run(preset, keywords, coords, reader, writer)
         if choice == "5":
@@ -150,12 +150,60 @@ def configure(script=None, *, reader=input, writer=print, repo: Path | None = No
 
 
 def _standard_run(settings, keywords, coords, reader, writer) -> list[str] | None:
-    chosen_keywords = _prompt_keywords(keywords, reader, writer)
+    from scripts.lead_automation.search_input import (
+        EMPTY_NICHE_MESSAGE,
+        EmptySearchInput,
+        is_presets_choice,
+        parse_term_list,
+        require_niches,
+    )
+
+    say(writer, "")
+    say(writer, "Business niche(s), comma-separated. Example: mobile dog grooming")
+    say(writer, "Type presets to choose from keywords.json instead.")
+    raw_niche = ask(reader, "Business niche(s): ")
+    if is_presets_choice(raw_niche):
+        if not keywords:
+            say(writer, "keywords.json has no presets.")
+            say(writer, EMPTY_NICHE_MESSAGE)
+            return None
+        chosen_keywords = _prompt_keywords(keywords, reader, writer)
+        locations = _prompt_locations(coords, reader, writer)
+        say(writer, f"Selected {len(chosen_keywords)} keyword(s) and {len(locations)} location(s).")
+        if not yes(ask(reader, "Add this run to the queue? [Y/n]: "), True):
+            return None
+        return _settings_args(settings) + ["--mode", "standard"] + _scope_args(keywords, chosen_keywords, locations, coords)
+    try:
+        niches = require_niches(raw_niche)
+    except EmptySearchInput as exc:
+        say(writer, str(exc))
+        return None
+    say(writer, "Keyword search string(s), comma-separated.")
+    say(writer, "Leave blank to search each niche in the locations you pick.")
+    say(writer, "Example: pressure washing near Cherry Hill NJ")
+    raw_keywords = ask(reader, "Keyword search string(s): ")
+    typed_keywords = parse_term_list(raw_keywords)
     locations = _prompt_locations(coords, reader, writer)
-    say(writer, f"Selected {len(chosen_keywords)} keyword(s) and {len(locations)} location(s).")
+    if not locations:
+        say(writer, "Select at least one location.")
+        return None
+    say(writer, f"Niches: {', '.join(niches)}")
+    if typed_keywords:
+        say(writer, f"Keywords: {', '.join(typed_keywords)}")
+    else:
+        say(writer, "Keywords: built from the niche and the selected location(s).")
+    say(writer, f"Locations: {len(locations)}")
     if not yes(ask(reader, "Add this run to the queue? [Y/n]: "), True):
         return None
-    return _settings_args(settings) + _scope_args(keywords, chosen_keywords, locations, coords)
+    args = _settings_args(settings, include_json_path=False)
+    args.extend(["--mode", "standard", "--free-text"])
+    args.extend(["--niche", ", ".join(niches)])
+    if typed_keywords:
+        args.extend(["--keywords", *typed_keywords])
+    all_locations = _locations(coords)
+    if len(locations) != len(all_locations):
+        args.extend(_location_flags(locations))
+    return args
 
 
 def _niche_run(settings, niches, coords, reader, writer) -> list[str] | None:
@@ -303,7 +351,7 @@ def _high_volume(settings: dict) -> dict:
     return updated
 
 
-def _settings_args(settings: dict) -> list[str]:
+def _settings_args(settings: dict, include_json_path: bool = True) -> list[str]:
     args = [
         "--defaults",
         "--leadgen-type", str(settings["leadgen_type"]),
@@ -315,8 +363,9 @@ def _settings_args(settings: dict) -> list[str]:
         "--min-reviews", str(settings["min_reviews"]),
         "--objective", str(settings["objective"]),
         "--output", str(settings["output_mode"]),
-        "--json-path", str(settings["json_output"]),
     ]
+    if include_json_path:
+        args.extend(["--json-path", str(settings["json_output"])])
     args.append("--skip-searched" if settings["skip_searched"] else "--force-research")
     args.append("--filter-franchises" if settings["filter_franchises"] else "--no-filter-franchises")
     args.append("--require-website" if settings["require_website"] else "--no-require-website")
