@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup, NavigableString
+from helper_scripts.browser.route_block import continue_or_abort, resource_type_blocked
 from helper_scripts.utils.logger.logger import setup_logger
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -853,7 +854,7 @@ def _host_blocked(url):
 
 
 def _should_block_request(request):
-    if request.resource_type in BLOCKED_RESOURCE_TYPES:
+    if resource_type_blocked(request.resource_type, BLOCKED_RESOURCE_TYPES):
         return True
     return _host_blocked(request.url)
 
@@ -861,10 +862,11 @@ def _should_block_request(request):
 class CityDataSession:
     """One Playwright browser reused for the whole scrape run."""
 
-    def __init__(self, headless=True, timeout_ms=30000, delay_seconds=1.5):
+    def __init__(self, headless=True, timeout_ms=30000, delay_seconds=1.5, proxy=None):
         self.headless = headless
         self.timeout_ms = timeout_ms
         self.delay_seconds = delay_seconds
+        self.proxy = proxy
         self._playwright = None
         self._browser = None
         self._page = None
@@ -905,7 +907,10 @@ class CityDataSession:
             if self._playwright is None:
                 self._playwright = sync_playwright().start()
             if self._browser is None:
-                self._browser = self._playwright.chromium.launch(headless=self.headless)
+                launch_kwargs = {"headless": self.headless}
+                if self.proxy:
+                    launch_kwargs["proxy"] = self.proxy
+                self._browser = self._playwright.chromium.launch(**launch_kwargs)
             self._page = self._browser.new_page(
                 user_agent=USER_AGENT,
                 viewport={"width": 1280, "height": 720},
@@ -918,10 +923,7 @@ class CityDataSession:
             raise
 
     def _on_route(self, route):
-        if _should_block_request(route.request):
-            route.abort()
-            return
-        route.continue_()
+        continue_or_abort(route, _should_block_request(route.request))
 
     def _sleep_between_requests(self):
         if self._requests_done <= 0 or self.delay_seconds <= 0:

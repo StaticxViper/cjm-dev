@@ -63,7 +63,7 @@ class MenuTests(unittest.TestCase):
         self.assertIn("--from-default", ran[1])
 
     def test_leadgen_run_returns_args_without_starting(self):
-        answers = ["1", "1", "1", "y"]
+        answers = ["1", "mobile dog grooming", "", "1", "y"]
         args = configure_leadgen(
             reader=_reader(answers),
             writer=lambda *_args, **_kwargs: None,
@@ -72,6 +72,12 @@ class MenuTests(unittest.TestCase):
         self.assertIsNotNone(args)
         self.assertIn("--defaults", args)
         self.assertIn("--leadgen-type", args)
+        self.assertIn("--free-text", args)
+        self.assertIn("--niche", args)
+        niche_at = args.index("--niche")
+        self.assertEqual(args[niche_at + 1], "mobile dog grooming")
+        self.assertNotIn("--keywords", args)
+        self.assertNotIn("--json-path", args)
 
     def test_real_registry_menu_names(self):
         registry = load_registry(bundled_registry_path())
@@ -83,4 +89,5 @@ class MenuTests(unittest.TestCase):
         self.assertNotIn("grocery-sync", names)
         self.assertNotIn("webhook-manager", names)
         self.assertNotIn("api-manager-selftest", names)
+        self.assertNotIn("ci-ping", names)
         self.assertIsNone(registry.get("leadgen-new-business").menu)

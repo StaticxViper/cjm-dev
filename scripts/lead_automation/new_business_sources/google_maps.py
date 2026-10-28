@@ -12,6 +12,7 @@ from new_business_sources.base import (
     utc_now,
 )
 from new_business_dedupe import normalize_business_name
+from crm_enrich_match import select_match
 
 
 class GoogleMapsAdapter(SourceAdapter):
@@ -76,12 +77,58 @@ class GoogleMapsAdapter(SourceAdapter):
         return rows, {"checked": checked, "blocked": blocked}
 
 
-def _best_listing(name, listings):
+def _legacy_best_listing(name, listings):
     target = normalize_business_name(name)
     for listing in listings or []:
         if normalize_business_name(listing.get("business_name")) == target:
             return listing
     return (listings or [None])[0]
+
+
+def _listing_candidate(listing):
+    listing = listing or {}
+    return {
+        "business_name": listing.get("business_name"),
+        "phone": listing.get("phone") or listing.get("phone_google"),
+        "website": listing.get("website"),
+        "address": listing.get("address"),
+        "category": listing.get("category"),
+        "place_id": listing.get("place_id"),
+        "profile_url": listing.get("profile_url"),
+        "rating": listing.get("rating"),
+        "user_ratings_total": listing.get("user_ratings_total"),
+        "business_status": listing.get("business_status"),
+    }
+
+
+def _best_listing(name, listings):
+    """Prefer a crm_enrich_match write. Otherwise keep the exact-name or first listing."""
+    listings = [item for item in (listings or []) if item]
+    if not listings:
+        return None
+    lead = {"business_name": name or ""}
+    location = {"state": None, "county": None, "city": None, "zip": None, "street": None}
+    selection = select_match(
+        [_listing_candidate(item) for item in listings],
+        lead,
+        {},
+        {},
+        location=location,
+    )
+    winner = selection.get("winner")
+    if winner:
+        place_id = winner.get("place_id")
+        profile = winner.get("profile_url")
+        winner_name = winner.get("name") or ""
+        for listing in listings:
+            if place_id and listing.get("place_id") == place_id:
+                return listing
+            if profile and listing.get("profile_url") == profile:
+                return listing
+        for listing in listings:
+            if (listing.get("business_name") or "") == winner_name:
+                return listing
+    return _legacy_best_listing(name, listings)
 
 
 def _copy_listing(row, listing):

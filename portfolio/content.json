@@ -1,12 +1,56 @@
 {
+  "brand": "CJ Moulton",
   "name": "Christopher J. Moulton",
-  "preferredName": "Chris Moulton",
+  "preferredName": "CJ Moulton",
   "headline": "Senior Software Engineer",
   "employerLine": "Senior Software Engineer at ASRC Federal",
   "location": "Clementon, New Jersey",
   "siteUrl": "https://staticxviper.github.io/cjm-dev/",
   "resumeFile": "Christopher-Moulton-Resume.pdf",
   "generateResume": true,
+  "positioning": "Personal portfolio for Christopher J. Moulton. Selected work, roles, and documentation for how the projects run.",
+  "pages": {
+    "home": {
+      "title": "CJ Moulton — Portfolio",
+      "description": "Personal portfolio and documentation for Christopher J. Moulton. Selected work, roles, and how the projects run.",
+      "eyebrow": "Portfolio"
+    },
+    "projects": {
+      "title": "Projects — CJ Moulton",
+      "description": "Websites, apps, and scripts by CJ Moulton, grouped as current, completed, and planned.",
+      "intro": "Websites, apps, and scripts, grouped by where the work stands."
+    },
+    "experience": {
+      "title": "Experience — CJ Moulton",
+      "description": "Roles, education, and skills for Christopher J. Moulton.",
+      "intro": "Roles, companies, education, and skills."
+    },
+    "about": {
+      "title": "About — CJ Moulton",
+      "description": "Christopher J. Moulton, senior software engineer. Portfolio, roles, and project documentation."
+    },
+    "resume": {
+      "title": "Resume — CJ Moulton",
+      "description": "Download the resume for Christopher J. Moulton and open the LinkedIn profile.",
+      "intro": "A PDF resume for Christopher J. Moulton, and the LinkedIn profile."
+    },
+    "contact": {
+      "title": "Contact — CJ Moulton",
+      "description": "Email, phone, LinkedIn, and GitHub for CJ Moulton."
+    }
+  },
+  "about": {
+    "personTitle": "CJ Moulton",
+    "person": [
+      "CJ Moulton is a senior software engineer in Clementon, New Jersey. He designs and maintains automated test frameworks for mission-critical software, and he works with other teams so integration, regression, and end-to-end testing stay reliable.",
+      "He earned an M.S. in Computer Science and a B.S. in Computer Science with a minor in Cyber Security from Felician University."
+    ],
+    "siteTitle": "This site",
+    "site": [
+      "This site is a personal portfolio and a documentation hub. It shows selected work, roles, and skills, and it explains how the projects run.",
+      "The scripts support business and automation work: lead search, listings, prices, and related tools. Notes stay in this repository. Other repositories are linked from here."
+    ]
+  },
   "bio": [
     "I am passionate about continuously learning and adapting to achieve both personal and organizational goals.",
     "I design and maintain automated test frameworks for mission-critical software, and I collaborate across teams to make integration, regression, and end-to-end testing reliable. I earned an M.S. in Computer Science and a B.S. in Computer Science with a minor in Cyber Security from Felician University."
@@ -123,34 +167,304 @@
   ],
   "projects": [
     {
-      "name": "Real Estate Property Analyzer",
-      "description": "Compiles data from several APIs so real estate investors and agents can get a comprehensive property report in minutes.",
+      "name": "Lead generation",
+      "description": "Finds local businesses with the Google Places API or Playwright on Google Maps.",
+      "kind": "script",
+      "status": "current",
+      "show": true,
+      "featured": true,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/lead_automation",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Property listings",
+      "description": "Collects Zillow listing URLs for ZIP codes through Apify.",
+      "kind": "script",
+      "status": "current",
+      "show": true,
+      "featured": true,
+      "tech": "Python, Apify",
       "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/zillow_automation",
-      "urlLabel": "Related code on GitHub"
+      "urlLabel": "View on GitHub",
+      "logo": ""
     },
     {
-      "name": "AI Automated Blog",
-      "description": "A blog pipeline automated and powered by AI, written to promote personal development and investing.",
-      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/chikara_realms",
-      "urlLabel": "View on GitHub"
+      "name": "Chikara Realms",
+      "description": "A blog on investing and mindset.",
+      "kind": "website",
+      "status": "current",
+      "show": true,
+      "featured": true,
+      "tech": "",
+      "url": "https://chikararealms.com",
+      "urlLabel": "Visit site",
+      "logo": ""
     },
     {
-      "name": "Personal Admin Dashboard",
+      "name": "Stock analyzer",
+      "description": "Collects daily stock data and writes a Perplexity analysis to a dashboard.",
+      "kind": "script",
+      "status": "current",
+      "show": true,
+      "featured": true,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/stock_analyzer",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Grocery prices",
+      "description": "Looks up ShopRite, Costco, and Amazon prices and writes them to Supabase.",
+      "kind": "script",
+      "status": "current",
+      "show": true,
+      "featured": false,
+      "tech": "Python, Supabase",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/grocery",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "City profiles",
+      "description": "Scrapes city-data.com city and crime pages into JSON, including the Apify actor in this repository.",
+      "kind": "script",
+      "status": "current",
+      "show": true,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/city_data",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Video tools",
+      "description": "Cuts highlight clips from local motorcycle footage and builds montages with FFmpeg.",
+      "kind": "script",
+      "status": "current",
+      "show": true,
+      "featured": false,
+      "tech": "Python, FFmpeg",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/video_editing",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Personal admin dashboard",
       "description": "A personal hub for managing APIs and webhooks, monitoring devices, tracking goals and tasks, and reviewing personal analytics.",
+      "kind": "app",
+      "status": "current",
+      "show": true,
+      "featured": false,
+      "tech": "",
       "url": "",
-      "urlLabel": ""
+      "urlLabel": "",
+      "logo": ""
     },
     {
       "name": "Arcade Racer",
       "description": "A small racing game built with Unity and C#.",
+      "kind": "app",
+      "status": "completed",
+      "show": true,
+      "featured": false,
+      "tech": "Unity, C#",
       "url": "",
-      "urlLabel": ""
+      "urlLabel": "",
+      "logo": ""
     },
     {
-      "name": "Multi-hop VPN and DNS Sinkhole",
+      "name": "Civilization mods",
+      "description": "Civilization V and Civilization: Beyond Earth mods packaged in this repository.",
+      "kind": "app",
+      "status": "completed",
+      "show": true,
+      "featured": false,
+      "tech": "Civilization V, Civilization: Beyond Earth",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/game_mods",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Opportunity finder",
+      "description": "Finds remote and contract opportunities.",
+      "kind": "script",
+      "status": "planned",
+      "show": true,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/opp_finder_v2",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Lovable automation",
+      "description": "Creates and publishes a Lovable site from a prompt.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/lovable_automation",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Recruiter outreach drafts",
+      "description": "Pulls recruiter profiles for companies in a local list and writes email drafts. It does not send mail.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/operation_learn",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Multi-hop VPN and DNS sinkhole",
       "description": "A Raspberry Pi 4 set up to block ads while browsing and to give any device on the network a secure connection.",
+      "kind": "app",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Raspberry Pi",
       "url": "",
-      "urlLabel": ""
+      "urlLabel": "",
+      "logo": ""
+    },
+    {
+      "name": "Google Business actor",
+      "description": "Low-volume Google Maps lookup with name and location confidence checks.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python, Apify",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/apify-scripts/google-business",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Lead enrichment",
+      "description": "Enriches leads through Facebook with Apify, or through Google and business websites with Playwright.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/lead_automation",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Lead ingest",
+      "description": "Uploads a leads CSV into a CRM used for business outreach.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/lead_automation",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "New-business leadgen",
+      "description": "Looks for newly registered or newly licensed businesses instead of keyword and Maps results.",
+      "kind": "script",
+      "status": "planned",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/blob/main/documentation/scripts/new_business_sources.md",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Amazon actor",
+      "description": "Named as a later Apify actor folder. That folder has not been created.",
+      "kind": "script",
+      "status": "planned",
+      "show": false,
+      "featured": false,
+      "tech": "Apify",
+      "url": "https://github.com/StaticxViper/cjm-dev/blob/main/scripts/apify-scripts/README.md",
+      "urlLabel": "Notes on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "YouTube actor",
+      "description": "Named as a later Apify actor folder. That folder has not been created.",
+      "kind": "script",
+      "status": "planned",
+      "show": false,
+      "featured": false,
+      "tech": "Apify",
+      "url": "https://github.com/StaticxViper/cjm-dev/blob/main/scripts/apify-scripts/README.md",
+      "urlLabel": "Notes on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Instagram actor",
+      "description": "Named as a later Apify actor folder. That folder has not been created.",
+      "kind": "script",
+      "status": "planned",
+      "show": false,
+      "featured": false,
+      "tech": "Apify",
+      "url": "https://github.com/StaticxViper/cjm-dev/blob/main/scripts/apify-scripts/README.md",
+      "urlLabel": "Notes on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "JSON formatter",
+      "description": "Rewrites a JSON file as a compact structural schema.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/json_formatter",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Webhook manager",
+      "description": "Sends a test email payload through the Make.com webhook.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/webhook_manager",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "API Manager self-test",
+      "description": "Smoke-tests API Manager against httpbin.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/helper_scripts/api_manager",
+      "urlLabel": "View on GitHub",
+      "logo": ""
+    },
+    {
+      "name": "Script manager",
+      "description": "Lists and runs the registered scripts from the repository root.",
+      "kind": "script",
+      "status": "current",
+      "show": false,
+      "featured": false,
+      "tech": "Python",
+      "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts/script_manager",
+      "urlLabel": "View on GitHub",
+      "logo": ""
     }
   ],
   "skills": [

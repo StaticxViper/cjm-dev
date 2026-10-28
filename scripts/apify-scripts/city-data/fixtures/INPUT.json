@@ -5,5 +5,9 @@
   "delaySeconds": 1.5,
   "timeoutMs": 30000,
   "headless": true,
-  "maxCities": 1
+  "maxCities": 1,
+  "maxSpendUsd": 5,
+  "maxProxyCostUsd": 0.5,
+  "allowCaptcha": false,
+  "proxyConfiguration": {"useApifyProxy": false}
 }

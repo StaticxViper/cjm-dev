@@ -1,0 +1,62 @@
+# Generated cron block: python -m scripts.script_manager schedules --write
+name: Script Manager Schedules
+
+on:
+  schedule:
+    # script-manager:schedules:begin
+    - cron: '0 14 * * 1-5'
+    # script-manager:schedules:end
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  due:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.due.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements/requirements.txt
+      - name: Scripts due now
+        id: due
+        env:
+          SCRIPT_MANAGER_CRON: ${{ github.event.schedule }}
+        run: |
+          if [ -n "$SCRIPT_MANAGER_CRON" ]; then
+            python -m scripts.script_manager schedules --due --github-output --cron "$SCRIPT_MANAGER_CRON"
+          else
+            python -m scripts.script_manager schedules --due --github-output
+          fi
+      - name: Record an empty schedule
+        if: steps.due.outputs.matrix == '{"include":[]}'
+        run: |
+          {
+            echo "### script-manager schedule"
+            echo
+            echo "No script was due for this firing."
+            echo
+            echo "A schedule event selects scripts by github.event.schedule, including when the runner starts late."
+            echo "A manual run uses the 90 minute grace window around the clock."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  run:
+    needs: due
+    if: needs.due.outputs.matrix != '{"include":[]}' && needs.due.outputs.matrix != ''
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.due.outputs.matrix) }}
+    uses: ./.github/workflows/script_manager.yml
+    with:
+      script: ${{ matrix.script }}
+      confirm: ${{ matrix.confirm }}
+      outputs: ${{ matrix.outputs }}
+      request_id: schedule-${{ matrix.script }}-${{ github.run_id }}
+      trigger: schedule
+    secrets: inherit

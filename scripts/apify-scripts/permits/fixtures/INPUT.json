@@ -1,0 +1,17 @@
+{
+  "sources": ["chicago_building_permits"],
+  "dateFrom": "2026-09-26",
+  "dateTo": "2026-10-26",
+  "permitTypes": ["roof", "siding", "pool", "deck", "solar"],
+  "minValue": 1000,
+  "maxItems": 25,
+  "maxRequests": 24,
+  "delaySeconds": 2,
+  "maxSpendUsd": 5,
+  "maxProxyCostUsd": 0.5,
+  "allowCaptcha": false,
+  "headless": true,
+  "proxyConfiguration": {
+    "useApifyProxy": false
+  }
+}

@@ -12,5 +12,9 @@
   "lowConfidenceFloor": 60,
   "maxSearches": 1,
   "headless": true,
-  "includeEmails": false
+  "includeEmails": false,
+  "maxSpendUsd": 5,
+  "maxProxyCostUsd": 0.5,
+  "allowCaptcha": false,
+  "proxyConfiguration": {"useApifyProxy": false}
 }

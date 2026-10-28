@@ -1,0 +1,14 @@
+{
+  "states": ["NY"],
+  "counties": [],
+  "formedSince": "2026-09-01",
+  "entityTypes": [],
+  "enrichWebsite": false,
+  "maxResults": 50,
+  "maxRequests": 12,
+  "delaySeconds": 3,
+  "maxSpendUsd": 5,
+  "maxProxyCostUsd": 0.5,
+  "allowCaptcha": false,
+  "headless": true
+}

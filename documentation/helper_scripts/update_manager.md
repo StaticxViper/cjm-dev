@@ -1,6 +1,6 @@
 # Update Manager (legacy)
 
-**Source:** `helper_scripts/utils/update_manager/update_manager.py`
+**Source:** removed. `helper_scripts/utils/update_manager/update_manager.py` is no longer in the repo.
 
 > **Not maintained.** Intended for an old Raspberry Pi deployment. `self.log` and `self.notif` are commented out in `__init__` but still referenced in methods—running `update_raspberry_pi()` or `update()` will raise `AttributeError`.
 
@@ -19,11 +19,7 @@ Hardcoded log path: `/home/pi/1.Repos/sxv-projects/docs/logs/update_log.txt`
 
 ## How to run
 
-```bash
-python helper_scripts/utils/update_manager/update_manager.py
-```
-
-**Do not run on Windows or without restoring `LogManager` / `MyClient` integrations.** This entry point calls `update_raspberry_pi()` and will fail.
+The module was removed. Do not try to run it. The notes below describe the old Raspberry Pi behavior for historical reference.
 
 ## API (if restored)
 

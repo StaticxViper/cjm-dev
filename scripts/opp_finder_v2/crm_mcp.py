@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import httpx
 from dotenv import load_dotenv
 
+from helper_scripts.crm.mcp_client import jsonrpc_request, post_json
 from opp_finder_v2.models import Opportunity
 from opp_finder_v2.parsing import HOURS_PER_YEAR
 
@@ -136,23 +136,16 @@ class CrmMcp:
         self._next_id = 1
 
     def call(self, name: str, arguments: dict | None = None) -> dict:
-        body = {
-            "jsonrpc": "2.0",
-            "id": self._next_id,
-            "method": "tools/call",
-            "params": {"name": name, "arguments": arguments or {}},
-        }
+        body = jsonrpc_request(
+            self._next_id,
+            "tools/call",
+            {"name": name, "arguments": arguments or {}},
+        )
         self._next_id += 1
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            "Authorization": f"Bearer {self.key}",
-        }
         if self._client is not None:
-            response = self._client.post(self.url, headers=headers, json=body)
+            response = post_json(self.url, self.key, body, client=self._client)
         else:
-            with httpx.Client(timeout=60) as client:
-                response = client.post(self.url, headers=headers, json=body)
+            response = post_json(self.url, self.key, body, timeout=60)
         text = _redact(response.text, self.key)
         if response.status_code >= 400:
             raise CrmError(f"CRM MCP {name} HTTP {response.status_code}: {text[:500]}")

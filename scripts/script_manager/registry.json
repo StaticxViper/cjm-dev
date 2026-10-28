@@ -1,11 +1,17 @@
 {
   "version": 1,
   "ignore_paths": [
-    "scripts/video_editing/deprecated/**",
-    "helper_scripts/utils/update_manager/**",
-    "helper_scripts/utils/logger/import_log_example.py",
+    "scripts/repo_map/**",
     "scripts/script_manager/**"
   ],
+  "discover_roots": ["scripts", "helper_scripts"],
+  "sinks": {
+    "artifact": "scripts.script_manager.sinks.artifact",
+    "dashboard": "scripts.script_manager.sinks.dashboard",
+    "property_portal": "scripts.script_manager.sinks.property_portal",
+    "callback": "scripts.script_manager.sinks.callback",
+    "email": "scripts.script_manager.sinks.email"
+  },
   "scripts": [
     {
       "name": "leadgen",
@@ -27,19 +33,20 @@
       "needs_playwright": "conditional",
       "playwright_when_args_any": ["--leadgen-type=playwright"],
       "timeout_seconds": 14400,
-      "outputs": ["scripts/lead_automation/*leads_output*.json", "logs/**"],
+      "outputs": ["scripts/lead_automation/*leads_output*.json", "scripts/lead_automation/leads_*.json", "scripts/lead_automation/leads_*.csv", "logs/**"],
       "side_effects": ["external_api", "external_post"],
       "stateful_files": [
         "scripts/lead_automation/leadgen_search_history.json",
         "scripts/lead_automation/leadgen_settings.json"
       ],
-      "ci_allowed": false,
+      "ci_allowed": true,
       "tags": ["leads"],
       "docs": "documentation/scripts/leadgen.md",
       "menu": "leadgen"
     },
     {
       "name": "leadenrich",
+      "ci_allowed": true,
       "description": "Facebook email enrichment for leads via Apify",
       "status": "active",
       "entry": {"type": "path", "path": "scripts/lead_automation/leadenrich.py"},
@@ -72,6 +79,7 @@
     },
     {
       "name": "leadenrich-playwright",
+      "ci_allowed": true,
       "description": "Google and website enrichment for leads using Playwright",
       "status": "active",
       "entry": {"type": "path", "path": "scripts/lead_automation/leadenrich_playwright.py"},
@@ -146,32 +154,16 @@
       "schedule": {
         "cron": "0 14 * * 1-5",
         "tz": "UTC",
-        "note": "matches stock_analyzer-Automation.yml"
+        "confirm": true,
+        "note": "weekdays 14:00 UTC via script_manager_schedule.yml"
       },
       "tags": ["stocks", "scheduled"],
       "docs": "documentation/scripts/stock_analyzer.md",
       "menu": "confirm"
     },
     {
-      "name": "blog-automation",
-      "description": "Generate the next Chikara Realms blog post from topic files",
-      "status": "broken",
-      "status_reason": "from helper_scripts.utils.logger import setup_logger fails (no __init__.py in helper_scripts/utils/logger)",
-      "entry": {"type": "path", "path": "scripts/chikara_realms/blog_automation.py"},
-      "cwd": "scripts/chikara_realms",
-      "env": {
-        "required": ["CHATGPT_API_KEY", "PERPLEXITY_API_KEY", "CHIKARA_REALMS_SECRET"],
-        "optional": ["MVLLC_LOGS_KEY"]
-      },
-      "needs_playwright": false,
-      "outputs": ["logs/**"],
-      "side_effects": ["external_api", "writes_repo_files"],
-      "stateful_files": ["scripts/chikara_realms/*_topics.json"],
-      "tags": ["content"],
-      "docs": "documentation/scripts/blog_automation.md"
-    },
-    {
       "name": "property-listing-gen",
+      "ci_allowed": true,
       "description": "Collect Zillow listing URLs for ZIP codes via Apify",
       "status": "active",
       "entry": {"type": "path", "path": "scripts/zillow_automation/property_listing_gen.py"},
@@ -340,6 +332,7 @@
     },
     {
       "name": "source-recruiters",
+      "ci_allowed": true,
       "description": "Pull recruiter profiles for companies.json through Apify",
       "status": "active",
       "entry": {"type": "path", "path": "scripts/operation_learn/source_recruiters.py"},
@@ -356,6 +349,7 @@
     },
     {
       "name": "draft-emails",
+      "ci_allowed": true,
       "description": "Write recruiter email drafts from the latest CSV and resume. Sends nothing",
       "status": "active",
       "entry": {"type": "path", "path": "scripts/operation_learn/draft_emails.py"},
@@ -368,6 +362,7 @@
     },
     {
       "name": "api-manager-selftest",
+      "ci_allowed": true,
       "description": "Smoke-test API Manager against httpbin. APIFY_TOKEN is listed only so the README env table stays in sync; this selftest does not read it",
       "status": "active",
       "entry": {"type": "path", "path": "helper_scripts/api_manager/api_manager.py"},
@@ -394,6 +389,7 @@
     },
     {
       "name": "city-data",
+      "ci_allowed": true,
       "description": "Scrape city-data.com city and crime pages into JSON",
       "status": "active",
       "entry": {"type": "path", "path": "scripts/city_data/city_data_scraper.py"},
@@ -419,6 +415,7 @@
     },
     {
       "name": "grocery",
+      "ci_allowed": true,
       "description": "Look up ShopRite, Costco, and Amazon prices and write them to Supabase",
       "status": "active",
       "entry": {"type": "module", "module": "grocery.scraper"},
@@ -450,6 +447,7 @@
     },
     {
       "name": "grocery-sync",
+      "ci_allowed": true,
       "description": "Push grocery price batches to the grocery-lookup edge function",
       "status": "active",
       "entry": {"type": "module", "module": "grocery.sync"},
@@ -472,6 +470,7 @@
     },
     {
       "name": "grocery-cli",
+      "ci_allowed": true,
       "description": "Package entry for python -m grocery. Runs the same sync CLI as grocery-sync",
       "status": "active",
       "entry": {"type": "module", "module": "grocery"},
@@ -546,6 +545,20 @@
       "playwright_when_args_any": ["--headful", "--leadgen-type=playwright"],
       "tags": ["leads"],
       "docs": "documentation/scripts/new_business_sources.md"
+    },
+    {
+      "name": "ci-ping",
+      "ci_allowed": true,
+      "description": "Read-only CI probe. Prints one JSON object and writes nothing",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/ci_ping/ci_ping.py"},
+      "cwd": ".",
+      "help_supported": true,
+      "needs_playwright": false,
+      "timeout_seconds": 60,
+      "side_effects": [],
+      "tags": ["ci"],
+      "docs": "documentation/scripts/ci_ping.md"
     }
   ]
 }

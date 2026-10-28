@@ -22,11 +22,15 @@ Sex-offender lists are not scraped.
   "delaySeconds": 1.5,
   "timeoutMs": 30000,
   "headless": true,
-  "maxCities": 1
+  "maxCities": 1,
+  "maxSpendUsd": 5,
+  "maxProxyCostUsd": 0.5,
+  "allowCaptcha": false,
+  "proxyConfiguration": {"useApifyProxy": false}
 }
 ```
 
-A list works too: `cities: [{"city": "Clementon", "state": "NJ", "slug": ""}]`. Optional `slug` overrides the path token. `fields` is a multi-select of the six groups. `headless` defaults to true. The default run timeout is 600 seconds at 2048 MB.
+A list works too: `cities: [{"city": "Clementon", "state": "NJ", "slug": ""}]`. Optional `slug` overrides the path token. `fields` is a multi-select of the six groups. `headless` defaults to true. `maxSpendUsd` defaults to 5, `maxProxyCostUsd` to 0.50, and `allowCaptcha` to false. The proxy group is used only after a block. The default run timeout is 600 seconds at 2048 MB.
 
 ## Output
 
@@ -64,8 +68,10 @@ The sample numbers match a live Clementon fetch. A later page will differ. Missi
 ## Limitations
 
 - One browser for the run. Delay default is 1.5 seconds between requests, same as the CLI.
-- The session retries a failed navigation once. The Actor does not add a second retry loop around it.
-- A disallowed path is skipped. The row records `robots_disallowed` and no request is sent.
+- The session retries a failed navigation once. After a block (HTTP 401, 403, 429, or a challenge page) the Actor may open Apify Proxy once and retry that URL. It does not add another retry loop on top of that.
+- A disallowed path is skipped. The row records `robots_disallowed` and no request is sent. That skip is not retried through a proxy.
+- `maxSpendUsd` defaults to 5 and `maxProxyCostUsd` defaults to 0.50. `allowCaptcha` defaults to false. A block with no proxy budget, with CAPTCHA solving off, or with no solver configured pushes `sourceStatus: "blocked"` and later cities are not requested. This Actor does not ship a solver.
+- The proxy group is `proxyConfiguration` or `proxyGroups`. An empty group uses datacenter, and only after a block. The first page stays direct. No stealth plugin is added.
 - This Actor does not geocode addresses and does not ingest rows into another app.
 
 ## Robots
@@ -74,7 +80,7 @@ Checked against the live `https://www.city-data.com/robots.txt` while packaging.
 
 ## Pricing
 
-Pay per event. The primary event is `result` at $0.01, charged only when `ok` is true. A robots skip, a missing page, and any other error are stored and not billed. Dataset items are not a charge event. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. Memory default is 2048 MB and the default timeout is 600 seconds.
+Pay per event. The primary event is `result` at $0.01, charged only when `ok` is true. A robots skip, a missing page, a blocked row, and any other error are stored and not billed. `proxy` is $0.01, charged only when a blocked page is retried through Apify Proxy. `captcha` is $1.00, charged only when a solver returns a token. Direct page loads are free. Dataset items are not a charge event. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. Memory default is 2048 MB and the default timeout is 600 seconds. City-data terms restrict automated collection; keep runs small and leave the delay at 1.5 seconds or higher.
 
 ## Categories
 

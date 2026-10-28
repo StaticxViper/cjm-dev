@@ -9,12 +9,22 @@ Google Places APIs. Must not import leadgen.
 """
 from __future__ import annotations
 
-from urllib.parse import quote_plus, urlparse, unquote
-import hashlib
-import random
+from urllib.parse import quote_plus, urlparse
 import re
 import time
 
+from helper_scripts.browser.google_session import (
+    GoogleBrowserCore,
+    is_google_block_page,
+    sleep_between,
+)
+from helper_scripts.http.client import CHROME_USER_AGENT
+from helper_scripts.maps.identity import (
+    CHIJ_RE,
+    HEX_FID_RE,
+    extract_place_id_from_url,
+    normalize_profile_url,
+)
 from helper_scripts.utils.logger.logger import setup_logger
 
 logger = setup_logger(
@@ -29,18 +39,9 @@ DETAIL_DELAY_MIN = 1.2
 DETAIL_DELAY_MAX = 2.8
 SCROLL_PAUSE = 2.2
 SEARCH_RETRIES = 1
-
-FETCH_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-}
+FETCH_HEADERS = {"User-Agent": CHROME_USER_AGENT}
 
 PLACE_HREF_RE = re.compile(r"/maps/place/", re.I)
-CHIJ_RE = re.compile(r"(?:!19s|place_id[=:])(ChIJ[\w-]+)")
-HEX_FID_RE = re.compile(r"!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)")
 RATING_RE = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
 REVIEWS_RE = re.compile(r"\(([0-9,]+)\)")
 CARD_PHONE_RE = re.compile(
@@ -58,23 +59,6 @@ AREA_EXPANSION_EXTRA_POINTS = {
 }
 
 
-def is_google_block_page(html, url=""):
-    """Return True only for clear Google sorry/traffic interstitial pages.
-
-    Maps pages include a noscript "enable javascript" fallback; that alone is
-    not treated as a block.
-    """
-    current = (url or "").lower()
-    if "/sorry/" in current or "google.com/sorry" in current:
-        return True
-    haystack = f"{current} {html or ''}".lower()
-    if "unusual traffic" in haystack or "detected unusual traffic" in haystack:
-        return True
-    if "our systems have detected" in haystack and "automated" in haystack:
-        return True
-    return False
-
-
 def _strip_label(value, prefixes):
     if not value:
         return None
@@ -85,54 +69,6 @@ def _strip_label(value, prefixes):
             text = text[len(prefix):].strip(" :")
             break
     return text.strip() or None
-
-
-def normalize_profile_url(url):
-    """Collapse a Maps place URL to a stable identity key."""
-    if not url:
-        return ""
-    try:
-        parsed = urlparse(url)
-        path = unquote(parsed.path or "")
-        # Prefer place path without query/fragment noise.
-        if "/maps/place/" in path:
-            # Keep /maps/place/<name>/ if present; drop trailing data when possible.
-            parts = path.split("/maps/place/", 1)[1]
-            name = parts.split("/")[0]
-            fid = None
-            m = HEX_FID_RE.search(url) or HEX_FID_RE.search(unquote(parsed.query or ""))
-            if m:
-                fid = m.group(1).lower()
-            chij = None
-            m2 = CHIJ_RE.search(url)
-            if m2:
-                chij = m2.group(1)
-            if chij:
-                return f"https://www.google.com/maps/place/?q=place_id:{chij}"
-            if fid:
-                return f"https://www.google.com/maps/place/?q={fid}"
-            if name:
-                return f"https://www.google.com/maps/place/{name}"
-        return f"{parsed.scheme}://{parsed.netloc}{path}".rstrip("/")
-    except Exception:
-        return str(url).split("?")[0].split("#")[0]
-
-
-def extract_place_id_from_url(url):
-    """Return a Google place_id (ChIJ...) or a stable maps: fallback id."""
-    if not url:
-        return None
-    m = CHIJ_RE.search(url)
-    if m:
-        return m.group(1)
-    m = HEX_FID_RE.search(url)
-    if m:
-        return f"maps:{m.group(1).lower()}"
-    stable = normalize_profile_url(url)
-    if stable:
-        digest = hashlib.sha1(stable.encode("utf-8")).hexdigest()[:20]
-        return f"maps:{digest}"
-    return None
 
 
 def _parse_rating_block(text):
@@ -281,15 +217,15 @@ def business_dedupe_key(entry):
     return None
 
 
-class BusinessDiscoverySession:
+class BusinessDiscoverySession(GoogleBrowserCore):
     """One Playwright browser for multi-page Maps discovery."""
 
-    def __init__(self, delay=None, detail_delay=None, headless=True):
-        self.google_blocked = False
+    def __init__(self, delay=None, detail_delay=None, headless=True, proxy=None):
+        super().__init__()
         self._headless = bool(headless)
-        self._playwright = None
-        self._browser = None
-        self._page = None
+        self._proxy = proxy
+        self.last_block_html = ""
+        self.last_block_url = ""
         self._searches_done = 0
         self._details_done = 0
         self._delay = delay
@@ -311,21 +247,9 @@ class BusinessDiscoverySession:
         return False
 
     def close(self):
-        page, browser, playwright = self._page, self._browser, self._playwright
-        self._page = None
-        self._browser = None
-        self._playwright = None
-        for closer, label in (
-            (getattr(page, "close", None), "page"),
-            (getattr(browser, "close", None), "browser"),
-            (getattr(playwright, "stop", None), "playwright"),
-        ):
-            if closer is None:
-                continue
-            try:
-                closer()
-            except Exception as exc:
-                logger.error("[Playwright] Failed to close %s: %s", label, exc)
+        self.close_browser(
+            lambda label, exc: logger.error("[Playwright] Failed to close %s: %s", label, exc)
+        )
 
     def _ensure_browser(self):
         if self.google_blocked:
@@ -340,10 +264,13 @@ class BusinessDiscoverySession:
             return None
         try:
             self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.launch(
-                headless=self._headless,
-                args=["--disable-blink-features=AutomationControlled"],
-            )
+            launch_kwargs = {
+                "headless": self._headless,
+                "args": ["--disable-blink-features=AutomationControlled"],
+            }
+            if self._proxy:
+                launch_kwargs["proxy"] = self._proxy
+            self._browser = self._playwright.chromium.launch(**launch_kwargs)
             self._page = self._browser.new_page(
                 user_agent=FETCH_HEADERS["User-Agent"],
                 viewport={"width": 1280, "height": 900},
@@ -358,20 +285,20 @@ class BusinessDiscoverySession:
             return None
 
     def _sleep_between_searches(self):
-        if self._searches_done <= 0:
-            return
-        if self._delay is not None:
-            time.sleep(self._delay)
-            return
-        time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
+        sleep_between(
+            self._searches_done,
+            self._delay,
+            SEARCH_DELAY_MIN,
+            SEARCH_DELAY_MAX,
+        )
 
     def _sleep_between_details(self):
-        if self._details_done <= 0:
-            return
-        if self._detail_delay is not None:
-            time.sleep(self._detail_delay)
-            return
-        time.sleep(random.uniform(DETAIL_DELAY_MIN, DETAIL_DELAY_MAX))
+        sleep_between(
+            self._details_done,
+            self._detail_delay,
+            DETAIL_DELAY_MIN,
+            DETAIL_DELAY_MAX,
+        )
 
     def _dismiss_consent(self, page):
         for sel in (
@@ -655,6 +582,8 @@ class BusinessDiscoverySession:
                 logger.error(
                     "[Playwright] CAPTCHA or block page detected; skipping further searches"
                 )
+            self.last_block_html = html or ""
+            self.last_block_url = current_url or ""
             self.google_blocked = True
             self.stats["errors"] += 1
             return []
@@ -784,8 +713,12 @@ class BusinessDiscoverySession:
             page.goto(url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT * 1000)
             time.sleep(1.8)
             self._dismiss_consent(page)
-            if is_google_block_page(page.content() or "", page.url or ""):
+            detail_html = page.content() or ""
+            detail_url = page.url or ""
+            if is_google_block_page(detail_html, detail_url):
                 logger.error("[Playwright] CAPTCHA or block page on detail view")
+                self.last_block_html = detail_html
+                self.last_block_url = detail_url
                 self.google_blocked = True
                 self.stats["errors"] += 1
                 return entry

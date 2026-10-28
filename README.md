@@ -26,13 +26,35 @@ Core repository for projects, automation, and game-mod development by Chris Moul
 
 Full details: [documentation/setup.md](documentation/setup.md)
 
+## Repository layout
+
+- [`scripts/`](scripts/) holds one folder per tool. Each folder README covers purpose, inputs, outputs, a local run command, Script Manager or GitHub Actions, and secrets.
+- [`helper_scripts/`](helper_scripts/) holds shared modules: HTTP (`http`), HTML and URL signals (`web`), names and phones (`text`), Maps identity (`maps`), CRM JSON-RPC (`crm`), Playwright pacing (`browser`), plus [`api_manager`](helper_scripts/api_manager/) and [`utils/logger`](helper_scripts/utils/logger/).
+- [`unittests/`](unittests/) mirrors those tools.
+- [`documentation/`](documentation/) has the longer per-script guides.
+- [`portfolio/`](portfolio/) is the personal portfolio and documentation site for CJ Moulton. The [apps hub](documentation/apps/README.md) and the [repo map](documentation/repo-map/overview.md) are published with that site and linked from its navigation.
+
+### Main tools
+
+| Tool | Folder | How to run |
+|------|--------|------------|
+| Lead generation | [`scripts/lead_automation/`](scripts/lead_automation/) | `python -m scripts.script_manager run leadgen` |
+| Opportunity finder | [`scripts/opp_finder_v2/`](scripts/opp_finder_v2/) | `python -m opp_finder_v2` from `scripts/` |
+| Grocery prices | [`scripts/grocery/`](scripts/grocery/) | `python -m grocery.scraper` from `scripts/` |
+| City data | [`scripts/city_data/`](scripts/city_data/) | `python -m scripts.script_manager run city-data` |
+| Zillow URL search | [`scripts/zillow_automation/`](scripts/zillow_automation/) | `python -m scripts.script_manager run property-listing-gen` |
+| Script Manager | [`scripts/script_manager/`](scripts/script_manager/) | `python -m scripts.script_manager list` |
+| Apify Actors | [`scripts/apify-scripts/`](scripts/apify-scripts/) | `apify run` inside the Actor folder |
+
 ## Documentation
 
-Per-script guides (purpose, configuration, usage, and how each tool works) live in [`documentation/`](documentation/).
+Per-script guides live in [`documentation/`](documentation/). Folder READMEs are the short version.
 
-- **[Documentation index](documentation/README.md)** — links to every script, helper module, and test guide
+- **[Documentation index](documentation/README.md)** — links to every script, helper module, folder README, and test guide
 - **[Setup guide](documentation/setup.md)** — detailed new-environment instructions
 - **[Unit tests](documentation/testing/unittests.md)** — how to run tests
+- **[Apps hub](https://staticxviper.github.io/cjm-dev/apps/)** — one page per project for how it works now and what changed. Source: [`documentation/apps/`](documentation/apps/). Other repos are linked only.
+- **[Repo map](https://staticxviper.github.io/cjm-dev/repo-map/)** — import and call diagrams. Source: [`documentation/repo-map/`](documentation/repo-map/). Regenerate with `python scripts/repo_map/generate.py` and check drift with `python scripts/repo_map/generate.py --check`.
 
 ## Current Focus
 
@@ -42,7 +64,7 @@ Per-script guides (purpose, configuration, usage, and how each tool works) live 
 
 ## Portfolio
 
-A personal site is in [`portfolio/`](portfolio/). Edit [`portfolio/content.json`](portfolio/content.json), then build and publish with GitHub Pages. Details: [portfolio/README.md](portfolio/README.md).
+The personal portfolio and documentation site is in [`portfolio/`](portfolio/). It is published under CJ Moulton. Edit [`portfolio/content.json`](portfolio/content.json) to choose which websites, apps, and scripts are shown, then build and publish with GitHub Pages. Details: [portfolio/README.md](portfolio/README.md).
 
 ## About Me
 

@@ -25,11 +25,11 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
 from helper_scripts.api_manager import APIManager
+from helper_scripts.text.names import name_similarity, normalize_business_name
 from helper_scripts.utils.logger.logger import setup_logger
 
 load_dotenv()
@@ -67,13 +67,6 @@ SEARCH_URL_KEYS = (
     "facebookUrl", "facebook_url", "link",
 )
 PAGE_URL_KEYS = ("pageUrl", "facebookUrl", "url")
-
-NAME_APOSTROPHE_RE = re.compile(r"['\u2018\u2019\u02bc]")
-NAME_PUNCTUATION_RE = re.compile(r"[^a-z0-9]+")
-NAME_STOPWORDS = frozenset({
-    "the", "a", "an", "and", "of", "llc", "inc", "incorporated", "co", "corp",
-    "corporation", "ltd", "limited", "company", "pllc", "lp", "llp",
-})
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 EMAIL_DOMAIN_BLOCKLIST = ("facebook.com", "fb.com", "sentry", "wixpress", "example.com")
@@ -149,32 +142,6 @@ def normalize_facebook_url(url):
     if slug.lower() in NON_PAGE_SEGMENTS or slug.lower().endswith(".php"):
         return None
     return f"https://www.facebook.com/{slug}"
-
-
-def normalize_business_name(name):
-    """Lowercase and strip punctuation plus legal suffixes so names compare cleanly."""
-    lowered = (name or "").lower().replace("&", " and ")
-    # Apostrophes are dropped rather than split on, so "Joe's" stays one token.
-    tokens = NAME_PUNCTUATION_RE.sub(" ", NAME_APOSTROPHE_RE.sub("", lowered)).split()
-    return " ".join(token for token in tokens if token not in NAME_STOPWORDS)
-
-
-def name_similarity(left, right):
-    """Return 0.0-1.0 similarity between two normalized business names."""
-    if not left or not right:
-        return 0.0
-
-    ratio = SequenceMatcher(None, left, right).ratio()
-    left_tokens = set(left.split())
-    right_tokens = set(right.split())
-    smaller = min(len(left_tokens), len(right_tokens))
-    if smaller < 2:
-        return ratio
-
-    # Facebook Pages often append a location or service list to the business
-    # name, so full containment of the shorter name is a strong signal.
-    containment = len(left_tokens & right_tokens) / smaller
-    return max(ratio, containment * 0.95)
 
 
 def location_hint(address):

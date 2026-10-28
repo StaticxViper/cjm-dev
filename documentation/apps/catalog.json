@@ -1,0 +1,65 @@
+{
+  "sourceNote": "Source of truth for these pages is cjm-dev; other repos are linked only.",
+  "projects": [
+    {
+      "slug": "chikara",
+      "name": "Chikara",
+      "summary": "A blog on investing and mindset. The site is chikararealms.com. The code is in its own repository.",
+      "code": "external",
+      "portfolioName": "Chikara Realms",
+      "github": {
+        "owner": "StaticxViper",
+        "name": "chikararealms",
+        "url": "https://github.com/StaticxViper/chikararealms"
+      },
+      "live": {
+        "url": "https://chikararealms.com",
+        "label": "chikararealms.com"
+      },
+      "diagrams": []
+    },
+    {
+      "slug": "personal-admin",
+      "name": "Personal admin dashboard",
+      "summary": "Personal hub for APIs, webhooks, devices, goals, tasks, and analytics. The app code is not in this repo.",
+      "code": "unrecorded",
+      "portfolioName": "Personal admin dashboard",
+      "github": null,
+      "live": null,
+      "diagrams": [
+        {"label": "Data flow", "href": "repo-map/data-flow.html"},
+        {"label": "Script Manager diagram", "href": "repo-map/script-manager.html"}
+      ]
+    },
+    {
+      "slug": "property-portal",
+      "name": "Property Portal",
+      "summary": "The listing app, including the v2 line. Its screens live in another repo. This repo collects listing URLs and can send a signed run summary.",
+      "code": "unrecorded",
+      "github": null,
+      "live": null,
+      "diagrams": [
+        {"label": "Zillow diagram", "href": "repo-map/zillow.html"},
+        {"label": "Data flow", "href": "repo-map/data-flow.html"}
+      ]
+    },
+    {
+      "slug": "automation",
+      "name": "Automation tools",
+      "summary": "The scripts in this repo: lead search, prices, city profiles, listing URLs, and the Script Manager that runs them.",
+      "code": "this-repo",
+      "github": {
+        "owner": "StaticxViper",
+        "name": "cjm-dev",
+        "url": "https://github.com/StaticxViper/cjm-dev/tree/main/scripts",
+        "label": "scripts/"
+      },
+      "live": null,
+      "diagrams": [
+        {"label": "Repo map", "href": "repo-map/index.html"},
+        {"label": "Data flow", "href": "repo-map/data-flow.html"},
+        {"label": "Lead generation diagram", "href": "repo-map/leadgen.html"}
+      ]
+    }
+  ]
+}

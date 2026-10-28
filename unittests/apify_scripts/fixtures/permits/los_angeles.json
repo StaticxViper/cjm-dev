@@ -1,0 +1,26 @@
+[
+  {
+    "permit_nbr": "26000-EXAMPLE",
+    "permit_type": "Bldg-Alter/Repair",
+    "permit_sub_type": "1 or 2 Family Dwelling",
+    "work_desc": "Re-roof with Class A material",
+    "issue_date": "2026-10-22T00:00:00.000",
+    "valuation": "7500",
+    "primary_address": "50 EXAMPLE WAY",
+    "zip_code": "90001",
+    "lat": "34.0",
+    "lon": "-118.25"
+  },
+  {
+    "permit_nbr": "26000-NEW",
+    "permit_type": "Bldg-New",
+    "permit_sub_type": "1 or 2 Family Dwelling",
+    "work_desc": "New construction of a single family dwelling",
+    "issue_date": "2026-10-08T00:00:00.000",
+    "valuation": "450000",
+    "primary_address": "60 EXAMPLE WAY",
+    "zip_code": "90002",
+    "lat": "34.1",
+    "lon": "-118.3"
+  }
+]

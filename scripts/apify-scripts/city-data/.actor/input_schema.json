@@ -74,6 +74,46 @@
       "description": "Run Chromium headless. Default true.",
       "editor": "checkbox",
       "default": true
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "Stop when the next result, proxy, or CAPTCHA event would pass this amount. Default 5, maximum 100. Later rows are saved and are not billed.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "maxProxyCostUsd": {
+      "title": "Max proxy spend (USD)",
+      "type": "number",
+      "description": "Cap on proxy events alone. Default 0.50, clamped to maxSpendUsd. The first city page stays direct. A proxy retry happens only after a block, and only when this cap and maxSpendUsd both still have room. 0 skips the proxy retry.",
+      "editor": "number",
+      "default": 0.5,
+      "minimum": 0,
+      "maximum": 20
+    },
+    "allowCaptcha": {
+      "title": "Allow CAPTCHA solving",
+      "type": "boolean",
+      "description": "Default false. When false, a challenge after the proxy retry pushes a blocked row and exits without a solve charge. When true, a solve is attempted only if that proxy retry is still a challenge and maxSpendUsd covers the captcha event. This Actor does not ship a solver, so an unconfigured solve pushes blocked and is not billed.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "proxyConfiguration": {
+      "title": "Proxy group",
+      "type": "object",
+      "description": "Apify Proxy group used only after a direct page is blocked. Leave Apify Proxy off so the first attempt stays direct. Empty groups use datacenter.",
+      "editor": "proxy",
+      "default": {
+        "useApifyProxy": false
+      }
+    },
+    "proxyGroups": {
+      "title": "Proxy groups",
+      "type": "array",
+      "description": "Optional group names, such as DATACENTER or RESIDENTIAL. Used after a block when proxyConfiguration has no apifyProxyGroups.",
+      "editor": "stringList"
     }
   }
 }

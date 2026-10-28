@@ -119,6 +119,30 @@ class RegistryTests(unittest.TestCase):
         )
         self.assertTrue(any("does-not-exist.py" in err for err in errors))
 
+    def test_local_only_skips_missing_system_dependency(self):
+        binary = "no-such-ffmpeg-for-script-manager-test"
+        local = _script(name="local-bin", local_only=True, deps={"system": [binary]})
+        registry = parse_registry({"version": 1, "ignore_paths": ["**"], "scripts": [local]})
+        errors, warnings, _ = validate_inventory(
+            repo_root(),
+            registry,
+            smoke=False,
+            check_unregistered=False,
+            check_env_docs=False,
+        )
+        self.assertEqual(errors, [])
+        self.assertFalse(any(binary in warning for warning in warnings), warnings)
+        remote = _script(name="ci-bin", deps={"system": [binary]})
+        registry = parse_registry({"version": 1, "ignore_paths": ["**"], "scripts": [remote]})
+        _, warnings, _ = validate_inventory(
+            repo_root(),
+            registry,
+            smoke=False,
+            check_unregistered=False,
+            check_env_docs=False,
+        )
+        self.assertTrue(any(binary in warning for warning in warnings), warnings)
+
     def test_convention_scan_flags_unregistered_and_honors_ignore(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

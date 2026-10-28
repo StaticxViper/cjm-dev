@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - "portfolio/**"
+      - "documentation/apps/**"
+      - "documentation/repo-map/**"
+      - "scripts/repo_map/**"
       - ".github/workflows/pages.yml"
 
 permissions:
@@ -30,8 +33,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Check repo map
+        run: python scripts/repo_map/generate.py --check
+
       - name: Build site
         run: python portfolio/build.py
+
+      - name: Render repo map
+        run: python scripts/repo_map/generate.py --pages portfolio/dist/repo-map
 
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request'

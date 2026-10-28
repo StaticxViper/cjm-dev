@@ -3,7 +3,7 @@
   "name": "google-business",
   "title": "Google Maps Business Match",
   "description": "Low-volume Google Maps lookup with name and location confidence checks. Does not scrape Google web search.",
-  "version": "0.2",
+  "version": "0.3",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",
   "dockerContextDir": "../../../..",

@@ -1537,5 +1537,145 @@ class TestSearchHistory(unittest.TestCase):
         self.assertTrue(callable(LEADGEN.log_step))
 
 
+@SKIP
+class TestFreeTextNicheSearch(unittest.TestCase):
+    def test_unknown_niche_is_not_a_catalog_search(self):
+        args = LEADGEN.parse_args([
+            "--niche", "mobile dog grooming",
+            "--city", "Cherry Hill",
+            "--state", "NJ",
+        ])
+        self.assertFalse(LEADGEN.is_catalog_niche_search(args))
+        self.assertTrue(LEADGEN.wants_free_text(args))
+        catalog = LEADGEN.parse_args(["--niche", "specialty_dog_trainers", "--radius", "5000"])
+        self.assertTrue(LEADGEN.is_catalog_niche_search(catalog))
+        forced = LEADGEN.parse_args(["--niche", "specialty_dog_trainers", "--free-text"])
+        self.assertFalse(LEADGEN.is_catalog_niche_search(forced))
+
+    def test_empty_niche_is_rejected(self):
+        args = LEADGEN.parse_args(["--niche", "  ,  "])
+        with self.assertRaises(LEADGEN.EmptySearchInput) as caught:
+            LEADGEN.free_text_inputs_from_args(args)
+        self.assertIn("business niche", str(caught.exception))
+
+    def test_cli_builds_query_and_dated_names(self):
+        args = LEADGEN.parse_args([
+            "--free-text",
+            "--niche", "mobile dog grooming",
+            "--city", "Cherry Hill",
+            "--state", "NJ",
+            "--defaults",
+        ])
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(LEADGEN, "config_from_saved_settings", return_value=LEADGEN.LeadgenConfig()):
+                config = LEADGEN.config_from_args(args)
+            config.json_output = str(Path(tmp) / "leads_output.json")
+            LEADGEN.apply_free_text_search(
+                config,
+                LEADGEN.niche_terms(args),
+                LEADGEN.keyword_terms(args),
+                today="2026-10-21",
+                explicit_json=False,
+            )
+        self.assertEqual(config.keywords, ["mobile dog grooming near Cherry Hill, NJ"])
+        self.assertTrue(config.exact_queries)
+        self.assertTrue(config.json_output.endswith("leads_2026-10-21_mobile-dog-grooming.json"))
+        self.assertTrue(config.csv_output.endswith("leads_2026-10-21_mobile-dog-grooming.csv"))
+
+    def test_unknown_niche_passes_normal_filters_and_writes_dated_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            config = LEADGEN.LeadgenConfig(
+                output_mode="json",
+                json_output=str(tmp_path / "leads_output.json"),
+                locations=[("NJ", "Cherry Hill", "39.9,-75.0")],
+                skip_searched=False,
+                lead_enrichment=False,
+                min_score=55,
+                min_reviews=0,
+                objective="phone",
+                filter_franchises=True,
+                require_website=False,
+                leadgen_type="api_manager",
+                search_history_path=str(tmp_path / "history.json"),
+            )
+            LEADGEN.apply_free_text_search(
+                config,
+                ["mobile dog grooming"],
+                [],
+                today="2026-10-21",
+            )
+            seen_keywords = []
+
+            def fake_places(location, radius, keywords, api_key, api_call_counter=None):
+                seen_keywords.append(list(keywords))
+                return [{
+                    "business_name": "Harbor Lane Mobile Grooming",
+                    "place_id": "pid-dog",
+                    "rating": 4.2,
+                    "user_ratings_total": 12,
+                    "address": "1 Main St, Cherry Hill",
+                    "niche_key": keywords[0],
+                    "search_term": keywords[0],
+                    "source": "api_manager",
+                }]
+
+            def fake_details(place_id, api_key):
+                return {
+                    "website": None,
+                    "phone_google": "(856) 555-0199",
+                    "address": "1 Main St, Cherry Hill",
+                    "business_name": "Harbor Lane Mobile Grooming",
+                    "place_id": place_id,
+                    "business_status": "OPERATIONAL",
+                    "reviews": [],
+                    "rating": 4.2,
+                    "user_ratings_total": 12,
+                }
+
+            with patch.object(LEADGEN, "GOOGLE_API_KEY", "fake-key"), \
+                    patch.object(LEADGEN, "PLACES_SLEEP", 0), \
+                    patch.object(LEADGEN, "CONTACTED_FILE", str(tmp_path / "contacted.txt")), \
+                    patch.object(LEADGEN, "get_places", side_effect=fake_places), \
+                    patch.object(LEADGEN, "get_place_details", side_effect=fake_details), \
+                    patch.object(LEADGEN, "update_usage_stats", return_value={"total_calls": 1}):
+                LEADGEN.run_leadgen(config)
+
+            self.assertEqual(seen_keywords, [["mobile dog grooming"]])
+            saved = json.loads(Path(config.json_output).read_text(encoding="utf-8"))
+            self.assertEqual(len(saved), 1)
+            self.assertEqual(saved[0]["business_name"], "Harbor Lane Mobile Grooming")
+            self.assertEqual(saved[0]["niche_key"], "mobile dog grooming")
+            self.assertEqual(saved[0]["search_term"], "mobile dog grooming near Cherry Hill, NJ")
+            self.assertGreaterEqual(int(saved[0]["lead_score"]), 55)
+            self.assertTrue(saved[0]["phone_google"])
+            csv_text = Path(config.csv_output).read_text(encoding="utf-8")
+            self.assertIn("Harbor Lane Mobile Grooming", csv_text)
+            self.assertIn("mobile dog grooming", csv_text)
+
+    def test_exact_maps_query_is_not_rewritten(self):
+        config = LEADGEN.LeadgenConfig(
+            exact_queries=True,
+            playwright_area_expansion="off",
+            playwright_max_pages=1,
+            playwright_max_results_per_search=5,
+        )
+        session = MagicMock()
+        session.google_blocked = False
+        session.search_listings.return_value = []
+        query = "pressure washing near Cherry Hill NJ"
+        LEADGEN._playwright_listings(
+            session,
+            config,
+            query,
+            "Cherry Hill",
+            "NJ",
+            "39.9,-75.0",
+        )
+        session.search_listings.assert_called_once()
+        self.assertEqual(session.search_listings.call_args.kwargs["query"], query)
+        session.search_location.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

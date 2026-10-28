@@ -12,6 +12,16 @@
       "type": "array",
       "items": {"type": "string"}
     },
+    "discover_roots": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "Repo-relative directories scanned for unregistered __main__ files. Moving the scripts folder is a registry edit."
+    },
+    "sinks": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1},
+      "description": "Sink name to Python module. Each module exposes send(run_result, config)."
+    },
     "scripts": {
       "type": "array",
       "items": {"$ref": "#/$defs/script"}
@@ -46,6 +56,11 @@
         "playwright_when_args_any": {"type": "array", "items": {"type": "string"}},
         "timeout_seconds": {"type": "integer", "minimum": 1},
         "outputs": {"type": "array", "items": {"type": "string"}},
+        "default_outputs": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Sinks used when a CI run omits outputs. Empty means artifact."
+        },
         "side_effects": {
           "type": "array",
           "items": {
@@ -122,7 +137,11 @@
       "properties": {
         "cron": {"type": "string"},
         "tz": {"type": "string"},
-        "note": {"type": "string"}
+        "note": {"type": "string"},
+        "confirm": {
+          "type": "boolean",
+          "description": "When true, a schedule run may pass confirm=true. Omitted or false never auto-confirms."
+        }
       }
     },
     "prompt": {

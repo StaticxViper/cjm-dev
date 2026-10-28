@@ -141,7 +141,6 @@ class TestCityDataset(unittest.TestCase):
         actor = json.loads((_SRC.parent / ".actor" / "actor.json").read_text(encoding="utf-8"))
         self.assertEqual(actor["defaultRunOptions"]["timeoutSecs"], 600)
         form = json.loads((_SRC.parent / ".actor" / "input_schema.json").read_text(encoding="utf-8"))
-        self.assertNotIn("proxyConfiguration", form["properties"])
         fields = form["properties"]["fields"]
         self.assertEqual(fields["editor"], "select")
         self.assertIn("population", fields["items"]["enum"])
@@ -154,6 +153,171 @@ class TestCityDataset(unittest.TestCase):
         event = pricing["actorChargeEvents"]["result"]
         self.assertTrue(event["isPrimaryEvent"])
         self.assertGreater(event["eventPriceUsd"], 0)
+        self.assertEqual(set(pricing["actorChargeEvents"]), set(mapping.PRICES_USD))
+        for name, price in mapping.PRICES_USD.items():
+            self.assertEqual(pricing["actorChargeEvents"][name]["eventPriceUsd"], price)
+        for key in ("maxSpendUsd", "maxProxyCostUsd", "allowCaptcha", "proxyConfiguration"):
+            self.assertIn(key, form["properties"])
         runtime = (_SRC / "runtime.py").read_text(encoding="utf-8")
         self.assertNotIn("def fetch_text", runtime)
-        self.assertNotIn("unused_proxy_note", runtime)
+        main_text = (_SRC / "main.py").read_text(encoding="utf-8")
+        self.assertIn("charge_usage", main_text)
+        self.assertIn("cached_proxy_url", main_text)
+
+
+class _Page:
+    def __init__(self, status, html, error=None):
+        self.status = status
+        self.html = html
+        self.error = error
+        self.fetched = []
+        self.closed = False
+
+    def fetch(self, url, wait_for=None):
+        self.fetched.append(url)
+        return self.status, self.html, self.error
+
+    def close(self):
+        self.closed = True
+
+
+def _city_policy(**raw):
+    import runtime
+
+    access = runtime.read_access_settings(raw, prices_usd=mapping.PRICES_USD)
+    return runtime.AccessPolicy(access, solver=raw.get("solver"))
+
+
+class TestCityAccessLadder(unittest.TestCase):
+    def _config(self, cities=None):
+        payload = {
+            "cities": cities or [{"city": "Clementon", "state": "NJ"}],
+            "fields": ["population"],
+        }
+        return mapping.actor_input_to_config(payload)
+
+    def _run(self, pages, robots, policy, proxy_url="http://user:secret@proxy.apify.com:8000"):
+        queue = list(pages)
+        opened = []
+        asked = []
+
+        def open_session(proxy_url_value):
+            opened.append(proxy_url_value)
+            return queue.pop(0)
+
+        def proxy_url_fn():
+            asked.append(proxy_url)
+            return proxy_url
+
+        rows, summary = mapping.run_cities(
+            self._config(),
+            robots,
+            policy,
+            open_session,
+            proxy_url_fn,
+        )
+        return rows, summary, opened, asked
+
+    def test_direct_success_does_not_use_proxy(self):
+        page = _Page(200, "<html><body>City</body></html>")
+        rows, summary, opened, asked = self._run(
+            [page],
+            "User-agent: *\nDisallow:\n",
+            _city_policy(),
+        )
+        self.assertEqual(rows[0]["sourceStatus"], "ok")
+        self.assertTrue(rows[0]["ok"])
+        self.assertEqual(opened, [None])
+        self.assertEqual(asked, [])
+        self.assertEqual(summary["proxyCharges"], 0)
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertEqual(summary["spendUsd"], 0)
+
+    def test_block_escalates_to_proxy(self):
+        direct = _Page(403, "unusual traffic")
+        proxied = _Page(200, "<html><body>City</body></html>")
+        rows, summary, opened, asked = self._run(
+            [direct, proxied],
+            "User-agent: *\nDisallow:\n",
+            _city_policy(allowCaptcha=False),
+        )
+        self.assertEqual(rows[0]["sourceStatus"], "ok")
+        self.assertEqual(len(asked), 1)
+        self.assertEqual(opened[0], None)
+        self.assertTrue(opened[1])
+        self.assertEqual(summary["proxyCharges"], 1)
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertTrue(direct.closed)
+
+    def test_cap_hit_stops_cleanly(self):
+        direct = _Page(403, "unusual traffic")
+
+        def proxy_url_fn():
+            raise AssertionError("proxy must not be requested when the proxy cap is zero")
+
+        opened = []
+
+        def open_session(proxy_url_value):
+            opened.append(proxy_url_value)
+            return direct
+
+        config = mapping.actor_input_to_config({
+            "cities": [
+                {"city": "Clementon", "state": "NJ"},
+                {"city": "Chicago", "state": "IL"},
+            ],
+            "fields": ["population"],
+        })
+        rows, summary = mapping.run_cities(
+            config,
+            "User-agent: *\nDisallow:\n",
+            _city_policy(maxProxyCostUsd=0, allowCaptcha=True),
+            open_session,
+            proxy_url_fn,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["sourceStatus"], "blocked")
+        self.assertIn("spend cap", rows[0]["error"].lower())
+        self.assertEqual(summary["status"], "blocked")
+        self.assertEqual(summary["proxyCharges"], 0)
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertEqual(opened, [None])
+        self.assertFalse(mapping.billable_row(rows[0]))
+
+    def test_captcha_disabled_pushes_blocked_row(self):
+        direct = _Page(403, "unusual traffic")
+        proxied = _Page(403, "<div class='g-recaptcha' data-sitekey='x'></div>")
+        rows, summary, _opened, asked = self._run(
+            [direct, proxied],
+            "User-agent: *\nDisallow:\n",
+            _city_policy(allowCaptcha=False, solver=lambda url, html: "token-1"),
+        )
+        self.assertEqual(rows[0]["sourceStatus"], "blocked")
+        self.assertIn("CAPTCHA", rows[0]["error"])
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertEqual(summary["proxyCharges"], 1)
+        self.assertEqual(len(asked), 1)
+        self.assertEqual(summary["status"], "blocked")
+
+    def test_robots_disallow_does_not_fetch_or_proxy(self):
+        page = _Page(200, "<html></html>")
+
+        def proxy_url_fn():
+            raise AssertionError("proxy must not bypass robots.txt")
+
+        opened = []
+
+        def open_session(proxy_url_value):
+            opened.append(proxy_url_value)
+            return page
+
+        rows, summary = mapping.run_cities(
+            self._config(),
+            "User-agent: *\nDisallow: /city/\n",
+            _city_policy(),
+            open_session,
+            proxy_url_fn,
+        )
+        self.assertEqual(rows[0]["sourceStatus"], "robots_disallowed")
+        self.assertEqual(page.fetched, [])
+        self.assertEqual(summary["proxyCharges"], 0)

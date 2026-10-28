@@ -38,8 +38,11 @@ python -m unittest discover unittests/script_manager
 Run all tests in the package:
 
 ```bash
+python -m pytest unittests/
 python -m unittest discover -s unittests -p "test_*.py"
 ```
+
+GitHub Actions workflow `.github/workflows/ci.yml` runs `python -m pytest unittests/` on Python 3.12 for every pull request and every push to `main`. It installs Playwright Chromium (cached) because the opp-finder fixture tests launch a browser. It does not call live sites. A new folder under `unittests/` is collected with no workflow edit.
 
 Run a single test class:
 
@@ -210,8 +213,10 @@ Offline checks for the Apify Actor packages. They do not open Chromium or call c
 |-------------|----------------|
 | `test_city_data_actor` | Clementon input mapping, dataset fields, robots skip, longest-match Allow over a shorter Disallow |
 | `test_google_business_actor` | State required, Maps URL only, STRIKER and B&B Basecamp stay `no_match` with no candidate, Wegmans in Rochester matches and Whole Foods or a Williamsville Wegmans is omitted, a place-page redirect uses the heading, block flag skips enrichment |
+| `test_contractor_license_actor` | CA license hit and miss, AZ posting CSV, challenge and closed-portal rows are not billed |
+| `test_new_business_actor` | NY DOS fixture row, pipeline dedupe, enrichment charged only when a website or email is found, proxy only after a block, CAPTCHA and spend caps |
 
-GitHub Actions workflow `.github/workflows/apify_scripts.yml` runs both modules on Python 3.12. It does not install Chromium or call the live sites.
+These modules run inside `ci.yml` with the rest of `unittests/`. They do not open Chromium or call the live sites. `apify_scripts.yml` can re-run them manually.
 
 ## Test package: `unittests/script_manager/`
 

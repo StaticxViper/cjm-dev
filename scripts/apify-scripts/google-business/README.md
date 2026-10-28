@@ -46,11 +46,15 @@ Known false pairs that stay `no_match`:
   "lowConfidenceFloor": 60,
   "maxSearches": 1,
   "headless": true,
-  "includeEmails": false
+  "includeEmails": false,
+  "maxSpendUsd": 5,
+  "maxProxyCostUsd": 0.5,
+  "allowCaptcha": false,
+  "proxyConfiguration": {"useApifyProxy": false}
 }
 ```
 
-A single object (`name`, `state`, optional `city` and `county`) works when `queries` is omitted. `maxResults` defaults to 5 and cannot exceed 20. `maxSearches` defaults to 10 and cannot exceed 50. Search delay defaults to a random 2.0–4.5 seconds and detail delay to 1.2–2.8 seconds, same as the local Maps session. Overrides are optional. The default run timeout is 900 seconds at 2048 MB.
+A single object (`name`, `state`, optional `city` and `county`) works when `queries` is omitted. `maxResults` defaults to 5 and cannot exceed 20. `maxSearches` defaults to 10 and cannot exceed 50. Search delay defaults to a random 2.0–4.5 seconds and detail delay to 1.2–2.8 seconds, same as the local Maps session. Overrides are optional. `maxSpendUsd` defaults to 5, `maxProxyCostUsd` to 0.50, and `allowCaptcha` to false. The proxy group is used only after a block. The default run timeout is 900 seconds at 2048 MB.
 
 ## Output
 
@@ -93,7 +97,7 @@ Google’s terms restrict automated extraction. A robots.txt `Allow` is not perm
 
 `https://www.google.com/robots.txt` is read first and evaluated with longest-match rules (`crm_enrich_robots.py`). Under those rules, `/maps/search/` and `/maps/place/` can be allowed while `Disallow: /maps/` is also present, and `/search` stays disallowed. This Actor never requests `https://www.google.com/search`. Python’s `urllib.robotparser` is not used, because it hides the more specific Maps `Allow` lines.
 
-If Google returns a block page, the current query is pushed as `blocked`, remaining queries are skipped, and the run exits successfully. The Actor does not solve CAPTCHAs, rotate proxies or user agents, or add stealth plugins. Chromium still starts with the existing `--disable-blink-features=AutomationControlled` flag from `BusinessDiscoverySession`.
+If Google returns a block page, the Actor retries that query once through Apify Proxy when `maxProxyCostUsd` and `maxSpendUsd` still have room. The first search stays direct. The proxy group comes from `proxyConfiguration` or `proxyGroups`; an empty group uses datacenter. A CAPTCHA solve runs only when that retry is still a challenge, `allowCaptcha` is true, and the spend cap covers the solve. This Actor does not ship a solver, so `allowCaptcha: true` still pushes `blocked` and does not bill a solve until one is configured. When the cap is already spent, solving is off, or the proxy URL cannot be opened, the current query is pushed as `blocked`, remaining queries are skipped, and the run exits successfully. A robots disallow is not retried. Chromium starts with `--disable-blink-features=AutomationControlled` from `BusinessDiscoverySession`. No stealth plugin is added. Search and detail delays stay on the source session.
 
 ## Limitations
 
@@ -104,7 +108,7 @@ If Google returns a block page, the current query is pushed as `blocked`, remain
 
 ## Pricing
 
-Pay per event. The primary event is `result` at $0.05, charged only for `decision: "match"`. `low_confidence`, `no_match`, `blocked`, and `error` rows are stored and not billed. Dataset items are not a charge event, so a rejected business does not cost a result. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. A local run logs that the charge was ignored until the Console pricing model is pay per event; the dataset row is still saved. Default memory is 2048 MB and the default timeout is 900 seconds. Do not price this as a bulk crawler.
+Pay per event. The primary event is `result` at $0.05, charged only for `decision: "match"`. `low_confidence`, `no_match`, `blocked`, and `error` rows are stored and not billed. `proxy` is $0.01 and is charged only when a blocked query is retried through Apify Proxy. `captcha` is $1.00 and is charged only when a solver returns a token. Direct searches are free. Dataset items are not a charge event, so a rejected business does not cost a result. `maxSpendUsd` (default 5) caps those events together. `maxProxyCostUsd` (default 0.50) caps proxy events. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. A local run logs that the charge was ignored until the Console pricing model is pay per event; the dataset row is still saved. Default memory is 2048 MB and the default timeout is 900 seconds. Do not price this as a bulk crawler.
 
 ## Categories
 

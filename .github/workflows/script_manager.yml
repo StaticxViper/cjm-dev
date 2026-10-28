@@ -1,0 +1,234 @@
+name: Script Manager
+
+run-name: >-
+  script-manager ${{ inputs.script || github.event.client_payload.script || 'schedule' }}
+  ${{ inputs.request_id || github.event.client_payload.request_id || github.run_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: Script name registered with the Script Manager
+        required: true
+        type: string
+      args:
+        description: Arguments. The Script Manager splits this string.
+        required: false
+        type: string
+        default: ""
+      request_id:
+        description: Caller id for this run. Generated when empty.
+        required: false
+        type: string
+        default: ""
+      outputs:
+        description: Comma-separated sink names. Empty uses the registry default.
+        required: false
+        type: string
+        default: ""
+      confirm:
+        description: Required when the script has side effects or confirm_required
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: Resolve and validate only
+        required: false
+        type: boolean
+        default: false
+      callback_url:
+        description: HTTPS URL for the callback sink
+        required: false
+        type: string
+        default: ""
+  repository_dispatch:
+    types: [script-manager-run]
+  workflow_call:
+    inputs:
+      script:
+        required: true
+        type: string
+      args:
+        required: false
+        type: string
+        default: ""
+      request_id:
+        required: false
+        type: string
+        default: ""
+      outputs:
+        required: false
+        type: string
+        default: ""
+      confirm:
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        required: false
+        type: boolean
+        default: false
+      callback_url:
+        required: false
+        type: string
+        default: ""
+      trigger:
+        description: Event name when this workflow is called. schedule or workflow_call.
+        required: false
+        type: string
+        default: "workflow_call"
+
+permissions:
+  contents: read
+  actions: write
+
+# Each request_id is its own group, so a second trigger does not cancel the
+# first. The group sits on execute, after prepare has started, so a cancel
+# can still upload a summary. github.run_id keeps an empty request_id unique.
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      contract_b64: ${{ steps.contract.outputs.contract_b64 }}
+      request_id: ${{ steps.contract.outputs.request_id }}
+      script: ${{ steps.contract.outputs.script }}
+      rejected: ${{ steps.resolve.outputs.rejected == 'true' || steps.contract.outputs.rejected == 'true' }}
+      timeout_minutes: ${{ steps.resolve.outputs.timeout_minutes }}
+      playwright: ${{ steps.resolve.outputs.playwright }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements/requirements.txt
+      - name: Write contract
+        id: contract
+        env:
+          SCRIPT_MANAGER_EVENT_NAME: ${{ github.event_name }}
+          SCRIPT_MANAGER_EVENT_PATH: ${{ github.event_path }}
+          SCRIPT_MANAGER_INPUT_SCRIPT: ${{ inputs.script }}
+          SCRIPT_MANAGER_INPUT_ARGS: ${{ inputs.args }}
+          SCRIPT_MANAGER_INPUT_REQUEST_ID: ${{ inputs.request_id }}
+          SCRIPT_MANAGER_INPUT_OUTPUTS: ${{ inputs.outputs }}
+          SCRIPT_MANAGER_INPUT_CONFIRM: ${{ inputs.confirm }}
+          SCRIPT_MANAGER_INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          SCRIPT_MANAGER_INPUT_CALLBACK_URL: ${{ inputs.callback_url }}
+          SCRIPT_MANAGER_INPUT_TRIGGER: ${{ github.event_name == 'workflow_call' && inputs.trigger || github.event_name }}
+          SCRIPT_MANAGER_ACTOR: ${{ github.actor }}
+          SCRIPT_MANAGER_CALLER: ${{ github.event.client_payload.caller || github.actor }}
+          SCRIPT_MANAGER_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SCRIPT_MANAGER_RUN_ID: ${{ github.run_id }}
+        run: python -m scripts.script_manager contract --out contract.json --github-output --summary-json contract-summary.json --accept-rejection
+      - name: Resolve
+        id: resolve
+        if: steps.contract.outputs.rejected != 'true'
+        run: python -m scripts.script_manager resolve --from-contract contract.json --json --github-output --summary-json resolve-summary.json --accept-rejection
+      - name: Stage rejection
+        if: failure() || steps.contract.outputs.rejected == 'true' || steps.resolve.outputs.rejected == 'true'
+        run: python -m scripts.script_manager stage-result --dest script-manager-artifact/run.json --summary contract-summary.json --summary resolve-summary.json
+      - name: Upload rejection
+        if: failure() || steps.contract.outputs.rejected == 'true' || steps.resolve.outputs.rejected == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: script-manager-${{ steps.contract.outputs.request_id || github.run_id }}
+          path: script-manager-artifact/
+          if-no-files-found: warn
+
+  execute:
+    needs: prepare
+    if: needs.prepare.result == 'success' && needs.prepare.outputs.rejected != 'true'
+    concurrency:
+      group: script-manager-${{ needs.prepare.outputs.request_id || github.run_id }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.prepare.outputs.timeout_minutes) }}
+    env:
+      # script-manager:secrets:begin
+      APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
+      APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+      APIFY_USER_ID: ${{ secrets.APIFY_USER_ID }}
+      CHATGPT_API_KEY: ${{ secrets.CHATGPT_API_KEY }}
+      CHIKARA_REALMS_SECRET: ${{ secrets.CHIKARA_REALMS_SECRET }}
+      CRM_MCP_MV_LLC: ${{ secrets.CRM_MCP_MV_LLC }}
+      CRM_MCP_VENTURE: ${{ vars.CRM_MCP_VENTURE }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      LEAD_INGEST_KEY: ${{ secrets.LEAD_INGEST_KEY }}
+      MVLLC_LOGS_KEY: ${{ secrets.MVLLC_LOGS_KEY }}
+      PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      STOCK_INGEST_TOKEN: ${{ secrets.STOCK_INGEST_TOKEN }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      DEFAULT_SHOPRITE_ZIP: ${{ vars.DEFAULT_SHOPRITE_ZIP }}
+      GROCERY_MIN_DELAY_SECONDS: ${{ vars.GROCERY_MIN_DELAY_SECONDS }}
+      GROCERY_TIMEOUT_MS: ${{ vars.GROCERY_TIMEOUT_MS }}
+      GROCERY_BATCH_SIZE: ${{ vars.GROCERY_BATCH_SIZE }}
+      GROCERY_POLL_SECONDS: ${{ vars.GROCERY_POLL_SECONDS }}
+      SCRIPT_MANAGER_CALLBACK_SECRET: ${{ secrets.SCRIPT_MANAGER_CALLBACK_SECRET }}
+      SCRIPT_MANAGER_CALLBACK_HOSTS: ${{ vars.SCRIPT_MANAGER_CALLBACK_HOSTS }}
+      SCRIPT_MANAGER_DASHBOARD_URL: ${{ vars.SCRIPT_MANAGER_DASHBOARD_URL }}
+      SCRIPT_MANAGER_PROPERTY_PORTAL_URL: ${{ vars.SCRIPT_MANAGER_PROPERTY_PORTAL_URL }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SCRIPT_MANAGER_EMAIL_FROM: ${{ secrets.SCRIPT_MANAGER_EMAIL_FROM }}
+      SCRIPT_MANAGER_EMAIL_TO: ${{ secrets.SCRIPT_MANAGER_EMAIL_TO }}
+      # script-manager:secrets:end
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements/requirements.txt
+      - name: Restore contract
+        env:
+          CONTRACT_B64: ${{ needs.prepare.outputs.contract_b64 }}
+        run: python -c "import base64, os, pathlib; pathlib.Path('contract.json').write_bytes(base64.b64decode(os.environ['CONTRACT_B64']))"
+      - name: Install Chromium
+        if: needs.prepare.outputs.playwright == 'true'
+        run: python -m playwright install --with-deps chromium
+      - name: Run
+        id: script
+        run: python -m scripts.script_manager run --from-contract contract.json --ci --non-interactive --json --env-scope declared --summary-json run.json --github-summary --log-file script-manager.log --accept-rejection
+      - name: Sinks
+        if: always()
+        run: python -m scripts.script_manager sinks --summary run.json --from-contract contract.json
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: script-manager-${{ needs.prepare.outputs.request_id }}
+          path: script-manager-artifact/
+          if-no-files-found: warn
+
+  report-cancelled:
+    needs: [prepare, execute]
+    if: always() && (needs.prepare.result == 'cancelled' || needs.execute.result == 'cancelled')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements/requirements.txt
+      - name: Record cancellation
+        env:
+          SCRIPT_MANAGER_REQUEST_ID: ${{ needs.prepare.outputs.request_id || inputs.request_id || github.event.client_payload.request_id || github.run_id }}
+          SCRIPT_MANAGER_SCRIPT: ${{ needs.prepare.outputs.script || inputs.script || github.event.client_payload.script }}
+          SCRIPT_MANAGER_RUN_ID: ${{ github.run_id }}
+          SCRIPT_MANAGER_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SCRIPT_MANAGER_EVENT_NAME: ${{ github.event_name == 'workflow_call' && inputs.trigger || github.event_name }}
+          SCRIPT_MANAGER_ACTOR: ${{ github.actor }}
+          SCRIPT_MANAGER_CALLER: ${{ github.event.client_payload.caller || github.actor }}
+        run: python -m scripts.script_manager stage-cancelled --dest script-manager-artifact/run.json
+      - name: Upload cancellation
+        uses: actions/upload-artifact@v6
+        with:
+          name: script-manager-${{ needs.prepare.outputs.request_id || inputs.request_id || github.event.client_payload.request_id || github.run_id }}
+          path: script-manager-artifact/
+          if-no-files-found: warn
+          overwrite: true

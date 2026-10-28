@@ -85,4 +85,4 @@ Fetches items from an Apify dataset by run reference or dataset ID.
 
 ## Related scripts
 
-Used by [blog_automation](../scripts/blog_automation.md), [lead_automation](../scripts/lead_automation.md), [leadenrich](../scripts/leadenrich.md), [leadenrich_playwright](../scripts/leadenrich_playwright.md), [stock_analyzer](../scripts/stock_analyzer.md), [lovable_automation](../scripts/lovable_automation.md), [property_listing_gen](../scripts/property_listing_gen.md), and others.
+Used by [lead_automation](../scripts/lead_automation.md), [leadenrich](../scripts/leadenrich.md), [leadenrich_playwright](../scripts/leadenrich_playwright.md), [stock_analyzer](../scripts/stock_analyzer.md), [lovable_automation](../scripts/lovable_automation.md), [property_listing_gen](../scripts/property_listing_gen.md), and others. The Chikara Realms key name remains here; the blog code is in [StaticxViper/chikararealms](https://github.com/StaticxViper/chikararealms).

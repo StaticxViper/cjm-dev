@@ -7,9 +7,28 @@ launch a browser.
 from __future__ import annotations
 
 try:
-    from .runtime import iso_now, prepare_imports
+    from .runtime import (
+        FetchEscalator,
+        access_summary,
+        iso_now,
+        prepare_imports,
+        stop_message,
+    )
 except ImportError:
-    from runtime import iso_now, prepare_imports
+    from runtime import (
+        FetchEscalator,
+        access_summary,
+        iso_now,
+        prepare_imports,
+        stop_message,
+    )
+
+# Matches .actor/pay_per_event.json. The shared ladder adds proxy and captcha.
+PRICES_USD = {
+    "result": 0.01,
+    "proxy": 0.01,
+    "captcha": 1.00,
+}
 
 CITY_ROBOTS_URL = "https://www.city-data.com/robots.txt"
 
@@ -76,6 +95,8 @@ def scrape_config(config, session, robots_txt):
     fields = list(config["fields"])
     for entry in config["cities"]:
         rows.append(_scrape_entry(scraper, entry, fields, session, robots_txt))
+        if getattr(session, "stop", None):
+            break
     return rows
 
 
@@ -106,7 +127,13 @@ def _scrape_entry(scraper, entry, fields, session, robots_txt):
         use_fields = ["population"]
     result = scraper.scrape_one(entry, use_fields, session)
     result["scrapedAt"] = iso_now()
-    result["sourceStatus"] = "ok" if result.get("ok") else "error"
+    stop = getattr(session, "stop", None)
+    if stop and result.get("ok") is not True:
+        result["ok"] = False
+        result["sourceStatus"] = "blocked"
+        result["error"] = stop_message(stop)
+    else:
+        result["sourceStatus"] = "ok" if result.get("ok") else "error"
     if need_crime and not crime_allowed:
         result.setdefault("urls", {})["crime"] = crime_url
         result["crime"] = {"error": "robots_disallowed"}
@@ -129,16 +156,41 @@ def billable_row(row):
 
 
 def summarize(rows):
-    blocked = sum(1 for row in rows if row.get("sourceStatus") == "robots_disallowed")
+    blocked_status = {"robots_disallowed", "blocked"}
+    blocked = sum(1 for row in rows if row.get("sourceStatus") in blocked_status)
+    hard_blocks = sum(1 for row in rows if row.get("sourceStatus") == "blocked")
     errors = sum(
         1 for row in rows
         if row.get("sourceStatus") == "error" or (
-            row.get("ok") is False and row.get("sourceStatus") != "robots_disallowed"
+            row.get("ok") is False and row.get("sourceStatus") not in blocked_status
         )
     )
+    if hard_blocks:
+        status = "blocked"
+    elif errors == 0 and blocked == 0:
+        status = "ok"
+    else:
+        status = "completed_with_errors"
     return {
-        "status": "ok" if errors == 0 and blocked == 0 else "completed_with_errors",
+        "status": status,
         "pushed": len(rows),
         "blocked": blocked,
         "errors": errors,
     }
+
+
+def run_cities(config, robots_txt, policy, open_session, proxy_url_fn):
+    """Scrape with a direct session. Escalate through open_session(proxy_url) after a block."""
+    session = FetchEscalator(
+        open_session(None),
+        policy,
+        proxy_url_fn,
+        open_session,
+    )
+    try:
+        rows = scrape_config(config, session, robots_txt)
+    finally:
+        session.close()
+    summary = summarize(rows)
+    summary.update(access_summary(policy.settings, policy.ledger))
+    return rows, summary

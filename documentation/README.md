@@ -2,14 +2,34 @@
 
 Documentation for Python automation in `scripts/` and `helper_scripts/`, plus unit tests.
 
-For first-time setup, see [setup.md](setup.md). The root [README.md](../README.md) has a shorter setup checklist.
+For first-time setup, see [setup.md](setup.md). The root [README.md](../README.md) has a shorter setup checklist and the folder layout.
+
+Short guides live next to the code. Longer notes stay in this folder.
+
+| Folder | README |
+|--------|--------|
+| Lead automation | [scripts/lead_automation/README.md](../scripts/lead_automation/README.md) |
+| Opportunity finder v2 | [scripts/opp_finder_v2/README.md](../scripts/opp_finder_v2/README.md) |
+| Grocery | [scripts/grocery/README.md](../scripts/grocery/README.md) |
+| City data | [scripts/city_data/README.md](../scripts/city_data/README.md) |
+| Zillow | [scripts/zillow_automation/README.md](../scripts/zillow_automation/README.md) |
+| Apify Actors | [scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
+| Script Manager | [scripts/script_manager/README.md](../scripts/script_manager/README.md) |
+| Shared helpers | [helper_scripts/README.md](../helper_scripts/README.md) |
+| Apps hub | [apps/README.md](apps/README.md) |
+| Repo map | [repo-map/overview.md](repo-map/overview.md) |
+
+The published diagrams are at <https://staticxviper.github.io/cjm-dev/repo-map/>.
+
+Project pages (how it works, changelog, and links to those diagrams) are at <https://staticxviper.github.io/cjm-dev/apps/>. Source of truth for these pages is cjm-dev; other repos are linked only. See [apps/README.md](apps/README.md).
 
 ## Scripts
 
 | Script | Doc |
 |--------|-----|
 | Script manager | [scripts/script_manager.md](scripts/script_manager.md) |
-| Blog automation (Chikara Realms) | [scripts/blog_automation.md](scripts/blog_automation.md) |
+| Script manager on GitHub Actions | [scripts/script_manager_actions.md](scripts/script_manager_actions.md) |
+| Chikara Realms (separate repo) | [scripts/blog_automation.md](scripts/blog_automation.md) |
 | Lead generation | [scripts/leadgen.md](scripts/leadgen.md) |
 | New-business sources | [scripts/new_business_sources.md](scripts/new_business_sources.md) |
 | Niche lead search | [scripts/niche_search.md](scripts/niche_search.md) |
@@ -29,7 +49,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 | City-data scraper | [scripts/city_data_scraper.md](scripts/city_data_scraper.md) |
 | Grocery price sync | [scripts/grocery.md](scripts/grocery.md) |
 | Opportunity finder v2 | [scripts/opp_finder_v2.md](scripts/opp_finder_v2.md) |
-| Apify Actors (city-data, Google Maps) | [../scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
+| Apify Actors (city-data, Google Maps, contractor license) | [../scripts/apify-scripts/README.md](../scripts/apify-scripts/README.md) |
 
 ## Helper scripts
 
@@ -37,7 +57,7 @@ For first-time setup, see [setup.md](setup.md). The root [README.md](../README.m
 |--------|-----|
 | API manager | [helper_scripts/api_manager.md](helper_scripts/api_manager.md) |
 | Logger | [helper_scripts/logger.md](helper_scripts/logger.md) |
-| Update manager (legacy) | [helper_scripts/update_manager.md](helper_scripts/update_manager.md) |
+| Update manager (removed) | [helper_scripts/update_manager.md](helper_scripts/update_manager.md) |
 
 ## Testing
 
@@ -64,9 +84,9 @@ flowchart LR
 
 | Variable | Used by |
 |----------|---------|
-| `CHATGPT_API_KEY` | `blog_automation`, `api_manager` |
-| `PERPLEXITY_API_KEY` | `blog_automation`, `stock_analyzer`, `api_manager` |
-| `CHIKARA_REALMS_SECRET` | `blog_automation`, `api_manager` |
+| `CHATGPT_API_KEY` | `api_manager` |
+| `PERPLEXITY_API_KEY` | `stock_analyzer`, `api_manager` |
+| `CHIKARA_REALMS_SECRET` | `api_manager` (the blog itself is [StaticxViper/chikararealms](https://github.com/StaticxViper/chikararealms)) |
 | `GOOGLE_API_KEY` | `leadgen`, `api_manager` |
 | `LEAD_INGEST_KEY` | `leadenrich_playwright` (`--from-crm` export), `api_manager` |
 | `CRM_MCP_MV_LLC` | `leadgen`, `lead_automation`, `leadenrich`, `leadenrich_playwright` (CRM upload) |
@@ -93,7 +113,6 @@ flowchart LR
 
 | Working directory | Scripts |
 |-------------------|---------|
-| `scripts/chikara_realms/` | `blog_automation.py` |
 | `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `leadenrich_playwright.py`, `lead_automation.py` |
 | `scripts/zillow_automation/` | `property_listing_gen.py`, `zillow_agents.py` |
 | `scripts/city_data/` | `city_data_scraper.py` |

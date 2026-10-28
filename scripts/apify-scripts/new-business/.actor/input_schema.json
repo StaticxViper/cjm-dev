@@ -1,0 +1,101 @@
+{
+  "title": "New business filings",
+  "description": "Verified state entity feeds only. New York, Pennsylvania, and Colorado are live. Other states return an unsupported row and are not billed.",
+  "type": "object",
+  "schemaVersion": 1,
+  "required": ["states"],
+  "properties": {
+    "states": {
+      "title": "States",
+      "type": "array",
+      "description": "Two-letter codes. Verified open-data feeds: NY (DOS active corporations), PA (registered businesses), CO (business entities in Good Standing). New York, Pennsylvania, and Colorado are also accepted.",
+      "editor": "stringList",
+      "prefill": ["NY"]
+    },
+    "counties": {
+      "title": "Counties",
+      "type": "array",
+      "description": "Optional. Case-insensitive county names. A row with no county is omitted when this list is set. Leave empty for every county the feed publishes.",
+      "editor": "stringList"
+    },
+    "formedSince": {
+      "title": "Formed since",
+      "type": "string",
+      "description": "Keep entities formed on or after this date (YYYY-MM-DD). Default is 365 days before the run.",
+      "editor": "textfield",
+      "prefill": "2026-09-01"
+    },
+    "entityTypes": {
+      "title": "Entity types",
+      "type": "array",
+      "description": "Optional. Matched against the feed's entity type. LLC matches a limited liability company. Leave empty for every type.",
+      "editor": "stringList"
+    },
+    "enrichWebsite": {
+      "title": "Enrich website and email",
+      "type": "boolean",
+      "description": "When true, accept a registry email and fetch a registry website if robots.txt allows it. Google web search is not used. The enrichment event is charged only when a website or email is found.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "maxResults": {
+      "title": "Max entities",
+      "type": "integer",
+      "description": "Cap on entities pushed for this run, after dedupe. Default 50, maximum 200.",
+      "editor": "number",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 200
+    },
+    "maxRequests": {
+      "title": "Max HTTP requests",
+      "type": "integer",
+      "description": "Cap on requests, including robots.txt and a proxy retry. Default 12, maximum 40.",
+      "editor": "number",
+      "default": 12,
+      "minimum": 1,
+      "maximum": 40
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Default 3, which covers the Crawl-delay of 1 published by the SODA feeds. The pause jitters up to 7 seconds when the delay is lower than that.",
+      "editor": "number",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "Stop charging when the next business, enrichment, proxy, or CAPTCHA event would pass this amount. Default 5, maximum 100. Later entities are saved and are not billed.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "maxProxyCostUsd": {
+      "title": "Max proxy spend (USD)",
+      "type": "number",
+      "description": "Cap on proxy events alone. Default 0.50. A direct request is always tried first. Proxy is used only after a block, and only when this cap and maxSpendUsd both still have room.",
+      "editor": "number",
+      "default": 0.5,
+      "minimum": 0,
+      "maximum": 20
+    },
+    "allowCaptcha": {
+      "title": "Allow CAPTCHA solving",
+      "type": "boolean",
+      "description": "Default false. When false, a challenge after the proxy retry pushes a blocked row and exits without a solve charge. When true, a solve is attempted only if the proxy retry is still a challenge and maxSpendUsd covers the captcha event. This Actor does not ship a paid solver, so an unconfigured solve pushes blocked and is not billed.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Kept for the shared Actor contract. This Actor does not launch a browser.",
+      "editor": "checkbox",
+      "default": true
+    }
+  }
+}

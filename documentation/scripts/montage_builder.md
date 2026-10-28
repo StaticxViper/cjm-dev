@@ -57,7 +57,7 @@ Prompts for theme and montage count if not provided via flags.
 
 ## Deprecated
 
-See [clip_generator.md](clip_generator.md) — `video_editor_engine.py` in `deprecated/` is no longer maintained.
+See [clip_generator.md](clip_generator.md). The old `video_editor_engine.py` helper was removed.
 
 ## Related scripts
 

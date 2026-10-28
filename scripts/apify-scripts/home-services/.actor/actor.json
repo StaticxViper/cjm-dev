@@ -1,0 +1,24 @@
+{
+  "actorSpecification": 1,
+  "name": "home-services",
+  "title": "Home Services Lead Enricher",
+  "description": "Niche and area lead list from Google Maps, with website email, quality, and intent score. Accepted matches only. Does not call the Places API.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "dockerContextDir": "../../../..",
+  "readme": "../README.md",
+  "changelog": "./CHANGELOG.md",
+  "input": "./input_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "minMemoryMbytes": 1024,
+  "maxMemoryMbytes": 4096,
+  "defaultMemoryMbytes": 2048,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 900,
+    "memoryMbytes": 2048
+  }
+}

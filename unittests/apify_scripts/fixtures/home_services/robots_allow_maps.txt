@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /maps/search/
+Allow: /maps/place/
+Disallow: /maps/
+Disallow: /search

@@ -1,0 +1,101 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Building permits",
+    "fields": {
+      "permit_id": {"type": "string"},
+      "issued_date": {"type": "string"},
+      "type": {"type": "string"},
+      "description": {"type": "string"},
+      "value_usd": {"type": "number"},
+      "address": {"type": "string"},
+      "city": {"type": "string"},
+      "state": {"type": "string"},
+      "zip": {"type": "string"},
+      "lat": {"type": "number"},
+      "lng": {"type": "number"},
+      "contractor_name": {"type": "string"},
+      "contractor_license": {"type": "string"},
+      "owner_name": {"type": "string"},
+      "source": {"type": "string"},
+      "source_url": {"type": "string"},
+      "sourceStatus": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["city", "state", "permit_id", "issued_date", "type", "value_usd", "contractor_name", "sourceStatus"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "city": {"label": "City", "format": "text"},
+          "state": {"label": "State", "format": "text"},
+          "permit_id": {"label": "Permit", "format": "text"},
+          "issued_date": {"label": "Issued", "format": "text"},
+          "type": {"label": "Type", "format": "text"},
+          "value_usd": {"label": "Value (USD)", "format": "number"},
+          "contractor_name": {"label": "Contractor", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "source",
+          "permit_id",
+          "issued_date",
+          "type",
+          "description",
+          "value_usd",
+          "address",
+          "city",
+          "state",
+          "zip",
+          "lat",
+          "lng",
+          "contractor_name",
+          "contractor_license",
+          "owner_name",
+          "source_url",
+          "sourceStatus",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "source": {"label": "Source", "format": "text"},
+          "permit_id": {"label": "Permit", "format": "text"},
+          "issued_date": {"label": "Issued", "format": "text"},
+          "type": {"label": "Type", "format": "text"},
+          "description": {"label": "Description", "format": "text"},
+          "value_usd": {"label": "Value (USD)", "format": "number"},
+          "address": {"label": "Address", "format": "text"},
+          "city": {"label": "City", "format": "text"},
+          "state": {"label": "State", "format": "text"},
+          "zip": {"label": "ZIP", "format": "text"},
+          "lat": {"label": "Latitude", "format": "number"},
+          "lng": {"label": "Longitude", "format": "number"},
+          "contractor_name": {"label": "Contractor", "format": "text"},
+          "contractor_license": {"label": "License", "format": "text"},
+          "owner_name": {"label": "Owner", "format": "text"},
+          "source_url": {"label": "Source URL", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}

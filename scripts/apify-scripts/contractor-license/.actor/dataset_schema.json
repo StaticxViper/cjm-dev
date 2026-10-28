@@ -1,0 +1,83 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Contractor licenses",
+    "fields": {
+      "state": {"type": "string"},
+      "license_no": {"type": "string"},
+      "name": {"type": "string"},
+      "status": {"type": "string"},
+      "class": {"type": "string"},
+      "issue_date": {"type": "string"},
+      "expiry_date": {"type": "string"},
+      "bond": {"type": "string"},
+      "insurance": {"type": "string"},
+      "address": {"type": "string"},
+      "source_url": {"type": "string"},
+      "sourceStatus": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["state", "license_no", "name", "status", "class", "sourceStatus", "ok"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "state": {"label": "State", "format": "text"},
+          "license_no": {"label": "License", "format": "text"},
+          "name": {"label": "Name", "format": "text"},
+          "status": {"label": "Board status", "format": "text"},
+          "class": {"label": "Class", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "state",
+          "license_no",
+          "name",
+          "status",
+          "class",
+          "issue_date",
+          "expiry_date",
+          "bond",
+          "insurance",
+          "address",
+          "source_url",
+          "sourceStatus",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "state": {"label": "State", "format": "text"},
+          "license_no": {"label": "License", "format": "text"},
+          "name": {"label": "Name", "format": "text"},
+          "status": {"label": "Board status", "format": "text"},
+          "class": {"label": "Class", "format": "text"},
+          "issue_date": {"label": "Issued", "format": "text"},
+          "expiry_date": {"label": "Expires", "format": "text"},
+          "bond": {"label": "Bond", "format": "text"},
+          "insurance": {"label": "Insurance", "format": "text"},
+          "address": {"label": "Address", "format": "text"},
+          "source_url": {"label": "Source URL", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}
