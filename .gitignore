@@ -25,6 +25,16 @@ leads_*.json
 leads_*.csv
 *property_urls.json
 
+# Zillow agent pipeline runtime output
+scripts/zillow_automation/zillow_agents_*.json
+scripts/zillow_automation/zillow_agents_*.csv
+scripts/zillow_automation/zillow_listings_*.json
+scripts/zillow_automation/zillow_listings_*.csv
+scripts/zillow_automation/zillow_seen.json
+scripts/zillow_automation/zillow_agent_enrich_cache.json
+scripts/zillow_automation/*.json.tmp
+scripts/zillow_automation/*.csv.tmp
+
 # Local Apify CLI storage (apify run)
 scripts/apify-scripts/**/storage/
 

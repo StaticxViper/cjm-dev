@@ -198,6 +198,63 @@
       ]
     },
     {
+      "name": "zillow-agents",
+      "description": "Collect Zillow listings and listing agents with Playwright, then enrich missing emails and phones",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/zillow_automation/zillow_agents.py"},
+      "cwd": "scripts/zillow_automation",
+      "pythonpath": ["scripts", "scripts/lead_automation"],
+      "help_supported": true,
+      "env": {
+        "required": [],
+        "optional": ["MVLLC_LOGS_KEY"]
+      },
+      "needs_playwright": true,
+      "timeout_seconds": 28800,
+      "outputs": [
+        "scripts/zillow_automation/zillow_agents_*.json",
+        "scripts/zillow_automation/zillow_agents_*.csv",
+        "scripts/zillow_automation/zillow_listings_*.json",
+        "scripts/zillow_automation/zillow_listings_*.csv",
+        "logs/**"
+      ],
+      "side_effects": ["external_api", "writes_repo_files"],
+      "stateful_files": [
+        "scripts/zillow_automation/zillow_agents_checkpoint.json",
+        "scripts/zillow_automation/zillow_seen.json",
+        "scripts/zillow_automation/zillow_agent_enrich_cache.json"
+      ],
+      "ci_allowed": false,
+      "tags": ["listings", "leads"],
+      "docs": "documentation/scripts/zillow_agents.md",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--input", "prompt": "Search criteria JSON", "kind": "str"},
+        {"arg": "--output-dir", "prompt": "Output directory", "kind": "str"},
+        {"arg": "--zip-codes", "prompt": "ZIP codes", "kind": "str", "split": true},
+        {"arg": "--areas", "prompt": "Cities, counties, or other areas", "kind": "str", "split": true},
+        {"arg": "--price-min", "prompt": "Minimum price", "kind": "int"},
+        {"arg": "--price-max", "prompt": "Maximum price", "kind": "int"},
+        {"arg": "--beds-min", "prompt": "Minimum bedrooms", "kind": "int"},
+        {"arg": "--baths-min", "prompt": "Minimum bathrooms", "kind": "int"},
+        {"arg": "--home-types", "prompt": "Home types", "kind": "str", "split": true},
+        {"arg": "--days-on-zillow", "prompt": "Max days on Zillow", "kind": "str"},
+        {"arg": "--results-limit", "prompt": "Max listings per area (0 = no cap)", "kind": "int"},
+        {"arg": "--for-sale-by-agent", "prompt": "Include agent listings?", "kind": "bool"},
+        {"arg": "--no-for-sale-by-agent", "prompt": "Exclude agent listings?", "kind": "bool"},
+        {"arg": "--for-sale-by-owner", "prompt": "Include owner listings?", "kind": "bool"},
+        {"arg": "--no-for-sale-by-owner", "prompt": "Exclude owner listings?", "kind": "bool"},
+        {"arg": "--for-rent", "prompt": "Include rentals?", "kind": "bool"},
+        {"arg": "--no-for-rent", "prompt": "Exclude rentals?", "kind": "bool"},
+        {"arg": "--sold", "prompt": "Include sold listings?", "kind": "bool"},
+        {"arg": "--no-sold", "prompt": "Exclude sold listings?", "kind": "bool"},
+        {"arg": "--fresh", "prompt": "Ignore the checkpoint and start over?", "kind": "bool"},
+        {"arg": "--no-enrich", "prompt": "Skip Google and website enrichment?", "kind": "bool"},
+        {"arg": "--concurrency", "prompt": "Listing page workers", "kind": "int"},
+        {"arg": "--headed", "prompt": "Show the browser?", "kind": "bool"}
+      ]
+    },
+    {
       "name": "lovable-automation",
       "description": "Create and publish a Lovable site from a prompt",
       "status": "broken",

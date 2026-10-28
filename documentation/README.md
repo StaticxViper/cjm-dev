@@ -45,6 +45,7 @@ Project pages (how it works, changelog, and links to those diagrams) are at <htt
 | JSON formatter | [scripts/json_formatter.md](scripts/json_formatter.md) |
 | Email manager (library) | [scripts/email_manager.md](scripts/email_manager.md) |
 | Zillow property listing | [scripts/property_listing_gen.md](scripts/property_listing_gen.md) |
+| Zillow agent pipeline | [scripts/zillow_agents.md](scripts/zillow_agents.md) |
 | City-data scraper | [scripts/city_data_scraper.md](scripts/city_data_scraper.md) |
 | Grocery price sync | [scripts/grocery.md](scripts/grocery.md) |
 | Opportunity finder v2 | [scripts/opp_finder_v2.md](scripts/opp_finder_v2.md) |
@@ -113,7 +114,7 @@ flowchart LR
 | Working directory | Scripts |
 |-------------------|---------|
 | `scripts/lead_automation/` | `leadgen.py`, `leadenrich.py`, `leadenrich_playwright.py`, `lead_automation.py` |
-| `scripts/zillow_automation/` | `property_listing_gen.py` |
+| `scripts/zillow_automation/` | `property_listing_gen.py`, `zillow_agents.py` |
 | `scripts/city_data/` | `city_data_scraper.py` |
 | `scripts/apify-scripts/<actor>/` | `apify run` (see [apify-scripts README](../scripts/apify-scripts/README.md)) |
 | `scripts/lovable_automation/` | `lovable_automation.py` |
