@@ -16,4 +16,4 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements/requirements.txt
       - name: Unit tests
-        run: python -m unittest unittests.apify_scripts.test_city_data_actor unittests.apify_scripts.test_google_business_actor
+        run: python -m unittest unittests.apify_scripts.test_city_data_actor unittests.apify_scripts.test_google_business_actor unittests.apify_scripts.test_zillow_actor

@@ -43,6 +43,7 @@ ENTRIES = {
     "actors": (
         "scripts/apify-scripts/google-business/src/main.py",
         "scripts/apify-scripts/city-data/src/main.py",
+        "scripts/apify-scripts/zillow/src/main.py",
     ),
 }
 

@@ -6,7 +6,8 @@ Collect Zillow listings and listing agents with Playwright, then fill missing
 emails and phones from Google and public agent or brokerage pages.
 
 A block or captcha page stops that area and is recorded. This script does not
-solve captchas, rotate proxies, or hide the browser.
+solve captchas, rotate proxies, or hide the browser. The Apify Actor can pass
+one proxy into the browser; the CLI leaves that unset.
 
 Run: python zillow_agents.py
      python zillow_agents.py --zip-codes 08002 --results-limit 25
@@ -267,10 +268,11 @@ class ZillowBrowser:
     of 2 is two browsers, not two pages in one browser.
     """
 
-    def __init__(self, concurrency=2, headless=True, timeout_ms=PAGE_TIMEOUT_MS, sleep=None):
+    def __init__(self, concurrency=2, headless=True, timeout_ms=PAGE_TIMEOUT_MS, sleep=None, proxy=None):
         self.concurrency = max(1, int(concurrency or 1))
         self.headless = headless
         self.timeout_ms = timeout_ms
+        self.proxy = proxy or None
         self._sleep = sleep or time.sleep
         self._pacer = HostPacer(sleep=self._sleep)
         self._local = threading.local()
@@ -320,7 +322,10 @@ class ZillowBrowser:
 
         slot = _Slot()
         slot.playwright = sync_playwright().start()
-        slot.browser = slot.playwright.chromium.launch(headless=self.headless)
+        launch_kwargs = {"headless": self.headless}
+        if self.proxy:
+            launch_kwargs["proxy"] = self.proxy
+        slot.browser = slot.playwright.chromium.launch(**launch_kwargs)
         slot.page = slot.browser.new_page(
             user_agent=USER_AGENT,
             viewport={"width": 1280, "height": 900},
@@ -578,6 +583,10 @@ def run_pipeline(
     enrich=True,
     enrich_fn=None,
     run_date=None,
+    max_listings=None,
+    max_agents=None,
+    on_checkpoint=None,
+    browser_proxy=None,
 ):
     """Search each area, dedupe, enrich missing contacts, and write JSON and CSV."""
     criteria = normalize_criteria(criteria)
@@ -591,16 +600,45 @@ def run_pipeline(
     collection, stats, areas, digest = load_checkpoint(checkpoint_path, criteria, resume)
     seen = load_seen(seen_path)
     limit = int(criteria.get("resultsLimit") or 0)
+    total_cap = int(max_listings or 0)
+    agent_cap = int(max_agents or 0)
+
+    def listings_full():
+        return total_cap > 0 and len(collection.listings) >= total_cap
+
+    def agents_full():
+        return agent_cap > 0 and len(collection.agents) >= agent_cap
+
+    def capped():
+        return listings_full() or agents_full()
 
     def save_checkpoint():
-        if not checkpoint_path:
-            return
-        save_json_atomic(
-            checkpoint_path,
-            _checkpoint_payload(digest, criteria, areas, collection, stats),
+        payload = _checkpoint_payload(digest, criteria, areas, collection, stats)
+        if checkpoint_path:
+            save_json_atomic(checkpoint_path, payload)
+        if on_checkpoint is not None:
+            on_checkpoint(payload)
+
+    def consume_within_cap(pending_urls):
+        """Fetch only as many pending listings as the total cap still allows."""
+        if agents_full():
+            return list(pending_urls), False
+        pending_urls = list(pending_urls)
+        if total_cap > 0:
+            room = max(0, total_cap - len(collection.listings))
+            take, tail = pending_urls[:room], pending_urls[room:]
+        else:
+            take, tail = pending_urls, []
+        if not take:
+            return tail, False
+        leftover, blocked_now = _consume_details(
+            take, fetch_many, collection, seen, stats, area, concurrency
         )
+        return leftover + tail, blocked_now
 
     for area in areas_list:
+        if capped():
+            break
         state = areas.get(area) or _blank_area()
         if state.get("status") == "done":
             areas[area] = state
@@ -614,15 +652,13 @@ def run_pipeline(
             return sum(1 for item in collection.listings if item.get("area") == current)
 
         if pending:
-            pending, blocked = _consume_details(
-                pending, fetch_many, collection, seen, stats, area, concurrency
-            )
+            pending, blocked = consume_within_cap(pending)
             state["pending_urls"] = pending
             state["status"] = "blocked" if blocked else "in_progress"
             areas[area] = state
             save_checkpoint()
 
-        while not blocked and not failed and page_num <= MAX_SEARCH_PAGES:
+        while not blocked and not failed and not capped() and page_num <= MAX_SEARCH_PAGES:
             if limit > 0 and area_count() >= limit:
                 break
             search_url = build_search_url(area, criteria, page_num)
@@ -642,9 +678,14 @@ def run_pipeline(
                 failed = True
                 break
             parsed = parse_search_page(result.html)
-            room = None
+            room_parts = []
             if limit > 0:
-                room = max(0, limit - area_count() - len(pending))
+                room_parts.append(max(0, limit - area_count() - len(pending)))
+            if total_cap > 0:
+                room_parts.append(max(0, total_cap - len(collection.listings) - len(pending)))
+            room = min(room_parts) if room_parts else None
+            if room == 0:
+                break
             new_urls = _search_urls(parsed, pending, seen, collection, stats, room)
             pending.extend(new_urls)
             page_num += 1
@@ -654,33 +695,37 @@ def run_pipeline(
             areas[area] = state
             save_checkpoint()
             if pending:
-                pending, blocked = _consume_details(
-                    pending, fetch_many, collection, seen, stats, area, concurrency
-                )
+                pending, blocked = consume_within_cap(pending)
                 state["pending_urls"] = pending
                 areas[area] = state
                 save_checkpoint()
-            if blocked or not parsed.get("has_next") or not parsed.get("listings"):
+            if blocked or not parsed.get("has_next") or not parsed.get("listings") or capped():
                 break
             if limit > 0 and area_count() >= limit:
                 break
 
         if blocked:
             state["status"] = "blocked"
-        elif failed:
+        elif failed or capped() or pending:
             state["status"] = "in_progress"
         else:
             state["status"] = "done"
-            state["pending_urls"] = pending
+        state["pending_urls"] = pending
         areas[area] = state
         save_checkpoint()
+
+    if agent_cap > 0 and len(collection.agents) > agent_cap:
+        collection.agents = collection.agents[:agent_cap]
 
     if enrich_fn is not None:
         stats["agents_enriched"] = int(stats.get("agents_enriched") or 0) + int(
             enrich_fn(collection.agents) or 0
         )
     elif enrich and collection.agents:
-        session = EmailDiscoverySession(cache_path=str(cache_path) if cache_path else None)
+        session = EmailDiscoverySession(
+            cache_path=str(cache_path) if cache_path else None,
+            proxy=browser_proxy,
+        )
         visit_pacer = HostPacer()
 
         def before_visit(url):

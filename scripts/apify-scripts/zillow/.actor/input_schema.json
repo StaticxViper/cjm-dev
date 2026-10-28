@@ -1,0 +1,100 @@
+{
+  "title": "Zillow listing agents",
+  "description": "ZIP codes, a listing cap, and an agent cap. Filters and the proxy group are optional.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "zip_codes": {
+      "title": "ZIP codes",
+      "type": "array",
+      "description": "US ZIP codes to search. Listings are collected across every ZIP until max_listings is reached.",
+      "editor": "stringList",
+      "prefill": ["08002"]
+    },
+    "max_listings": {
+      "title": "Max listings",
+      "type": "integer",
+      "description": "Total listings to collect across all ZIP codes.",
+      "editor": "number",
+      "default": 100,
+      "minimum": 1
+    },
+    "max_agents": {
+      "title": "Max agents",
+      "type": "integer",
+      "description": "Total unique agents to return. The run stops once this many agents are collected.",
+      "editor": "number",
+      "default": 50,
+      "minimum": 1
+    },
+    "forSaleByAgent": {
+      "title": "For sale by agent",
+      "type": "boolean",
+      "description": "Include agent listings. Default on.",
+      "editor": "checkbox",
+      "default": true,
+      "sectionCaption": "Advanced",
+      "sectionDescription": "Optional filters. The run only needs ZIP codes, max listings, and max agents."
+    },
+    "forSaleByOwner": {
+      "title": "For sale by owner",
+      "type": "boolean",
+      "description": "Include owner listings. Default off.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "forRent": {
+      "title": "For rent",
+      "type": "boolean",
+      "description": "Include rentals. Default off.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "sold": {
+      "title": "Sold",
+      "type": "boolean",
+      "description": "Include sold listings. Default off.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "priceMin": {
+      "title": "Minimum price",
+      "type": "integer",
+      "description": "Optional minimum listing price.",
+      "editor": "number",
+      "minimum": 0
+    },
+    "priceMax": {
+      "title": "Maximum price",
+      "type": "integer",
+      "description": "Optional maximum listing price.",
+      "editor": "number",
+      "minimum": 0
+    },
+    "enrich": {
+      "title": "Enrich missing email and phone",
+      "type": "boolean",
+      "description": "Look up agents that are missing an email or phone on Google, the agent site, and the brokerage site. Default on.",
+      "editor": "checkbox",
+      "default": true
+    },
+    "proxyConfiguration": {
+      "title": "Proxy group",
+      "type": "object",
+      "description": "Apify Proxy group for Zillow requests on the platform. Residential is the default. Ignored on a local run. There is no CAPTCHA solver.",
+      "editor": "proxy",
+      "default": {
+        "useApifyProxy": true,
+        "apifyProxyGroups": ["RESIDENTIAL"]
+      }
+    },
+    "headless": {
+      "title": "Headless browser",
+      "type": "boolean",
+      "description": "Run Chromium headless. Default true.",
+      "editor": "checkbox",
+      "default": true
+    }
+  },
+  "required": ["zip_codes"]
+}

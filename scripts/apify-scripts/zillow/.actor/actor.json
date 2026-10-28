@@ -1,0 +1,28 @@
+{
+  "actorSpecification": 1,
+  "name": "zillow-agents",
+  "title": "Zillow Listing Agents",
+  "description": "Search Zillow by ZIP code, collect listing agents, and fill a missing email or phone from public pages. Uses Apify Proxy on the platform.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "meta": {
+    "generatedBy": "Cursor with Grok 4.7"
+  },
+  "dockerfile": "../Dockerfile",
+  "dockerContextDir": "../../../..",
+  "readme": "../README.md",
+  "changelog": "./CHANGELOG.md",
+  "input": "./input_schema.json",
+  "output": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "minMemoryMbytes": 2048,
+  "maxMemoryMbytes": 8192,
+  "defaultMemoryMbytes": 4096,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 28800,
+    "memoryMbytes": 4096
+  }
+}

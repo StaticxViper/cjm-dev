@@ -255,6 +255,41 @@
       ]
     },
     {
+      "name": "zillow-apify",
+      "description": "Start the Zillow agents Actor on Apify with APIFY_TOKEN and download the dataset",
+      "status": "active",
+      "entry": {"type": "path", "path": "scripts/apify-scripts/zillow/run_remote.py"},
+      "cwd": ".",
+      "pythonpath": ["scripts", "scripts/lead_automation", "scripts/apify-scripts/zillow/src"],
+      "help_supported": true,
+      "env": {
+        "required": ["APIFY_TOKEN", "APIFY_USER_ID"],
+        "optional": ["ZILLOW_ACTOR_ID"]
+      },
+      "needs_playwright": false,
+      "timeout_seconds": 28800,
+      "outputs": [
+        "scripts/zillow_automation/zillow_agents_*.json",
+        "scripts/zillow_automation/zillow_agents_*.csv",
+        "scripts/zillow_automation/zillow_listings_*.json",
+        "scripts/zillow_automation/zillow_listings_*.csv",
+        "logs/**"
+      ],
+      "side_effects": ["external_api", "spends_money", "writes_repo_files"],
+      "ci_allowed": true,
+      "tags": ["listings", "leads", "apify"],
+      "docs": "documentation/scripts/zillow_agents.md",
+      "issue": "#151",
+      "menu": "flags",
+      "prompts": [
+        {"arg": "--zip-codes", "prompt": "ZIP codes", "kind": "str", "split": true},
+        {"arg": "--max-listings", "prompt": "Total listings across all ZIPs", "kind": "int"},
+        {"arg": "--max-agents", "prompt": "Total unique agents", "kind": "int"},
+        {"arg": "--output-dir", "prompt": "Output directory", "kind": "str"},
+        {"arg": "--run-date", "prompt": "Date stamp for file names (YYYY-MM-DD)", "kind": "str"}
+      ]
+    },
+    {
       "name": "lovable-automation",
       "description": "Create and publish a Lovable site from a prompt",
       "status": "broken",
