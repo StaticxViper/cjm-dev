@@ -94,7 +94,8 @@ flowchart LR
 | `APIFY_API_KEY` | `stock_analyzer`, `leadenrich`, `property_listing_gen`, `api_manager` (call Store Actors) |
 | `APIFY_TOKEN` | Apify CLI `apify login` / `apify push` for Actors under `scripts/apify-scripts/` |
 | `MVLLC_LOGS_KEY` | logger (all scripts), `api_manager` |
-| `APIFY_USER_ID` | `api_manager` |
+| `APIFY_USER_ID` | `api_manager`, `zillow-apify` (Actor id is `<APIFY_USER_ID>~zillow-agents` unless overridden) |
+| `ZILLOW_ACTOR_ID` | `zillow-apify` (optional override for the published Actor id) |
 | `STOCK_INGEST_TOKEN` | `stock_analyzer`, `api_manager` |
 | `LOVABLE_API_KEY` | `lovable_automation` |
 | `LOVABLE_WORKSPACE_ID` | `lovable_automation` (optional) |
