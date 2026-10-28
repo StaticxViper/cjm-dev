@@ -11,6 +11,7 @@ Playwright scrapers packaged for the Apify Marketplace. Issue #128. Local CLIs s
 | [`home-services/`](home-services/) | Phase 1 | Wraps the google-business matcher and Maps session. Niche and area leads with website email, quality, and intent score |
 | [`new-business/`](new-business/) | Entity filings | Verified NY, PA, and CO open-data feeds from [`scripts/lead_automation/new_business_pipeline.py`](../lead_automation/new_business_pipeline.py). |
 | [`permits/`](permits/) | Building permits | Verified Chicago, Seattle, Austin, and Los Angeles Socrata feeds. Reuses [`new_business_sources`](../lead_automation/new_business_sources/) open-data and HTML-table adapters. |
+| [`zillow/`](zillow/) | Listing agents | [`scripts/zillow_automation/zillow_agents.py`](../zillow_automation/zillow_agents.py). Residential Apify Proxy on the platform. Script Manager entry `zillow-apify` starts it with `APIFY_TOKEN`. |
 
 Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one is a copy of `_template/` after Phase 1 is accepted. Instagram already has a Store Actor we call from `helper_scripts/api_manager`; a first-party listing is a separate decision.
 
@@ -50,7 +51,7 @@ Do this only when a listing is requested. `APIFY_TOKEN` is the CLI / `apify push
 
 ## Purpose, inputs, outputs, and secrets
 
-Actors package the local Playwright CLIs for the Apify platform. Input is the Actor `INPUT.json` (`fixtures/INPUT.json` locally). Output is an Apify dataset plus a key-value `SUMMARY`. Local run is `apify run --purge` from the Actor directory, or `python -m src` after copying the fixture into `storage/key_value_stores/default/INPUT.json`. These Actors are not Script Manager entries. GitHub Actions workflow `ci.yml` runs `pytest unittests/` on every pull request, including `unittests/apify_scripts`. `apify_scripts.yml` is a manual re-run of those actor tests. Publish uses `APIFY_TOKEN`. The Actors themselves do not read `APIFY_API_KEY`. Longer notes are the sections above.
+Actors package the local Playwright CLIs for the Apify platform. Input is the Actor `INPUT.json` (`fixtures/INPUT.json` locally). Output is an Apify dataset plus a key-value `SUMMARY`. Local run is `apify run --purge` from the Actor directory, or `python -m src` after copying the fixture into `storage/key_value_stores/default/INPUT.json`. GitHub Actions workflow `ci.yml` runs `pytest unittests/` on every pull request, including `unittests/apify_scripts`. `apify_scripts.yml` is a manual re-run of those actor tests. Publish uses `APIFY_TOKEN`. The Actors themselves do not read `APIFY_API_KEY`. `zillow-apify` is the Script Manager entry that starts the Zillow Actor through the Apify API and downloads the dataset. The other Actors are not Script Manager entries. Longer notes are the sections above.
 
 ## Proxy, CAPTCHA, and spend
 
@@ -63,6 +64,8 @@ Proxy rotation and CAPTCHA solving are allowed when a target needs them to retur
 `maxSpendUsd` caps result, proxy, and CAPTCHA events together. `maxProxyCostUsd` caps proxy events and is clamped to the spend cap. `0` skips the proxy retry. `allowCaptcha` defaults to false. When a cap is hit, solving is off, or no solver is configured, push one `blocked` row and exit 0. Do not keep retrying and do not hide the cost inside the developer account. Charge `proxy` and `captcha` through pay per event. A solve is billed only when a solver returns a token. Data rows stay success-only charges. Direct requests are free.
 
 Shared helpers live in `scripts/apify-scripts/access.py` (`Actor.create_proxy_configuration` on escalate, the block ladder, the spend ledger, and the proxy / CAPTCHA charge). `city-data`, `google-business`, and `permits` call them. `new-business` follows the same ladder in its HTTP fetch. `home-services` still stops on a block with no proxy charge until it calls that module. `contractor-license` returns a status row when a portal shows a challenge and does not spend to get past it.
+
+`zillow` is the exception. Zillow blocks the platform IP, so every Zillow request on Apify goes through `Actor.create_proxy_configuration` with the residential group unless the input selects another group. A local run leaves the proxy unset. A block or captcha page is stored for that ZIP and the run moves on. This Actor does not call a CAPTCHA solver.
 
 ## Rules that stay in force
 

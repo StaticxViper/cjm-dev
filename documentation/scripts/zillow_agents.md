@@ -6,7 +6,7 @@
 
 Searches Zillow for listings in one or more areas, saves each listing's address and listing agent, and fills a missing email or phone from Google and public agent or brokerage pages.
 
-This is the in-house replacement for the paid Apify ZIP actor used by [property_listing_gen.md](property_listing_gen.md). The Apify script is still there. This one does not call Apify.
+This is the in-house replacement for the paid Apify ZIP actor used by [property_listing_gen.md](property_listing_gen.md). The same pipeline is packaged as the Zillow agents Actor under [scripts/apify-scripts/zillow](../../scripts/apify-scripts/zillow/). The local script still runs on this machine. The Actor runs on Apify.
 
 ## Prerequisites
 
@@ -114,5 +114,21 @@ A captcha or block page stops that area and increments `blocked_pages`. The run 
 - Tests use saved HTML only. Do not point CI at live Zillow or Google.
 
 ```bash
-python -m unittest unittests.zillow_automation.test_zillow_agents
+python -m unittest unittests.zillow_automation.test_zillow_agents unittests.apify_scripts.test_zillow_actor
 ```
+
+## Apify Actor
+
+The Actor is `scripts/apify-scripts/zillow`. On Apify the only required input is `zip_codes`. `max_listings` defaults to 100 across every ZIP. `max_agents` defaults to 50 unique agents. Listing status, price range, enrichment, and the proxy group sit in the Advanced section.
+
+Platform runs send Zillow traffic through Apify Proxy (`Actor.create_proxy_configuration`, residential unless the input picks another group). A local run of the same input connects directly and still writes `zillow_agents_YYYY-MM-DD_<area>.csv` and the matching JSON files. A block or captcha page is recorded on that ZIP and the run continues. The Actor does not solve captchas.
+
+Deploy from the Actor directory with `apify push`. The full input, output, and cost notes are in [scripts/apify-scripts/zillow/README.md](../../scripts/apify-scripts/zillow/README.md).
+
+Script Manager name `zillow-apify` starts that Actor through the Apify API with `APIFY_TOKEN` and `APIFY_USER_ID`, then downloads the dataset into the same dated files. Set `ZILLOW_ACTOR_ID` when the Actor id is not `<APIFY_USER_ID>~zillow-agents`. The universal action already accepts any registered script:
+
+```bash
+gh workflow run "Script Manager" --ref <branch> -f script=zillow-apify -f args="--zip-codes 08002 --max-listings 100 --max-agents 50" -f confirm=true
+```
+
+`confirm=true` is required because the run spends Apify credit. Script Manager is already a `workflow_dispatch` workflow. Pick this branch as the ref until the registry entry is on the default branch.

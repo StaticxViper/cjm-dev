@@ -1,0 +1,10 @@
+{
+  "actorChargeEvents": {
+    "result": {
+      "eventTitle": "Listing agent",
+      "eventDescription": "Charged for an agent row that has a name. A ZIP that was blocked does not add an agent row. Residential proxy traffic is billed by Apify per GB and is not a per-request event. No CAPTCHA solve is charged.",
+      "eventPriceUsd": 0.05,
+      "isPrimaryEvent": true
+    }
+  }
+}

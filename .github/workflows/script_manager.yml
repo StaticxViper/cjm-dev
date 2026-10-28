@@ -148,6 +148,7 @@ jobs:
       APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
       APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
       APIFY_USER_ID: ${{ secrets.APIFY_USER_ID }}
+      ZILLOW_ACTOR_ID: ${{ secrets.ZILLOW_ACTOR_ID }}
       CHATGPT_API_KEY: ${{ secrets.CHATGPT_API_KEY }}
       CHIKARA_REALMS_SECRET: ${{ secrets.CHIKARA_REALMS_SECRET }}
       CRM_MCP_MV_LLC: ${{ secrets.CRM_MCP_MV_LLC }}

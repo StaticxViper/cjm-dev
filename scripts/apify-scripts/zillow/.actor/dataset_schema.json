@@ -1,0 +1,68 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Listing agents",
+    "fields": {
+      "agent_name": {"type": "string"},
+      "brokerage": {"type": "string"},
+      "phone": {"type": "string"},
+      "email": {"type": "string"},
+      "license": {"type": "string"},
+      "profile_url": {"type": "string"},
+      "enrichment_source": {"type": "string"},
+      "enrichment_source_url": {"type": "string"},
+      "confidence": {"type": "string"},
+      "listing_addresses": {"type": "array"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["agent_name", "brokerage", "phone", "email", "confidence"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "agent_name": {"label": "Agent", "format": "text"},
+          "brokerage": {"label": "Brokerage", "format": "text"},
+          "phone": {"label": "Phone", "format": "text"},
+          "email": {"label": "Email", "format": "text"},
+          "confidence": {"label": "Confidence", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "agent_name",
+          "brokerage",
+          "phone",
+          "email",
+          "license",
+          "profile_url",
+          "enrichment_source",
+          "enrichment_source_url",
+          "confidence",
+          "listing_addresses"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "agent_name": {"label": "Agent", "format": "text"},
+          "brokerage": {"label": "Brokerage", "format": "text"},
+          "phone": {"label": "Phone", "format": "text"},
+          "email": {"label": "Email", "format": "text"},
+          "license": {"label": "License", "format": "text"},
+          "profile_url": {"label": "Profile", "format": "text"},
+          "enrichment_source": {"label": "Enrichment source", "format": "text"},
+          "enrichment_source_url": {"label": "Source URL", "format": "text"},
+          "confidence": {"label": "Confidence", "format": "text"},
+          "listing_addresses": {"label": "Listings", "format": "array"}
+        }
+      }
+    }
+  }
+}

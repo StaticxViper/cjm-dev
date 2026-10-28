@@ -726,8 +726,9 @@ class EmailDiscoverySession(GoogleBrowserCore):
     `sync_playwright().start()` does not raise.
     """
 
-    def __init__(self, delay=None, cache_path=None, ttl_days=30, refresh=False):
+    def __init__(self, delay=None, cache_path=None, ttl_days=30, refresh=False, proxy=None):
         super().__init__()
+        self._proxy = proxy or None
         self.cache = {}
         self._searches_done = 0
         self._delay = delay
@@ -849,7 +850,10 @@ class EmailDiscoverySession(GoogleBrowserCore):
             return self._page
         try:
             self._playwright = _start_sync_playwright()
-            self._browser = self._playwright.chromium.launch(headless=True)
+            launch_kwargs = {"headless": True}
+            if self._proxy:
+                launch_kwargs["proxy"] = self._proxy
+            self._browser = self._playwright.chromium.launch(**launch_kwargs)
             self._page = self._browser.new_page(
                 user_agent=FETCH_HEADERS["User-Agent"],
                 viewport={"width": 1280, "height": 720},
