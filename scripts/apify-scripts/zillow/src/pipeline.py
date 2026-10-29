@@ -146,6 +146,25 @@ async def open_playwright_proxy(actor, actor_input, *, at_home, session_id=None)
     return proxy
 
 
+async def open_http_proxy_urls(actor, actor_input, *, at_home, session_id=None):
+    """Two residential proxy URLs. The second is a single retry session."""
+    if not at_home:
+        return []
+    payload = proxy_actor_input(actor_input)
+    configuration = await actor.create_proxy_configuration(actor_proxy_input=payload)
+    if configuration is None:
+        raise RuntimeError("Apify Proxy is required for Zillow requests on the platform.")
+    primary = session_id or proxy_session_id()
+    spare = (primary + "b")[:50]
+    urls = []
+    for item in (primary, spare):
+        url = await configuration.new_url(session_id=item)
+        if not url:
+            raise RuntimeError("Apify Proxy did not return a proxy URL.")
+        urls.append(url)
+    return urls
+
+
 def read_run_input(actor_input):
     """ZIP codes, caps, and the optional filters. Other keys keep their defaults."""
     raw = actor_input or {}
@@ -289,6 +308,7 @@ def run_collected(
     resume=True,
     run_date=None,
     at_home=False,
+    proxy_urls=None,
 ):
     """Run the shared pipeline. A local call with fetch= does not open a browser."""
     settings = read_run_input(actor_input)
@@ -297,7 +317,15 @@ def run_collected(
     seen = Path(seen_path) if seen_path else (out_dir / "zillow_seen.json")
     cache = Path(cache_path) if cache_path else (out_dir / "zillow_agent_enrich_cache.json")
     browser = None
-    if fetch is None:
+    if fetch is None and proxy_urls:
+        try:
+            from .http_fetch import make_proxy_fetch
+        except ImportError:
+            from http_fetch import make_proxy_fetch
+        fetch = make_proxy_fetch(proxy_urls)
+        if proxy is None and settings["enrich"]:
+            proxy = playwright_proxy(proxy_urls[0])
+    elif fetch is None:
         browser = zillow_agents.ZillowBrowser(
             concurrency=1,
             headless=settings["headless"],
@@ -330,6 +358,9 @@ def run_collected(
     rows = [dataset_row(agent) for agent in (agents_doc.get("agents") or [])]
     summary = run_summary(result)
     summary["output_dir"] = str(out_dir)
+    if hasattr(fetch, "request_count"):
+        summary["zillow_http_requests"] = int(fetch.request_count())
+        summary["zillow_session_rotations"] = int(fetch.rotation_count())
     return {
         "rows": rows,
         "listings": listings_doc,

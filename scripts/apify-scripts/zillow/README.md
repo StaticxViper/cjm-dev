@@ -60,10 +60,13 @@ gh workflow run "Script Manager" -f script=zillow-apify -f args="--zip-codes 080
 ```json
 {
   "zip_codes": ["08002"],
-  "max_listings": 100,
-  "max_agents": 50
+  "max_listings": 2,
+  "max_agents": 2,
+  "enrich": false
 }
 ```
+
+That sample is the smoke fixture: two listings, no Google enrichment. The input defaults are still 100 listings and 50 agents, with enrichment on.
 
 | Field | Default | Meaning |
 |-------|---------|---------|
@@ -93,17 +96,19 @@ A local run also writes dated files next to the pipeline, for example `scripts/z
 
 ## Proxy
 
-On Apify (`APIFY_IS_AT_HOME=1`) every Zillow browser request uses `Actor.create_proxy_configuration()`. The default group is `RESIDENTIAL`. Another group in `proxyConfiguration.apifyProxyGroups` replaces it. The session id stays on one residential IP for the run.
+On Apify (`APIFY_IS_AT_HOME=1`) Zillow search and listing pages are Chrome-impersonation HTTP GETs through `Actor.create_proxy_configuration()`. The default group is `RESIDENTIAL`. Another group in `proxyConfiguration.apifyProxyGroups` replaces it. The listing data is in the page HTML, so the run does not launch Chromium for those pages. A headless browser is fingerprinted even on a residential IP, and a plain Python TLS handshake is too. The impersonation session keeps cookies from one homepage request, then fetches the search and listing documents.
+
+The first residential session is reused for the run. If that session is blocked, the same URL is retried once on a second session. There is no further rotation, no unblocker group, and no browser farm. Enrichment, when it is on, can still open a browser for a missing phone or email and uses the first proxy URL.
 
 A local run, including `apify run` on a laptop, leaves `APIFY_IS_AT_HOME` unset. Chromium then starts with no proxy, and the dated files are written on disk.
 
-Images, fonts, and media are blocked. The existing per-host pause (about 2–4.5 seconds), the navigation timeout, and the retry with backoff stay in place. A press-and-hold or "are you a robot" page is stored as blocked for that ZIP. The Actor does not solve captchas and does not switch to an unblocker group on its own.
+Images, fonts, and media are not requested on the platform HTTP path. A press-and-hold, PerimeterX, or "are you a robot" page is stored as blocked for that ZIP after the single retry. The Actor does not solve captchas.
 
 ## Cost
 
-Residential proxy traffic is billed by Apify per gigabyte transferred. Blocking images, fonts, and media is what keeps that transfer down. Current proxy prices are on [Apify pricing](https://apify.com/pricing).
+Residential proxy traffic is billed by Apify per gigabyte transferred. Fetching HTML instead of a browser page is what keeps that transfer down. Current proxy prices are on [Apify pricing](https://apify.com/pricing).
 
-Compute is a Chromium run. The default is 4096 MB with an 8 hour timeout. A 100-listing run is paced at a few seconds per page, so it usually finishes well inside that window. Enrichment adds Google and site visits for agents that are still missing a phone or an email.
+Compute stays at the Actor default. A small ZIP run is a handful of HTML documents plus one retry if the first session is blocked. Enrichment adds Google and site visits for agents that are still missing a phone or an email.
 
 Pay per event, when you enable it from `.actor/pay_per_event.json`, charges `result` ($0.05) for an agent row that has a name. A blocked ZIP adds no agent row. Proxy gigabytes are the platform proxy bill. There is no captcha charge.
 

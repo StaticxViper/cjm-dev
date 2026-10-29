@@ -1,5 +1,6 @@
 {
   "zip_codes": ["08002"],
-  "max_listings": 100,
-  "max_agents": 50
+  "max_listings": 2,
+  "max_agents": 2,
+  "enrich": false
 }

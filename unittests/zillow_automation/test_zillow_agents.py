@@ -175,6 +175,31 @@ class TestParsers(unittest.TestCase):
         )
         self.assertTrue(parsed["has_next"])
 
+    def test_listing_agent_inside_client_cache(self):
+        import json
+
+        cache = json.dumps({
+            "property": {
+                "zpid": 111,
+                "attributionInfo": {
+                    "agentName": "Gianna Furia",
+                    "brokerName": "Opus Elite",
+                    "agentPhoneNumber": "267-592-8629",
+                },
+            },
+        })
+        outer = {"props": {"pageProps": {"gdpClientCache": cache}}}
+        html = (
+            '<script id="__NEXT_DATA__" type="application/json">'
+            + json.dumps(outer)
+            + "</script>"
+        )
+        url = "https://www.zillow.com/homedetails/1-Main-St/111_zpid/"
+        listing = zillow_parse.parse_listing_page(html, url)
+        self.assertEqual(listing["agent_name"], "Gianna Furia")
+        self.assertEqual(listing["brokerage"], "Opus Elite")
+        self.assertEqual(listing["phone"], "(267) 592-8629")
+
     def test_listing_json_beats_visible_markup(self):
         url = "https://www.zillow.com/homedetails/1-Main-St-Cherry-Hill-NJ-08002/111_zpid/"
         listing = zillow_parse.parse_listing_page(_read("listing_detail.html"), url)

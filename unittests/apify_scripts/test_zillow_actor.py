@@ -434,5 +434,94 @@ class TestRemoteDownload(unittest.TestCase):
             remote.actor_id_from_env({})
 
 
+class TestResidentialHttp(unittest.TestCase):
+    def test_block_retries_once_on_the_spare_session(self):
+        http_fetch = _load("http_fetch")
+        calls = []
+
+        def transport(url, proxy_url):
+            calls.append(proxy_url)
+            if len(calls) == 1:
+                return zillow_agents.FetchResult(url=url, status=403, html="px-captcha", blocked=True)
+            return zillow_agents.FetchResult(
+                url=url,
+                status=200,
+                html="<html>__NEXT_DATA__ homedetails</html>",
+                final_url=url,
+            )
+
+        fetch = http_fetch.make_proxy_fetch(
+            ["http://user:secret@proxy.example/1", "http://user:secret@proxy.example/2"],
+            transport=transport,
+            sleep=lambda _seconds: None,
+        )
+        page = "https://www.zillow.com/homes/08002_rb/"
+        first = fetch(page)
+        self.assertFalse(first.blocked)
+        self.assertIn("__NEXT_DATA__", first.html)
+        self.assertEqual(calls, [
+            "http://user:secret@proxy.example/1",
+            "http://user:secret@proxy.example/2",
+        ])
+        self.assertEqual(fetch.rotation_count(), 1)
+        listing = "https://www.zillow.com/homedetails/1-Main-St/111_zpid/"
+        second = fetch(listing)
+        self.assertFalse(second.blocked)
+        self.assertEqual(calls[-1], "http://user:secret@proxy.example/2")
+        self.assertEqual(len(calls), 3)
+
+    def test_listing_shell_without_a_payload_is_blocked(self):
+        http_fetch = _load("http_fetch")
+        page = "https://www.zillow.com/homes/08002_rb/"
+        self.assertTrue(http_fetch._blocked(lambda *_args: False, page, "<html>enable javascript</html>", 200))
+        self.assertFalse(http_fetch._blocked(lambda *_args: False, page, "<html>__NEXT_DATA__</html>", 200))
+
+    def test_second_block_does_not_keep_rotating(self):
+        http_fetch = _load("http_fetch")
+        calls = []
+
+        def transport(url, proxy_url):
+            calls.append(proxy_url)
+            return zillow_agents.FetchResult(url=url, status=403, html="press and hold", blocked=True)
+
+        fetch = http_fetch.make_proxy_fetch(
+            ["http://user:secret@proxy.example/1", "http://user:secret@proxy.example/2"],
+            transport=transport,
+            sleep=lambda _seconds: None,
+        )
+        page = "https://www.zillow.com/homes/08002_rb/"
+        first = fetch(page)
+        self.assertTrue(first.blocked)
+        self.assertEqual(len(calls), 2)
+        again = fetch(page)
+        self.assertEqual(again.error, "already_blocked")
+        self.assertEqual(len(calls), 2)
+
+    def test_platform_opens_two_proxy_sessions(self):
+        class _Sessions(_ProxyConfig):
+            def __init__(self):
+                super().__init__("http://groups-RESIDENTIAL:secret@proxy.apify.com:8000")
+                self.sessions = []
+
+            async def new_url(self, session_id=None):
+                self.sessions.append(session_id)
+                return self.url
+
+        import asyncio
+
+        config = _Sessions()
+        actor = _Actor(config)
+        urls = asyncio.run(pipeline.open_http_proxy_urls(
+            actor,
+            {"zip_codes": ["08002"]},
+            at_home=True,
+            session_id="zillowtest",
+        ))
+        self.assertEqual(actor.calls[0]["apifyProxyGroups"], ["RESIDENTIAL"])
+        self.assertEqual(config.sessions, ["zillowtest", "zillowtestb"])
+        self.assertEqual(len(urls), 2)
+        self.assertEqual(asyncio.run(pipeline.open_http_proxy_urls(actor, {}, at_home=False)), [])
+
+
 if __name__ == "__main__":
     unittest.main()
