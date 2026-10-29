@@ -1,0 +1,13 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "Home services run summary",
+  "description": "Key-value store containing the run summary written after lead rows are pushed.",
+  "collections": {
+    "summary": {
+      "title": "Summary",
+      "description": "Status and counts for the finished home-services run.",
+      "key": "SUMMARY",
+      "contentTypes": ["application/json"]
+    }
+  }
+}

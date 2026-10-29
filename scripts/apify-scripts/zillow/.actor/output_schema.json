@@ -1,0 +1,24 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "Zillow listing agents",
+  "properties": {
+    "results": {
+      "type": "string",
+      "title": "Agents",
+      "description": "One dataset item per unique agent.",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "listings": {
+      "type": "string",
+      "title": "Listings",
+      "description": "Listing records saved on this run.",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/LISTINGS"
+    },
+    "summary": {
+      "type": "string",
+      "title": "Run summary",
+      "description": "Listings found, agents found, agents enriched, and blocked ZIP codes.",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY"
+    }
+  }
+}
