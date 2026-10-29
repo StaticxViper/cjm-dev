@@ -1,4 +1,4 @@
-# Home Services Lead Enricher
+# Home Services / Contractor Leads
 
 Low-volume lead list for one niche and one area. The Actor searches Google Maps with the Playwright session in `scripts/lead_automation/playwright_discovery.py`, then keeps a row only when the issue #127 matcher in `scripts/apify-scripts/google-business/` would accept it. Accepted rows can be enriched from the business website with an email, a website-quality score, and an intent lead score.
 

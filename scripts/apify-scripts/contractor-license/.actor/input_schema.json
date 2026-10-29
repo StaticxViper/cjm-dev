@@ -8,7 +8,7 @@
     "state": {
       "title": "State",
       "type": "string",
-      "description": "Two-letter state code. CA reads the CSLB open file. AZ, NJ, and PA are adapters that stop when the source is a challenge or a closed portal.",
+      "description": "Two-letter state code. CA uses the CSLB license check. AZ, NJ, and PA are adapters that stop when the source is a challenge or a closed portal.",
       "editor": "select",
       "enum": ["CA", "AZ", "NJ", "PA"],
       "enumTitles": [

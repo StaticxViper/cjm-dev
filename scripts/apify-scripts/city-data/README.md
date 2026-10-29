@@ -1,4 +1,4 @@
-# City-Data City Profiles
+# City Data Scraper – Population, Crime & Demographics
 
 Playwright Actor that reads [city-data.com](https://www.city-data.com/) city profile pages and optional crime pages, then pushes one JSON object per city. It wraps `scripts/city_data/city_data_scraper.py` (issue #99). It does not call a paid API and it does not post results to Lovable.
 

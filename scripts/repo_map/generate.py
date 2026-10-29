@@ -13,7 +13,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 GENERATED = REPO / "documentation" / "repo-map" / "generated"
-SKIP_DIRS = {"__pycache__", ".venv", "node_modules"}
+# platform_bundle holds build-time copies of repo modules for an Apify image.
+SKIP_DIRS = {"__pycache__", ".venv", "node_modules", "platform_bundle"}
 SCAN_ROOTS = ("scripts", "helper_scripts")
 MAX_SCRIPT_FILES = 40
 MAX_CALL_EDGES = 80

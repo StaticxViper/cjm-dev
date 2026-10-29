@@ -52,6 +52,123 @@ def _ca_fetch():
     })
 
 
+_FORM = """
+<form>
+<script src="https://www.google.com/recaptcha/api.js"></script>
+<input type="hidden" name="__VIEWSTATE" value="abc" />
+<input type="hidden" name="__VIEWSTATEGENERATOR" value="gen" />
+<input type="hidden" name="__EVENTVALIDATION" value="ev" />
+<input type="text" name="ctl00$MainContent$LicNo" id="MainContent_LicNo" />
+</form>
+"""
+
+
+def _detail_html(license_no, name, status, class_text, issue, expiry, bond_company, bond_amount, insurance, street, city_line):
+    return f"""
+<html><head><title>Check A License - License Detail -CSLB</title></head>
+<body>
+<h1>Contractor's License Detail for License # {license_no}</h1>
+<td id="MainContent_BusInfo">{name}<br />{street}<br />{city_line}<br /></td>
+<td id="MainContent_IssDt">{issue}</td>
+<td id="MainContent_ExpDt">{expiry}</td>
+<td id="MainContent_Status"><strong>{status}</strong></td>
+<td id="MainContent_ClassCellTable"><ul><li><a href="/class">{class_text}</a></li></ul></td>
+<td id="MainContent_BondingCellTable">
+<p>This license filed a Contractor's Bond with {bond_company}.</p>
+<p><strong>Bond Amount: </strong>{bond_amount}</p>
+</td>
+<td id="MainContent_WCStatus"><p>{insurance}</p></td>
+</body></html>
+"""
+
+
+_NORTHWIND = _detail_html(
+    "1000001",
+    "NORTHWIND BUILDERS LLC",
+    "CLEAR",
+    "B",
+    "01/10/2015",
+    "01/31/2027",
+    "SURETY EXAMPLE",
+    "15000",
+    "Exempt",
+    "100 Example St",
+    "Sacramento, CA 95814",
+)
+_ROOFER = _detail_html(
+    "1000002",
+    "PACIFIC ROOFING INC",
+    "CLEAR / Good standing",
+    "C39",
+    "03/02/2018",
+    "03/31/2027",
+    "SURETY EXAMPLE",
+    "25000",
+    "WC Insurance (STATE FUND)",
+    "200 Example Ave",
+    "Oakland, CA 94612",
+)
+_MISSING = """
+<html><head><title>Check A License - License Detail -CSLB</title></head>
+<body><span id="MainContent_ErrMsg" class="text-danger">License Number does not exist.</span></body>
+</html>
+"""
+_NAME_RESULTS = """
+<html><head><title>Contractor Name Search Results - CSLB</title></head>
+<body>
+<span id="MainContent_dlMain_lblName_0">NORTHWIND BUILDERS LLC</span>
+<a id="MainContent_dlMain_hlLicense_0" href="/OnlineServices/CheckLicenseII/LicenseDetail.aspx?LicNum=1000001">1000001</a>
+<span id="MainContent_dlMain_lblLicenseStatus_0">CLEAR</span>
+<span id="MainContent_dlMain_lblName_1">NORTHWIND ELECTRIC LLC</span>
+<a id="MainContent_dlMain_hlLicense_1" href="/OnlineServices/CheckLicenseII/LicenseDetail.aspx?LicNum=1000003">1000003</a>
+<span id="MainContent_dlMain_lblLicenseStatus_1">CLEAR</span>
+</body></html>
+"""
+
+
+class TargetedFetch:
+    """Form GET, one POST body, and detail pages. Never serves the master file."""
+
+    def __init__(self, post_html, post_url, details=None):
+        self.post_html = post_html
+        self.post_url = post_url
+        self.details = details or {}
+        self.urls = []
+        self.posted = 0
+
+    def __call__(self, url, data=None):
+        self.urls.append(url)
+        if data is not None:
+            self.posted += 1
+            return {
+                "status": 200,
+                "text": self.post_html,
+                "error": None,
+                "content_type": "text/html",
+                "final_url": self.post_url,
+            }
+        if url in self.details:
+            return {
+                "status": 200,
+                "text": self.details[url],
+                "error": None,
+                "content_type": "text/html",
+                "final_url": url,
+            }
+        if url == ca.CHECK_URL:
+            return {
+                "status": 200,
+                "text": _FORM,
+                "error": None,
+                "content_type": "text/html",
+                "final_url": url,
+            }
+        return {"status": 404, "text": "missing", "error": None, "content_type": "text/html", "final_url": url}
+
+    def stream_lines(self, url):
+        raise AssertionError(url)
+
+
 def _run(**actor_input):
     config = mapping.actor_input_to_config(actor_input)
     fetch = actor_input.pop("_fetch")
@@ -83,10 +200,16 @@ class TestInput(unittest.TestCase):
 
 
 class TestCalifornia(unittest.TestCase):
+    def _license_fetch(self, page, page_url):
+        return TargetedFetch(page, page_url)
+
     def test_license_hit_is_billable(self):
-        fetch = _ca_fetch()
+        page_url = ca.DETAIL_BASE + "1000001"
+        fetch = self._license_fetch(_NORTHWIND, page_url)
         rows, summary = _run(state="CA", licenseNo="0001000001", _fetch=fetch)
-        self.assertEqual(fetch.urls, [ca.CSV_URL])
+        self.assertNotIn(ca.CSV_URL, fetch.urls)
+        self.assertEqual(fetch.posted, 1)
+        self.assertEqual(fetch.urls[0], ca.CHECK_URL)
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row["sourceStatus"], "found")
@@ -99,16 +222,29 @@ class TestCalifornia(unittest.TestCase):
         self.assertEqual(row["bond"], "Contractor: SURETY EXAMPLE 15000")
         self.assertEqual(row["insurance"], "Exempt")
         self.assertEqual(row["address"], "100 Example St, Sacramento, CA, 95814")
-        self.assertEqual(row["source_url"], ca.PORTAL_URL)
+        self.assertEqual(row["source_url"], page_url)
         self.assertTrue(row["ok"])
         self.assertTrue(row["scrapedAt"])
         self.assertTrue(mapping.billable_row(row))
         self.assertEqual(summary["billed"], 1)
         self.assertEqual(summary["status"], "ok")
 
+    def test_rejected_page_is_a_free_error(self):
+        page = "<html><title>Request Rejected</title><body>The requested URL was rejected.</body></html>"
+        fetch = self._license_fetch(page, ca.DETAIL_BASE + "99999999")
+        rows, summary = _run(state="CA", licenseNo="99999999", _fetch=fetch)
+        self.assertNotIn(ca.CSV_URL, fetch.urls)
+        self.assertEqual(rows[0]["sourceStatus"], "error")
+        self.assertIn("rejected", rows[0]["error"])
+        self.assertEqual(summary["billed"], 0)
+        self.assertEqual(summary["errors"], 1)
+
     def test_missing_license_is_a_free_not_found(self):
-        rows, summary = _run(state="CA", licenseNo="99999999", _fetch=_ca_fetch())
+        fetch = self._license_fetch(_MISSING, ca.DETAIL_BASE + "99999999")
+        rows, summary = _run(state="CA", licenseNo="99999999", _fetch=fetch)
+        self.assertNotIn(ca.CSV_URL, fetch.urls)
         self.assertEqual(rows[0]["sourceStatus"], "not_found")
+        self.assertIn("does not exist", rows[0]["error"])
         self.assertFalse(rows[0]["ok"])
         self.assertFalse(mapping.billable_row(rows[0]))
         self.assertEqual(summary["notFound"], 1)
@@ -116,29 +252,65 @@ class TestCalifornia(unittest.TestCase):
         self.assertEqual(summary["status"], "not_found")
 
     def test_name_and_trade_filters(self):
-        rows, summary = _run(state="CA", name="Northwind Builders LLC", trade="B", _fetch=_ca_fetch())
+        detail_url = "https://www.cslb.ca.gov/OnlineServices/CheckLicenseII/LicenseDetail.aspx?LicNum=1000001"
+        fetch = TargetedFetch(_NAME_RESULTS, ca.CHECK_URL, {detail_url: _NORTHWIND})
+        rows, summary = _run(state="CA", name="Northwind Builders LLC", trade="B", _fetch=fetch)
+        self.assertNotIn(ca.CSV_URL, fetch.urls)
         self.assertEqual([row["license_no"] for row in rows], ["1000001"])
+        self.assertEqual(summary["found"], 1)
         roofers, _summary = _run(state="CA", trade="C39", _fetch=_ca_fetch())
         self.assertEqual(roofers[0]["name"], "PACIFIC ROOFING INC")
         self.assertEqual(roofers[0]["status"], "CLEAR / Good standing")
         self.assertEqual(roofers[0]["insurance"], "WC Insurance (STATE FUND)")
-        self.assertEqual(summary["found"], 1)
 
     def test_license_and_other_name_do_not_match(self):
+        fetch = self._license_fetch(_NORTHWIND, ca.DETAIL_BASE + "1000001")
         rows, _summary = _run(
             state="CA",
             licenseNo="1000001",
             name="Pacific Roofing",
-            _fetch=_ca_fetch(),
+            _fetch=fetch,
         )
+        self.assertNotIn(ca.CSV_URL, fetch.urls)
         self.assertEqual(rows[0]["sourceStatus"], "not_found")
 
     def test_max_results_truncates(self):
-        rows, summary = _run(state="CA", name="Northwind", maxResults=1, _fetch=_ca_fetch())
+        first = "https://www.cslb.ca.gov/OnlineServices/CheckLicenseII/LicenseDetail.aspx?LicNum=1000001"
+        fetch = TargetedFetch(_NAME_RESULTS, ca.CHECK_URL, {first: _NORTHWIND})
+        rows, summary = _run(state="CA", name="Northwind", maxResults=1, _fetch=fetch)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["license_no"], "1000001")
         self.assertTrue(summary["truncated"])
         self.assertEqual(summary["billed"], 1)
+        self.assertNotIn("1000003", " ".join(fetch.urls))
+
+    def test_trade_only_can_stream_and_stop(self):
+        header = _text("ca_master.csv").splitlines()[0]
+        first = _text("ca_master.csv").splitlines()[1]
+        extra = first.replace("1000001", "1000009")
+        lines = [header, first, extra, "NOT_READ"]
+        seen = {"calls": 0, "yielded": 0}
+
+        def fetch(url, data=None):
+            raise AssertionError(url)
+
+        def stream_lines(url):
+            seen["calls"] += 1
+            self.assertEqual(url, ca.CSV_URL)
+
+            def _gen():
+                for line in lines:
+                    seen["yielded"] += 1
+                    yield line
+
+            return _gen()
+
+        fetch.stream_lines = stream_lines
+        rows, summary = _run(state="CA", trade="B", maxResults=1, _fetch=fetch)
+        self.assertEqual(seen["calls"], 1)
+        self.assertEqual(rows[0]["license_no"], "1000001")
+        self.assertTrue(summary["truncated"])
+        self.assertLess(seen["yielded"], len(lines))
 
     def test_robots_and_request_cap_are_free(self):
         blocked = MapFetch({})

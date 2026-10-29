@@ -1,7 +1,8 @@
 """Zillow listing-agent Actor.
 
-On Apify, Zillow and enrichment browsers use Actor.create_proxy_configuration.
-A local run uses the same input and does not open a proxy. Dataset rows are
+On Apify, Zillow pages are HTTP requests through Actor.create_proxy_configuration.
+A blocked response is retried once on a second residential session. A local
+run uses the same input and does not open a proxy. Dataset rows are
 agents. LISTINGS and SUMMARY go to the default key-value store. CHECKPOINT
 is rewritten after each search page so a migrated run can resume.
 """
@@ -20,7 +21,7 @@ try:
         SUMMARY_KEY,
         billable_row,
         on_platform,
-        open_playwright_proxy,
+        open_http_proxy_urls,
         proxy_actor_input,
         run_collected,
         seed_checkpoint,
@@ -35,7 +36,7 @@ except ImportError:
         SUMMARY_KEY,
         billable_row,
         on_platform,
-        open_playwright_proxy,
+        open_http_proxy_urls,
         proxy_actor_input,
         run_collected,
         seed_checkpoint,
@@ -73,7 +74,7 @@ async def main():
         actor_input = await Actor.get_input() or {}
         at_home = on_platform()
         try:
-            proxy = await open_playwright_proxy(Actor, actor_input, at_home=at_home)
+            proxy_urls = await open_http_proxy_urls(Actor, actor_input, at_home=at_home)
         except Exception as exc:
             log.critical("Zillow proxy setup failed: %s", exc)
             summary = {
@@ -86,8 +87,14 @@ async def main():
             await Actor.set_value(SUMMARY_KEY, summary)
             raise RuntimeError(str(exc)) from exc
         if at_home:
-            groups = ",".join(proxy_actor_input(actor_input)["apifyProxyGroups"])
-            log.info("Zillow requests use Apify Proxy group %s.", groups)
+            proxy_input = proxy_actor_input(actor_input)
+            groups = ",".join(proxy_input["apifyProxyGroups"])
+            log.info(
+                "Zillow requests use HTTP through Apify Proxy group %s country %s. "
+                "One spare session is reserved for a single retry.",
+                groups,
+                proxy_input.get("apifyProxyCountry") or "",
+            )
         else:
             log.info("Local run. Zillow requests are direct.")
 
@@ -110,7 +117,7 @@ async def main():
             collected = await asyncio.to_thread(
                 run_collected,
                 actor_input,
-                proxy=proxy,
+                proxy_urls=proxy_urls,
                 output_dir=output_dir,
                 checkpoint_path=checkpoint_path,
                 on_checkpoint=store.save,

@@ -2,7 +2,9 @@
   "version": 1,
   "ignore_paths": [
     "scripts/repo_map/**",
-    "scripts/script_manager/**"
+    "scripts/script_manager/**",
+    "scripts/apify-scripts/*/bundle_context.py",
+    "scripts/apify-scripts/*/platform_bundle/**"
   ],
   "discover_roots": ["scripts", "helper_scripts"],
   "sinks": {

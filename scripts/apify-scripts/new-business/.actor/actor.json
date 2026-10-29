@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "new-business",
-  "title": "New Business Entity Filings",
+  "title": "New Business Leads – Newly Registered LLCs & Corporations",
   "description": "Recently formed entities from verified Secretary of State open-data feeds. Website and email enrichment is optional and billed only when a value is found.",
   "version": "0.1",
   "buildTag": "latest",

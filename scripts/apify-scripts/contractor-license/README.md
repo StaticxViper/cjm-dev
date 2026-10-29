@@ -1,16 +1,16 @@
-# Contractor License Lookup
+# Contractor License Lookup – Verify License Status (CA)
 
-Public-record contractor license lookup for one state per run. Issue #155. California reads the Contractors State License Board open master file over HTTP. Arizona, New Jersey, and Pennsylvania each have a small adapter. A Cloudflare or Turnstile challenge, and a portal that does not publish an open file, push one status row and exit 0. This Actor does not launch Chromium, rotate proxies, or solve CAPTCHAs.
+Public-record contractor license lookup for one state per run. Issue #155. California posts the official CSLB Check a License form for a license number or business name. Arizona, New Jersey, and Pennsylvania each have a small adapter. A Cloudflare or Turnstile challenge, and a portal that does not publish an open file, push one status row and exit 0. This Actor does not launch Chromium, rotate proxies, or solve CAPTCHAs.
 
 Sheriff-sale, foreclosure, and probate feeds are out of scope.
 
-Low-volume research. The California file is about 21 MB. Keep `delaySeconds` at 2 or higher.
+Low-volume research. A California license or name check is a few HTML pages. Keep `delaySeconds` at 2 or higher.
 
 ## What it does
 
 | State | Board | What the adapter does |
 |-------|--------|------------------------|
-| CA | Contractors State License Board | Downloads `MasterLicenseData.csv` from the public data portal and filters it. No license-check form. |
+| CA | Contractors State License Board | Posts the official Check a License form by license number or business name, then reads the detail page. The statewide master file is not downloaded for those lookups. A trade with no license number and no name streams that file and stops at the result cap. |
 | AZ | Registrar of Contractors | Reads the posting-list page and the dated "All Current Contractors" CSV when that HTML is served. A Cloudflare challenge stops the run. The Salesforce search is not used. |
 | NJ | Department of Community Affairs | Checks the registered new-home builder page. That page now links a service portal that does not return records anonymously, so the adapter returns `unsupported` and does not open the portal. Consumer Affairs mylicense (home-improvement registrations) is a different board and is not requested. |
 | PA | Attorney General, Home Improvement Consumer Protection Act | Confirmed board: there is no statewide general-contractor license. The HIC search page loads Cloudflare Turnstile. The adapter returns `captcha` and does not submit the form. PALS and municipal licenses are not included. |
@@ -34,7 +34,7 @@ A name search ignores punctuation and company suffixes such as LLC. A license nu
 }
 ```
 
-`state` is required (`CA`, `AZ`, `NJ`, or `PA`). Provide `licenseNo`, `name`, `trade`, or a combination. `license_no` is accepted as an alias of `licenseNo`. `maxResults` defaults to 25 and cannot exceed 50. `maxRequests` defaults to 4 (robots.txt counts) and cannot exceed 8. `headless` is kept for the shared Actor contract and has no effect, because no browser is launched. The sample license number is a miss against the live master file, so a local run of this fixture is a free `not_found`.
+`state` is required (`CA`, `AZ`, `NJ`, or `PA`). Provide `licenseNo`, `name`, `trade`, or a combination. `license_no` is accepted as an alias of `licenseNo`. `maxResults` defaults to 25 and cannot exceed 50. `maxRequests` defaults to 4 (robots.txt counts) and cannot exceed 8. `headless` is kept for the shared Actor contract and has no effect, because no browser is launched. The sample license number is not on file, so a run of this fixture is a free `not_found` from the license-check page.
 
 ## Output
 
@@ -77,8 +77,8 @@ Dates stay in the format the board published. Bond and insurance are blank when 
 
 ## Limitations
 
-- California's master file includes renewed licenses and licenses that are expired but still renewable. Cancelled, revoked, and expired-nonrenewable licenses are absent. A `not_found` is not proof that a license never existed.
-- One California download per run, capped at 80 MB. The file observed while packaging was about 21 MB.
+- California's license check is the current board record for that license number or business name. A `not_found` is not proof that a license never existed. The trade-only fallback still reads the master file, which omits cancelled, revoked, and expired-nonrenewable licenses, and it streams that file instead of loading it.
+- A license or name check does not download the statewide file. The trade-only stream stops once `maxResults` matches are kept and is still capped at 80 MB.
 - Arizona's posting-list URL changes with the file date. The adapter reads the link from the page. If that page is a Cloudflare challenge, status is `captcha` and the CSV is not requested.
 - Arizona's current file is active contractors only.
 - New Jersey returns `unsupported` until DCA publishes a verified open file. The service portal is not scraped.
@@ -89,13 +89,13 @@ Dates stay in the format the board published. Bond and insurance are blank when 
 
 ## Robots and terms
 
-California's `robots.txt` returned 404 while packaging, so the master-file URL is requested. The Actor still fetches `robots.txt` for each host and skips a disallowed path. Arizona's robots response was itself a Cloudflare challenge; that is returned as `captcha` and the file is not downloaded. New Jersey's robots file does not disallow the builders page. Pennsylvania's search page is fetched only to detect Turnstile and is not submitted.
+California's `robots.txt` returned 404 while packaging, so the license-check URL is requested. The Actor still fetches `robots.txt` for each host and skips a disallowed path. The master file is requested only for a trade search that has no license number and no business name. Arizona's robots response was itself a Cloudflare challenge; that is returned as `captcha` and the file is not downloaded. New Jersey's robots file does not disallow the builders page. Pennsylvania's search page is fetched only to detect Turnstile and is not submitted.
 
 CSLB asks readers to use Instant License Check for the newest status. The Registrar of Contractors asks readers to confirm a posting with the office before acting on it. Registration under Pennsylvania's Home Improvement Consumer Protection Act is not an endorsement by the Attorney General.
 
 ## Pricing
 
-Pay per event. The primary event is `license` at $0.05, charged only when `sourceStatus` is `found` and `license_no` is set. `not_found`, `unsupported`, `captcha`, `robots_disallowed`, and `error` rows are stored and are not a success charge. Dataset items are not a charge event. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. Memory default is 1024 MB and the default timeout is 600 seconds.
+Pay per event. The primary event is `license` at $0.05, charged only when `sourceStatus` is `found` and `license_no` is set. `not_found`, `unsupported`, `captcha`, `robots_disallowed`, and `error` rows are stored and are not a success charge. Dataset items are not a charge event. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. Memory default is 512 MB and the default timeout is 600 seconds.
 
 ## Categories
 

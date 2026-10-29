@@ -322,6 +322,40 @@ def _walk(node):
             yield from _walk(item)
 
 
+def _loads_object(raw):
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if isinstance(parsed, (dict, list)):
+        return parsed
+    return None
+
+
+def _expand_cache_strings(node, depth=0):
+    """Decode JSON strings such as gdpClientCache so attribution objects can be walked."""
+    extras = []
+    if depth > 6:
+        return extras
+    if isinstance(node, dict):
+        values = node.items()
+    elif isinstance(node, list):
+        values = ((None, item) for item in node)
+    else:
+        return extras
+    for key, value in values:
+        if isinstance(value, str) and value[:1] in "{[" and (
+            key == "gdpClientCache" or "attributionInfo" in value
+        ):
+            parsed = _loads_object(value)
+            if parsed is not None:
+                extras.append(parsed)
+                extras.extend(_expand_cache_strings(parsed, depth + 1))
+            continue
+        extras.extend(_expand_cache_strings(value, depth + 1))
+    return extras
+
+
 def _json_blobs(html):
     blobs = []
     for pattern in (_NEXT_DATA_RE, _LD_JSON_RE):
@@ -329,10 +363,11 @@ def _json_blobs(html):
             raw = (match.group(1) or "").strip()
             if not raw:
                 continue
-            try:
-                blobs.append(json.loads(raw))
-            except json.JSONDecodeError:
+            parsed = _loads_object(raw)
+            if parsed is None:
                 continue
+            blobs.append(parsed)
+            blobs.extend(_expand_cache_strings(parsed))
     return blobs
 
 

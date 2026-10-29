@@ -1,4 +1,4 @@
-# Building Permit Leads
+# Building Permits Scraper – Roofing, Solar, Pool & Remodel Leads
 
 Recent building permits from verified city and county open-data portals. Issue #128. Aimed at contractor and exterior-cleaning leads: roof, siding, pool, deck, solar, and new construction.
 

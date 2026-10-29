@@ -5,3 +5,4 @@ beautifulsoup4
 python-dotenv
 httpx
 requests
+curl_cffi==0.17.0
