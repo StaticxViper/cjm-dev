@@ -1,0 +1,19 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "Google Maps business matches",
+  "description": "Match rows from low-volume Google Maps name and location lookups, plus the run summary.",
+  "properties": {
+    "results": {
+      "type": "string",
+      "title": "Results",
+      "description": "Dataset containing all scraped items",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "files": {
+      "type": "string",
+      "title": "Files",
+      "description": "Key-value store containing the SUMMARY record for this run",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/keys"
+    }
+  }
+}

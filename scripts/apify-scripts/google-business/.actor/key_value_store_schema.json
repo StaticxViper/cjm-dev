@@ -1,0 +1,13 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "Google Maps run summary",
+  "description": "Key-value store containing the run summary written after Maps match rows are pushed.",
+  "collections": {
+    "summary": {
+      "title": "Summary",
+      "description": "Status and counts for the finished Google Maps match run.",
+      "key": "SUMMARY",
+      "contentTypes": ["application/json"]
+    }
+  }
+}

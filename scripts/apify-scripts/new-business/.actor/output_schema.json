@@ -1,0 +1,19 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "New business entity filings",
+  "description": "Recently formed entities from Secretary of State open-data feeds, plus the run summary.",
+  "properties": {
+    "results": {
+      "type": "string",
+      "title": "Results",
+      "description": "Dataset containing all scraped items",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "files": {
+      "type": "string",
+      "title": "Files",
+      "description": "Key-value store containing the SUMMARY record for this run",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/keys"
+    }
+  }
+}
