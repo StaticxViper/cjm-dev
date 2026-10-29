@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "contractor-license",
-  "title": "Contractor License Lookup",
+  "title": "Contractor License Lookup – Verify License Status (CA)",
   "description": "Public-record contractor license lookup. California uses the CSLB license check. Challenged or closed state portals return a status row and are not billed.",
   "version": "0.2",
   "buildTag": "latest",

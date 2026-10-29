@@ -1,4 +1,4 @@
-# Zillow Listing Agents
+# Zillow Real Estate Agent Scraper – Listing Agents by ZIP
 
 Search Zillow by ZIP code, keep each listing, and return the listing agent. Agents are deduped across listings. When an agent is missing an email or a phone, the run looks that contact up on Google, the agent site, and the brokerage site, and stores the page URL and a confidence score.
 

@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "permits",
-  "title": "Building Permit Leads",
+  "title": "Building Permits Scraper – Roofing, Solar, Pool & Remodel Leads",
   "description": "Recent building permits from verified city open-data portals for contractor and exterior-cleaning leads.",
   "version": "0.1",
   "buildTag": "latest",

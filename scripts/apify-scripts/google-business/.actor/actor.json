@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "google-business",
-  "title": "Google Maps Business Match",
+  "title": "Google Maps Business Leads – Phone, Website & Rating",
   "description": "Low-volume Google Maps lookup with name and location confidence checks. Does not scrape Google web search.",
   "version": "0.3",
   "buildTag": "latest",

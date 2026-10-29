@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "zillow-agents",
-  "title": "Zillow Listing Agents",
+  "title": "Zillow Real Estate Agent Scraper – Listing Agents by ZIP",
   "description": "Search Zillow by ZIP code, collect listing agents, and fill a missing email or phone from public pages. Uses Apify Proxy on the platform.",
   "version": "0.1",
   "buildTag": "latest",

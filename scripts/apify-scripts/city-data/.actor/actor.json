@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "city-data",
-  "title": "City-Data City Profiles",
+  "title": "City Data Scraper – Population, Crime & Demographics",
   "description": "Playwright scrape of city-data.com city and crime pages into one JSON row per city.",
   "version": "0.3",
   "buildTag": "latest",

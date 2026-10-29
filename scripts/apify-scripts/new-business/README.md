@@ -1,4 +1,4 @@
-# New Business Entity Filings
+# New Business Leads – Newly Registered LLCs & Corporations
 
 Recently formed entities from verified Secretary of State and state business open-data feeds. Issue #128. The Actor imports `scripts/lead_automation/new_business_pipeline.py`, `new_business_dedupe.py`, `new_business_website.py`, and `new_business_email.py`. Those CLIs are unchanged.
 

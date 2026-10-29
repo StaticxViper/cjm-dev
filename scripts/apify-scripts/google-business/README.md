@@ -1,4 +1,4 @@
-# Google Maps Business Match
+# Google Maps Business Leads – Phone, Website & Rating
 
 Low-volume Google Maps lookup for a business name plus a US state. The Actor searches `https://www.google.com/maps/search/`, opens place pages, and scores each listing with the same name and location rules as issue #127. A row is a `match` only when that scorer would accept it. The first Maps card is never used as a fallback.
 

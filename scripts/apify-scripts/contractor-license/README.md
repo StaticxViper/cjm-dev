@@ -1,4 +1,4 @@
-# Contractor License Lookup
+# Contractor License Lookup – Verify License Status (CA)
 
 Public-record contractor license lookup for one state per run. Issue #155. California posts the official CSLB Check a License form for a license number or business name. Arizona, New Jersey, and Pennsylvania each have a small adapter. A Cloudflare or Turnstile challenge, and a portal that does not publish an open file, push one status row and exit 0. This Actor does not launch Chromium, rotate proxies, or solve CAPTCHAs.
 

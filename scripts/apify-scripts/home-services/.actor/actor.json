@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "home-services",
-  "title": "Home Services Lead Enricher",
+  "title": "Home Services / Contractor Leads",
   "description": "Niche and area lead list from Google Maps, with website email, quality, and intent score. Accepted matches only. Does not call the Places API.",
   "version": "0.1",
   "buildTag": "latest",
