@@ -9,7 +9,7 @@
     "generatedBy": "Cursor with Grok 4.7"
   },
   "dockerfile": "../Dockerfile",
-  "dockerContextDir": "../../../..",
+  "dockerContextDir": "..",
   "readme": "../README.md",
   "changelog": "./CHANGELOG.md",
   "input": "./input_schema.json",
