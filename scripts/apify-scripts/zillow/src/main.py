@@ -87,11 +87,13 @@ async def main():
             await Actor.set_value(SUMMARY_KEY, summary)
             raise RuntimeError(str(exc)) from exc
         if at_home:
-            groups = ",".join(proxy_actor_input(actor_input)["apifyProxyGroups"])
+            proxy_input = proxy_actor_input(actor_input)
+            groups = ",".join(proxy_input["apifyProxyGroups"])
             log.info(
-                "Zillow requests use HTTP through Apify Proxy group %s. "
+                "Zillow requests use HTTP through Apify Proxy group %s country %s. "
                 "One spare session is reserved for a single retry.",
                 groups,
+                proxy_input.get("apifyProxyCountry") or "",
             )
         else:
             log.info("Local run. Zillow requests are direct.")

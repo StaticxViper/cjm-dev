@@ -119,7 +119,11 @@ def proxy_actor_input(actor_input):
     payload = {"useApifyProxy": True, "apifyProxyGroups": cleaned}
     country = config.get("apifyProxyCountry")
     if isinstance(country, str) and country.strip():
-        payload["apifyProxyCountry"] = country.strip()
+        payload["apifyProxyCountry"] = country.strip().upper()
+    else:
+        # A ZIP search is US inventory. An unpinned residential exit is often
+        # outside the US and Zillow answers that with an empty results shell.
+        payload["apifyProxyCountry"] = "US"
     return payload
 
 

@@ -96,7 +96,7 @@ A local run also writes dated files next to the pipeline, for example `scripts/z
 
 ## Proxy
 
-On Apify (`APIFY_IS_AT_HOME=1`) Zillow search and listing pages are Chrome-impersonation HTTP GETs through `Actor.create_proxy_configuration()`. The default group is `RESIDENTIAL`. Another group in `proxyConfiguration.apifyProxyGroups` replaces it. The listing data is in the page HTML, so the run does not launch Chromium for those pages. A headless browser is fingerprinted even on a residential IP, and a plain Python TLS handshake is too. The impersonation session keeps cookies from one homepage request, then fetches the search and listing documents.
+On Apify (`APIFY_IS_AT_HOME=1`) Zillow search and listing pages are Chrome-impersonation HTTP GETs through `Actor.create_proxy_configuration()`. The default group is `RESIDENTIAL` and the default exit country is `US`. Another group in `proxyConfiguration.apifyProxyGroups` replaces the group. `apifyProxyCountry` replaces the country. The listing data is in the page HTML, so the run does not launch Chromium for those pages. A headless browser is fingerprinted even on a residential IP, and a plain Python TLS handshake is too. The search document is the first request on a session. Before that request, the ZIP is resolved to a Zillow region so the exit city does not replace the search.
 
 The first residential session is reused for the run. If that session is blocked, the same URL is retried once on a second session. There is no further rotation, no unblocker group, and no browser farm. Enrichment, when it is on, can still open a browser for a missing phone or email and uses the first proxy URL.
 
