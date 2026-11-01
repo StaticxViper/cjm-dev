@@ -466,6 +466,30 @@ def _parse_mem(text):
     return 0.0
 
 
+def _records(folder):
+    return [path for path in sorted(folder.glob("*.json")) if not path.name.startswith("__")]
+
+
+def count_items(storage):
+    return len(_records(storage / "datasets" / "default"))
+
+
+def read_charging_log(storage):
+    """Sum the local SDK charging log. Returns (total USD, {event: count})."""
+    charge = Decimal()
+    charged = {}
+    for path in _records(storage / "datasets" / "charging-log"):
+        row = read_json(path)
+        event = str(row.get("event_name", ""))
+        # apify-* events are synthetic per-row events; these Actors do not bill per dataset item.
+        if event.startswith("apify-"):
+            continue
+        count = int(row.get("charged_count", 1))
+        charged[event] = charged.get(event, 0) + count
+        charge += Decimal(str(row.get("event_price_usd", 0))) * count
+    return charge, charged
+
+
 def _docker(*args, check=True, capture=True):
     return subprocess.run(["docker", *args], check=check, capture_output=capture, text=True)
 
@@ -478,7 +502,8 @@ def smoke_docker(actor, budget, image):
     events = read_json(actor / ".actor" / "pay_per_event.json").get("actorChargeEvents", {})
     pricing = {"pricingModel": "PAY_PER_EVENT", "pricingPerEvent": {"actorChargeEvents": events}}
     name = f"smoke-{actor.name}-{os.getpid()}"
-    with tempfile.TemporaryDirectory(prefix=f"smoke-{actor.name}-") as tmp:
+    # The container user owns what it writes, so the host may not be able to delete it.
+    with tempfile.TemporaryDirectory(prefix=f"smoke-{actor.name}-", ignore_cleanup_errors=True) as tmp:
         storage = Path(tmp) / "storage"
         kvs = storage / "key_value_stores" / "default"
         kvs.mkdir(parents=True)
@@ -494,7 +519,8 @@ def smoke_docker(actor, budget, image):
             "-e", "CRAWLEE_STORAGE_DIR=/home/myuser/storage",
             "-e", "ACTOR_TEST_PAY_PER_EVENT=true",
             "-e", f"APIFY_ACTOR_PRICING_INFO={json.dumps(pricing)}",
-            "-e", "APIFY_CHARGED_ACTOR_EVENT_COUNTS={}",
+            # The SDK reads an empty object as unset and then ignores the pricing info.
+            "-e", f"APIFY_CHARGED_ACTOR_EVENT_COUNTS={json.dumps({event: 0 for event in events})}",
             image,
         )
         peak = [0.0]
@@ -533,24 +559,12 @@ def smoke_docker(actor, budget, image):
             status = "SUCCEEDED"
         else:
             status = f"FAILED (exit {state.get('ExitCode')})"
-        items = [
-            path for path in (storage / "datasets" / "default").glob("*.json")
-            if not path.name.startswith("__")
-        ]
-        charge = Decimal()
-        charged = {}
-        for path in (storage / "datasets" / "charging-log").glob("*.json"):
-            if path.name.startswith("__"):
-                continue
-            row = read_json(path)
-            count = int(row.get("charged_count", 1))
-            charged[row["event_name"]] = charged.get(row["event_name"], 0) + count
-            charge += Decimal(str(row.get("event_price_usd", 0))) * count
+        charge, charged = read_charging_log(storage)
         result = {
             "status": status,
             "durationSecs": duration,
             "memoryMaxMbytes": peak[0] or None,
-            "itemCount": len(items),
+            "itemCount": count_items(storage),
             "chargeUsd": charge,
             "chargedEvents": charged,
         }

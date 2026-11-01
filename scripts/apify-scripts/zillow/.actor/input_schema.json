@@ -7,6 +7,7 @@
     "zip_codes": {
       "title": "ZIP codes",
       "type": "array",
+      "maxItems": 50,
       "description": "US ZIP codes to search. Listings are collected across every ZIP until max_listings is reached.",
       "editor": "stringList",
       "prefill": ["08002"]
@@ -14,17 +15,19 @@
     "max_listings": {
       "title": "Max listings",
       "type": "integer",
+      "maximum": 1000,
       "description": "Total listings to collect across all ZIP codes.",
       "editor": "number",
-      "default": 100,
+      "default": 25,
       "minimum": 1
     },
     "max_agents": {
       "title": "Max agents",
       "type": "integer",
+      "maximum": 500,
       "description": "Total unique agents to return. The run stops once this many agents are collected.",
       "editor": "number",
-      "default": 50,
+      "default": 10,
       "minimum": 1
     },
     "forSaleByAgent": {

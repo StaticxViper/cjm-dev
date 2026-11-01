@@ -1,0 +1,145 @@
+name: Apify Actor builds
+
+# Builds every Actor image from its own folder and runs fixtures/INPUT.json
+# against fixtures/budget.json. See scripts/apify-scripts/README.md.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/apify-scripts/**"
+      - "helper_scripts/**"
+      - "scripts/lead_automation/**"
+      - "scripts/city_data/**"
+      - "scripts/zillow_automation/**"
+      - "scripts/opp_finder_v2/**"
+      - ".github/workflows/apify_actors.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/apify-scripts/**"
+      - "helper_scripts/**"
+      - "scripts/lead_automation/**"
+      - "scripts/city_data/**"
+      - "scripts/zillow_automation/**"
+      - "scripts/opp_finder_v2/**"
+      - ".github/workflows/apify_actors.yml"
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      actors:
+        description: "Actor folders, space separated. Empty means all."
+        required: false
+        default: ""
+      platform:
+        description: "Also apify push (build tag ci-smoke) and run the platform smoke. Needs APIFY_TOKEN."
+        type: boolean
+        default: false
+
+concurrency:
+  group: apify-actors-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Bundle and budget check
+    runs-on: ubuntu-latest
+    outputs:
+      actors: ${{ steps.list.outputs.actors }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Check bundles, Dockerfiles, input limits, and budgets
+        run: python scripts/apify-scripts/actor_build.py check
+      - name: List Actors
+        id: list
+        env:
+          WANTED: ${{ github.event.inputs.actors }}
+        run: |
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os, subprocess
+          names = json.loads(subprocess.check_output(
+              ["python", "scripts/apify-scripts/actor_build.py", "list"], text=True))
+          wanted = (os.environ.get("WANTED") or "").split()
+          unknown = sorted(set(wanted) - set(names))
+          if unknown:
+              raise SystemExit(f"Unknown Actor folder: {' '.join(unknown)}")
+          print("actors=" + json.dumps(wanted or names))
+          EOF
+
+  smoke:
+    name: ${{ matrix.actor }} build and fixture smoke
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        actor: ${{ fromJSON(needs.check.outputs.actors) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Build the image from the Actor folder only
+        run: docker build -t "cjm-actor-${{ matrix.actor }}:smoke" "scripts/apify-scripts/${{ matrix.actor }}"
+      - name: Import every module from the bundle inside the image
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" --entrypoint python \
+            "cjm-actor-${{ matrix.actor }}:smoke" \
+            /repo/scripts/apify-scripts/actor_build.py probe --actor-dir /home/myuser --repo /repo
+      - name: Fixture smoke against fixtures/budget.json
+        run: |
+          python scripts/apify-scripts/actor_build.py smoke "${{ matrix.actor }}" \
+            --image "cjm-actor-${{ matrix.actor }}:smoke" --report "smoke-${{ matrix.actor }}.json"
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.actor }}
+          path: smoke-${{ matrix.actor }}.json
+          if-no-files-found: ignore
+
+  platform:
+    name: ${{ matrix.actor }} platform smoke
+    needs: [check, smoke]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.platform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        actor: ${{ fromJSON(needs.check.outputs.actors) }}
+    env:
+      APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install the Apify CLI and client
+        run: |
+          npm install -g apify-cli
+          pip install "apify-client>=2.5,<4"
+      - name: Push from the Actor folder (build tag ci-smoke, latest is untouched)
+        working-directory: scripts/apify-scripts/${{ matrix.actor }}
+        run: |
+          apify login --token "$APIFY_TOKEN"
+          apify push --build-tag ci-smoke
+      - name: Platform fixture smoke against fixtures/budget.json
+        run: |
+          python scripts/apify-scripts/actor_build.py smoke "${{ matrix.actor }}" --platform \
+            --build ci-smoke --report "platform-${{ matrix.actor }}.json"
+      - name: Upload platform report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-${{ matrix.actor }}
+          path: platform-${{ matrix.actor }}.json
+          if-no-files-found: ignore

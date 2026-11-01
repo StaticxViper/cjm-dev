@@ -177,8 +177,8 @@ def read_run_input(actor_input):
     zip_codes = _string_list(_present(raw, "zip_codes", "zipCodes"))
     if not zip_codes:
         raise ValueError("zip_codes is required.")
-    max_listings = _required_cap(raw, ("max_listings", "maxListings"), 100, "max_listings")
-    max_agents = _required_cap(raw, ("max_agents", "maxAgents"), 50, "max_agents")
+    max_listings = _required_cap(raw, ("max_listings", "maxListings"), 25, "max_listings")
+    max_agents = _required_cap(raw, ("max_agents", "maxAgents"), 10, "max_agents")
     criteria = {
         "zipCodes": zip_codes,
         "resultsLimit": 0,

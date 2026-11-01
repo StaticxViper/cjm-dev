@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `maxCities` now defaults to 5 (max 50), and `cities` accepts up to 50 entries.
+- The image builds from this folder only and now includes the browser helpers that `helper_scripts.browser` loads on import.
+
 ## 0.3
 
 - A blocked city page retries once through Apify Proxy when the spend cap allows it. CAPTCHA solving stays off unless allowCaptcha is true and the cap covers a solve.

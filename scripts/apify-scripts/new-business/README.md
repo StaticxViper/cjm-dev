@@ -37,7 +37,7 @@ A robots disallow is not retried through a proxy. If the run is still blocked an
   "formedSince": "2026-09-01",
   "entityTypes": [],
   "enrichWebsite": false,
-  "maxResults": 50,
+  "maxResults": 10,
   "maxRequests": 12,
   "delaySeconds": 3,
   "maxSpendUsd": 5,

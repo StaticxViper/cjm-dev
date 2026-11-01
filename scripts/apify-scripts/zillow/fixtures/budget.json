@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 4096,
+  "maxDurationSecs": 600,
+  "minItems": 0,
+  "maxItems": 2,
+  "maxChargeUsd": 0.1,
+  "maxUsageUsd": 0.25,
+  "notes": "One ZIP, 2 listings, 2 agents at $0.05. Zillow blocks datacenter IPs, so a local or CI run can end with 0 rows; the platform run uses residential proxy."
+}
