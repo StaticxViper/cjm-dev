@@ -1,0 +1,13 @@
+{
+  "_format": {
+    "regions": {
+      "<region_name>": {
+        "state": "NJ",
+        "counties": [],
+        "cities": [],
+        "zips": []
+      }
+    }
+  },
+  "regions": {}
+}
