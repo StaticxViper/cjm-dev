@@ -1,0 +1,96 @@
+{
+  "apiVersion": "1",
+  "jobs": [
+    {
+      "id": "7458d4e9-da2e-47bd-98cb-adfda43d4201",
+      "title": "Engineering Manager - EU",
+      "department": "Engineering",
+      "team": "EMEA Engineering",
+      "employmentType": "FullTime",
+      "location": "Remote - European Union",
+      "shouldDisplayCompensationOnJobPostings": true,
+      "secondaryLocations": [
+        {"location": "Spain", "address": {"postalAddress": {"addressRegion": "Spain", "addressCountry": "Spain", "addressLocality": "Spain"}}},
+        {"location": "Germany", "address": {"postalAddress": {"addressCountry": "Germany", "addressLocality": ""}}}
+      ],
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Remote",
+      "descriptionHtml": "<p>Lead a team.</p>",
+      "descriptionPlain": "Lead a team.",
+      "publishedAt": "2026-10-01T14:29:08.532+00:00",
+      "address": {"postalAddress": {"addressCountry": "European Union"}},
+      "jobUrl": "https://jobs.ashbyhq.com/exampleashby/7458d4e9-da2e-47bd-98cb-adfda43d4201",
+      "applyUrl": "https://jobs.ashbyhq.com/exampleashby/7458d4e9-da2e-47bd-98cb-adfda43d4201/application",
+      "compensation": {
+        "compensationTierSummary": "€150K – €250K • Offers Equity • Offers Bonus",
+        "scrapeableCompensationSalarySummary": "€150K - €250K",
+        "compensationTiers": [
+          {
+            "id": "f1284fac-20e9-4ed0-9a10-776d526a6301",
+            "tierSummary": "€150K – €250K • Offers Equity • Offers Bonus",
+            "title": "EU",
+            "additionalInformation": null,
+            "components": [
+              {"id": "c1", "summary": "Offers Equity", "compensationType": "EquityPercentage", "interval": "NONE", "currencyCode": null, "minValue": null, "maxValue": null},
+              {"id": "c2", "summary": "€150K – €250K", "compensationType": "Salary", "interval": "1 YEAR", "currencyCode": "EUR", "minValue": 150000, "maxValue": 250000}
+            ]
+          }
+        ],
+        "summaryComponents": [
+          {"compensationType": "EquityPercentage", "interval": "NONE", "currencyCode": null, "minValue": null, "maxValue": null},
+          {"compensationType": "Salary", "interval": "1 YEAR", "currencyCode": "EUR", "minValue": 150000, "maxValue": 250000},
+          {"compensationType": "Bonus", "interval": "1 YEAR", "currencyCode": "EUR", "minValue": null, "maxValue": null}
+        ]
+      }
+    },
+    {
+      "id": "7458d4e9-da2e-47bd-98cb-adfda43d4202",
+      "title": "Product Designer",
+      "department": "Design",
+      "team": "Brand",
+      "employmentType": "FullTime",
+      "location": "New York, NY",
+      "secondaryLocations": [],
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Hybrid",
+      "descriptionPlain": "Design things.",
+      "publishedAt": "2026-10-15T09:00:00.000+00:00",
+      "jobUrl": "https://jobs.ashbyhq.com/exampleashby/7458d4e9-da2e-47bd-98cb-adfda43d4202",
+      "applyUrl": "https://jobs.ashbyhq.com/exampleashby/7458d4e9-da2e-47bd-98cb-adfda43d4202/application",
+      "compensation": {
+        "compensationTierSummary": "$140K – $170K • Offers Equity",
+        "scrapeableCompensationSalarySummary": "$140K - $170K",
+        "compensationTiers": [],
+        "summaryComponents": [
+          {"compensationType": "EquityPercentage", "interval": "NONE", "currencyCode": null, "minValue": 0.1, "maxValue": 0.25}
+        ]
+      }
+    },
+    {
+      "id": "7458d4e9-da2e-47bd-98cb-adfda43d4203",
+      "title": "Confidential Search",
+      "department": "Executive",
+      "location": "San Francisco, CA",
+      "secondaryLocations": [],
+      "isListed": false,
+      "isRemote": false,
+      "workplaceType": "OnSite",
+      "publishedAt": "2026-10-16T09:00:00.000+00:00",
+      "jobUrl": "https://jobs.ashbyhq.com/exampleashby/7458d4e9-da2e-47bd-98cb-adfda43d4203"
+    },
+    {
+      "title": "Support Specialist",
+      "department": "",
+      "team": "Support",
+      "location": "Toronto, Canada",
+      "secondaryLocations": [],
+      "isListed": true,
+      "isRemote": false,
+      "workplaceType": "OnSite",
+      "publishedAt": "2026-10-20T09:00:00.000+00:00",
+      "jobUrl": "https://jobs.ashbyhq.com/exampleashby/support-specialist"
+    }
+  ]
+}

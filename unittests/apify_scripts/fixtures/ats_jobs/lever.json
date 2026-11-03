@@ -1,0 +1,68 @@
+[
+  {
+    "additional": "",
+    "additionalPlain": "",
+    "applyUrl": "https://jobs.lever.co/examplelever/0b8c7a52-1111-4f3e-9a63-1e3c5b2d0001/apply",
+    "categories": {
+      "commitment": "Full-time",
+      "department": "Engineering",
+      "location": "London, United Kingdom",
+      "team": "Platform",
+      "allLocations": ["London, United Kingdom", "Remote - UK"]
+    },
+    "country": "GB",
+    "createdAt": 1790000000000,
+    "description": "<div>Own the platform.</div>",
+    "descriptionPlain": "Own the platform.",
+    "hostedUrl": "https://jobs.lever.co/examplelever/0b8c7a52-1111-4f3e-9a63-1e3c5b2d0001",
+    "id": "0b8c7a52-1111-4f3e-9a63-1e3c5b2d0001",
+    "lists": [{"text": "Requirements", "content": "<li>Python</li>"}],
+    "opening": "",
+    "openingPlain": "",
+    "salaryRange": {"min": 70000, "max": 90000, "currency": "GBP", "interval": "per-year-salary"},
+    "text": "Backend Engineer",
+    "workplaceType": "hybrid"
+  },
+  {
+    "additional": "",
+    "additionalPlain": "",
+    "applyUrl": "https://jobs.lever.co/examplelever/0b8c7a52-2222-4f3e-9a63-1e3c5b2d0002/apply",
+    "categories": {
+      "commitment": "Full-time",
+      "department": "Customer Success",
+      "location": "Remote - US",
+      "team": "Customer Success Team",
+      "allLocations": ["Remote - US"]
+    },
+    "country": "US",
+    "createdAt": 1791000000000,
+    "descriptionPlain": "Help customers succeed.",
+    "hostedUrl": "https://jobs.lever.co/examplelever/0b8c7a52-2222-4f3e-9a63-1e3c5b2d0002",
+    "id": "0b8c7a52-2222-4f3e-9a63-1e3c5b2d0002",
+    "lists": [],
+    "salaryDescription": "<p>Pay: $85,000 - $105,000 per year.</p>",
+    "salaryDescriptionPlain": "Pay: $85,000 - $105,000 per year.",
+    "text": "Customer Success Manager",
+    "workplaceType": "remote"
+  },
+  {
+    "additional": "",
+    "additionalPlain": "",
+    "applyUrl": "https://jobs.lever.co/examplelever/0b8c7a52-3333-4f3e-9a63-1e3c5b2d0003/apply",
+    "categories": {
+      "commitment": "Part-time",
+      "department": "Operations",
+      "location": "Austin, TX",
+      "team": "Workplace",
+      "allLocations": ["Austin, TX"]
+    },
+    "country": "US",
+    "createdAt": 1792000000000,
+    "descriptionPlain": "Run the office.",
+    "hostedUrl": "https://jobs.lever.co/examplelever/0b8c7a52-3333-4f3e-9a63-1e3c5b2d0003",
+    "id": "0b8c7a52-3333-4f3e-9a63-1e3c5b2d0003",
+    "lists": [],
+    "text": "Office Coordinator",
+    "workplaceType": "on-site"
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "ATS jobs run summary",
+  "description": "Default key-value store containing the run summary written after job rows are pushed. Seen-job state lives in the named store from stateStoreName, not here.",
+  "collections": {
+    "summary": {
+      "title": "Summary",
+      "description": "Status, counts, spend, and one report per company board for the finished run.",
+      "key": "SUMMARY",
+      "contentTypes": ["application/json"]
+    }
+  }
+}

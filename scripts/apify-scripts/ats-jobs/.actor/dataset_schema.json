@@ -1,0 +1,117 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "ATS jobs",
+    "fields": {
+      "ats": {"type": "string"},
+      "company": {"type": "string"},
+      "companySlug": {"type": "string"},
+      "jobId": {"type": "string"},
+      "title": {"type": "string"},
+      "location": {"type": "string"},
+      "locations": {"type": "array", "items": {"type": "string"}},
+      "remote": {"type": "boolean"},
+      "workplaceType": {"type": "string"},
+      "salary": {
+        "type": "object",
+        "properties": {
+          "min": {"type": "number"},
+          "max": {"type": "number"},
+          "currency": {"type": "string"},
+          "interval": {"type": "string"},
+          "raw": {"type": "string"}
+        }
+      },
+      "department": {"type": "string"},
+      "postedDate": {"type": "string"},
+      "url": {"type": "string"},
+      "firstSeen": {"type": "string"},
+      "sourceStatus": {"type": "string"},
+      "decision": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["company", "title", "location", "remote", "department", "postedDate", "url", "ats", "sourceStatus"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "company": {"label": "Company", "format": "text"},
+          "title": {"label": "Title", "format": "text"},
+          "location": {"label": "Location", "format": "text"},
+          "remote": {"label": "Remote", "format": "boolean"},
+          "department": {"label": "Department", "format": "text"},
+          "postedDate": {"label": "Posted", "format": "text"},
+          "url": {"label": "URL", "format": "link"},
+          "ats": {"label": "ATS", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "flatten": ["salary"],
+        "fields": [
+          "ats",
+          "company",
+          "companySlug",
+          "jobId",
+          "title",
+          "location",
+          "locations",
+          "remote",
+          "workplaceType",
+          "salary.min",
+          "salary.max",
+          "salary.currency",
+          "salary.interval",
+          "salary.raw",
+          "department",
+          "postedDate",
+          "url",
+          "firstSeen",
+          "sourceStatus",
+          "decision",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "ats": {"label": "ATS", "format": "text"},
+          "company": {"label": "Company", "format": "text"},
+          "companySlug": {"label": "Board slug", "format": "text"},
+          "jobId": {"label": "Job ID", "format": "text"},
+          "title": {"label": "Title", "format": "text"},
+          "location": {"label": "Location", "format": "text"},
+          "locations": {"label": "All locations", "format": "array"},
+          "remote": {"label": "Remote", "format": "boolean"},
+          "workplaceType": {"label": "Workplace", "format": "text"},
+          "salary.min": {"label": "Salary min", "format": "number"},
+          "salary.max": {"label": "Salary max", "format": "number"},
+          "salary.currency": {"label": "Currency", "format": "text"},
+          "salary.interval": {"label": "Interval", "format": "text"},
+          "salary.raw": {"label": "Salary text", "format": "text"},
+          "department": {"label": "Department", "format": "text"},
+          "postedDate": {"label": "Posted", "format": "text"},
+          "url": {"label": "URL", "format": "link"},
+          "firstSeen": {"label": "First seen", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}
