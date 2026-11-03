@@ -48,16 +48,16 @@ Rows are filtered by location, remote, and keyword, then deduped on `(ats, compa
 ```
 
 - Slugs are the last part of the public board URL: `boards.greenhouse.io/airbnb`, `jobs.lever.co/leverdemo`, `jobs.ashbyhq.com/Ashby`, `apply.workable.com/huggingface`. A full board URL is accepted and reduced to its slug. A `jobs.eu.lever.co` URL, or a name under `leverEu`, goes to Lever's EU API.
-- `location` keeps a job when any of its locations contains the text (case-insensitive). Commas separate alternatives.
+- `location` keeps a job when any of its locations contains the text (case-insensitive). Commas separate alternatives. The alternative `Remote` also matches any job whose ATS flags it as remote (Ashby `isRemote`, Workable `telecommuting`, a remote workplace type), even when the location text does not say "Remote".
 - `remote`: `any`, `remote` (fully remote only), or `exclude`. Hybrid counts as not remote.
-- `keywords` keeps a job whose title or department contains any word. A single comma-separated `keyword` string is accepted too.
+- `keywords` keeps a job whose title or department contains any of them as a whole word (case-insensitive). `ai` does not match "Maintainer" and `engineer` does not match "Engineering", so list both forms when you want both. A single comma-separated `keyword` string is accepted too.
 - `newSinceLastRun` skips jobs pushed by an earlier run. Seen keys and their `firstSeen` time live in the named key-value store `stateStoreName` (default `ats-jobs-state`), which persists between runs. Use a different store name per saved task to keep feeds apart.
 - `maxItems` is an exact cap on job rows pushed (default 100, maximum 10,000). Status rows do not count. When the cap is reached, later boards are not requested.
-- `maxSpendUsd` defaults to 5 and cannot exceed 100.
+- `maxSpendUsd` defaults to 5 (minimum 0.01, maximum 100). A job row is pushed only when its charge fits under this cap. Once it does not, the job feed stops and one free `spend_capped` row says how many matching jobs were held back.
 
 ## Output
 
-One dataset item per job, plus a status row for each board that was unknown, disallowed, or failed, and one `blocked` row if the run stopped. Key-value `SUMMARY` records counts (`found`, `newJobs`, `repeatJobs`, `billedJobs`, `notFound`, `blocked`, `errors`, `mergedDuplicates`, `filteredOut`, `skippedSeen`, `truncated`), spend, and one report per board (`ats`, `slug`, `status`, `fetched`, `kept`).
+One dataset item per job, plus a status row for each board that was unknown, disallowed, or failed, one `blocked` row per blocked host, and one `spend_capped` row if the spend cap ended the job feed. Key-value `SUMMARY` records counts (`found`, `newJobs`, `repeatJobs`, `billedJobs`, `heldBackJobs`, `notFound`, `blocked`, `errors`, `mergedDuplicates`, `filteredOut`, `skippedSeen`, `skippedBlockedHost`, `truncated`, `chargeCapped`), spend, and one report per board (`ats`, `slug`, `status`, `fetched`, `kept`).
 
 ```json
 {
@@ -93,9 +93,10 @@ One dataset item per job, plus a status row for each board that was unknown, dis
 
 | sourceStatus | Meaning | job event |
 |--------------|---------|-----------|
-| `found` | A job was returned | yes, while `maxSpendUsd` still covers it |
+| `found` | A job was returned. Pushed only when `maxSpendUsd` covers its charge | yes |
 | `not_found` | The ATS has no board with that slug (HTTP 404), or nothing matched the filters | no |
-| `blocked` | HTTP 401, 403, or 429 after retries, or a challenge page instead of JSON. The run stops | no |
+| `blocked` | HTTP 401, 403, or 429 after retries, or a challenge page instead of JSON. Later boards on that host are skipped; other hosts still run | no |
+| `spend_capped` | `maxSpendUsd` or the platform charge limit ended the job feed; `error` says how many jobs were held back | no |
 | `robots_disallowed` | robots.txt disallows the board URL | no |
 | `error` | Bad slug, invalid JSON, a 5xx after retries, or robots.txt could not be read | no |
 
@@ -103,11 +104,11 @@ One dataset item per job, plus a status row for each board that was unknown, dis
 
 - Coverage is the four ATSs above. Workday, iCIMS, SmartRecruiters, and others are not read.
 - A board is read in full in one request. Lever and Workable boards are not paged, and a very large board is capped at 32 MB.
-- Workable does not document the widget endpoint. Its [documented API](https://help.workable.com/hc/en-us/articles/115013356548-Workable-API-Documentation) needs an employer token. The widget feed can change without notice, and Workable sits behind Cloudflare, which may answer 429 from cloud IPs. That ends the run with a `blocked` row.
+- Workable does not document the widget endpoint. Its [documented API](https://help.workable.com/hc/en-us/articles/115013356548-Workable-API-Documentation) needs an employer token. The widget feed can change without notice, and Workable sits behind Cloudflare, which may answer 429 from cloud IPs. That skips the remaining Workable boards with one `blocked` row.
 - Remote is the ATS's own workplace field when it has one (Greenhouse "Workplace Type" metadata, Lever and Ashby `workplaceType`, Workable `telecommuting`), else the word "remote" in a location.
 - Text salary parsing reads the first currency range it finds. A `$` amount is reported as USD.
-- `newSinceLastRun` state keeps up to 200,000 keys per store and drops the oldest first.
-- On a block the Actor pushes one `blocked` row, writes `SUMMARY`, and exits 0. Jobs already collected from earlier boards are still pushed. It does not retry through a proxy.
+- `newSinceLastRun` state keeps up to 200,000 keys per store and drops the oldest first. Only jobs that were pushed and charged are recorded, so a job held back by `maxItems` or `maxSpendUsd` is still new next run.
+- On a block the Actor pushes one `blocked` row for that host and skips its remaining boards. Boards on other ATS hosts still run, and the run exits 0. It does not retry through a proxy.
 
 ## Robots and terms
 
@@ -131,7 +132,7 @@ Pay per event from `.actor/pay_per_event.json`.
 
 "From" is the lowest Store-discount tier. The undiscounted per-event price was not visible on those pages, so it is unverified. A third-party tracker (apifystats.com) lists the Career Site API at $12 / 1,000. That figure is not confirmed.
 
-There are no `proxy` or `captcha` events because this Actor never uses either. `not_found`, `blocked`, `robots_disallowed`, and `error` rows are saved and not billed. Once `maxSpendUsd` cannot cover the next job, later jobs are saved without a charge. Dataset items are not a charge event. The platform still applies its start event. Memory default is 512 MB and the default timeout is 1,800 seconds.
+There are no `proxy` or `captcha` events because this Actor never uses either. `not_found`, `blocked`, `robots_disallowed`, `spend_capped`, and `error` rows are saved and not billed. Once `maxSpendUsd` cannot cover the next job, no further job rows are pushed. Dataset items are not a charge event. The platform still applies its start event. Memory default is 512 MB and the default timeout is 1,800 seconds.
 
 ### Deviation from the template contract
 

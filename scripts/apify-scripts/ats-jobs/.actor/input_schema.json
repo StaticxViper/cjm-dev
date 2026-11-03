@@ -38,7 +38,7 @@
     "location": {
       "title": "Location contains",
       "type": "string",
-      "description": "Optional. Keep jobs where any listed location contains this text (case-insensitive). Separate alternatives with commas, for example: New York, Remote.",
+      "description": "Optional. Keep jobs where any listed location contains this text (case-insensitive). Separate alternatives with commas, for example: New York, Remote. Remote also matches jobs the ATS flags as remote.",
       "editor": "textfield"
     },
     "remote": {
@@ -53,7 +53,7 @@
     "keywords": {
       "title": "Keywords",
       "type": "array",
-      "description": "Optional. Keep jobs whose title or department contains any of these words (case-insensitive).",
+      "description": "Optional. Keep jobs whose title or department contains any of these as a whole word (case-insensitive). engineer does not match Engineering; list both if you want both.",
       "editor": "stringList"
     },
     "newSinceLastRun": {
@@ -91,10 +91,10 @@
     "maxSpendUsd": {
       "title": "Max spend (USD)",
       "type": "number",
-      "description": "Stop charging when the next job event would pass this amount. Default 5, maximum 100. Later job rows are saved and are not billed.",
+      "description": "Job rows are pushed only while their charge fits under this amount. When the next job would pass it, the job feed stops and one free spend_capped row records how many jobs were held back. Default 5, minimum 0.01, maximum 100.",
       "editor": "number",
       "default": 5,
-      "minimum": 0,
+      "minimum": 0.01,
       "maximum": 100
     }
   }

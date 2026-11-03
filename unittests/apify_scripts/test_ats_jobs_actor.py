@@ -446,13 +446,37 @@ class TestFilters(unittest.TestCase):
         self.assertEqual(set(_by_id(rows)), {
             "1001", "1002",
             "0b8c7a52-1111-4f3e-9a63-1e3c5b2d0001",
-            "7458d4e9-da2e-47bd-98cb-adfda43d4201",
             "81B46579FE", "19A136F8E2",
         })
-        self.assertEqual(summary["filteredOut"], 6)
+        self.assertEqual(summary["filteredOut"], 7)
+
+        rows, *_ = _run(**_base_input(keywords=["engineering"]))
+        self.assertIn("7458d4e9-da2e-47bd-98cb-adfda43d4201", _by_id(rows))
 
         rows, *_ = _run(**_base_input(keywords=["SALES"]))
         self.assertEqual(set(_by_id(rows)), {"1003"})
+
+    def test_keyword_is_whole_word(self):
+        config = mapping.actor_input_to_config({"greenhouse": ["x"], "keywords": ["ai", "go", "C++", ".NET"]})
+
+        def keep(title):
+            return mapping.keep_job({"title": title, "department": "", "locations": []}, config)
+
+        self.assertFalse(keep("Open Source Maintainer"))
+        self.assertFalse(keep("Google Ads Specialist"))
+        self.assertTrue(keep("AI Researcher"))
+        self.assertTrue(keep("Backend Engineer (Go)"))
+        self.assertTrue(keep("Senior C++ Developer"))
+        self.assertTrue(keep(".NET Engineer"))
+
+    def test_location_remote_matches_the_remote_flag(self):
+        config = mapping.actor_input_to_config({"greenhouse": ["x"], "location": "Remote"})
+        flagged = {"title": "Engineer", "locations": ["Berlin, Germany"], "remote": True}
+        office = {"title": "Engineer", "locations": ["Berlin, Germany"], "remote": False}
+        self.assertTrue(mapping.keep_job(flagged, config))
+        self.assertFalse(mapping.keep_job(office, config))
+        berlin = mapping.actor_input_to_config({"greenhouse": ["x"], "location": "berlin"})
+        self.assertTrue(mapping.keep_job(office, berlin))
 
     def test_location_substring_any_location(self):
         rows, *_ = _run(**_base_input(location="PARIS"))
@@ -515,6 +539,18 @@ class TestDedupeAndState(unittest.TestCase):
         self.assertNotIn("greenhouse:exampleco:1001", new_seen)
         self.assertEqual(summary["repeatJobs"], 1)
 
+    def test_merge_state_prunes_blank_then_oldest_first(self):
+        seen = {
+            "a": "2026-10-01T00:00:00+00:00",
+            "b": "",
+            "c": "2026-11-01T00:00:00+00:00",
+        }
+        merged = state_mod.merge_state(seen, {"d": "2026-11-02T00:00:00+00:00", "a": "2026-12-01T00:00:00+00:00"}, max_keys=3)
+        self.assertEqual(set(merged), {"a", "c", "d"})
+        self.assertEqual(merged["a"], "2026-10-01T00:00:00+00:00")
+        merged = state_mod.merge_state(merged, {}, max_keys=2)
+        self.assertEqual(set(merged), {"c", "d"})
+
     def test_state_round_trip_through_named_store(self):
         stores = {}
         actor, _scripted = _run_main(_base_input(newSinceLastRun=True), stores=stores)
@@ -560,19 +596,22 @@ class TestMaxItems(unittest.TestCase):
 
 
 class TestBlocksAndMisses(unittest.TestCase):
-    def test_403_pushes_one_blocked_row_and_stops(self):
+    def test_403_blocks_only_that_host(self):
         scripted = Scripted(blocked={"api.lever.co": {"status": 403, "text": "Forbidden", "content_type": "text/plain"}})
-        rows, summary, *_ = _run(scripted, **_base_input())
+        rows, summary, *_ = _run(scripted, **_base_input(lever=["examplelever", "secondlever"]))
         blocked = [row for row in rows if row["sourceStatus"] == "blocked"]
         self.assertEqual(len(blocked), 1)
         self.assertEqual(blocked[0]["ats"], "lever")
         self.assertEqual(blocked[0]["decision"], "stopped")
         self.assertIn("HTTP 403", blocked[0]["error"])
         self.assertFalse(mapping.billable_row(blocked[0]))
-        self.assertEqual({row["ats"] for row in _found(rows)}, {"greenhouse"})
+        self.assertEqual({row["ats"] for row in _found(rows)}, {"greenhouse", "ashby", "workable"})
         self.assertEqual(summary["status"], "partial")
         self.assertEqual(summary["stopped"], "blocked")
-        self.assertFalse(any("ashbyhq" in url or "workable" in url for url in scripted.urls))
+        self.assertEqual(summary["skippedBlockedHost"], 1)
+        self.assertFalse(any("secondlever" in url for url in scripted.urls))
+        skipped = [r for r in summary["companies"] if r["slug"] == "secondlever"]
+        self.assertEqual(skipped[0]["status"], "skipped_blocked_host")
 
     def test_429_after_retries_and_challenge_html_are_blocks(self):
         for response in (
@@ -581,7 +620,7 @@ class TestBlocksAndMisses(unittest.TestCase):
             {"status": 200, "text": "<html><body>Sign in</body></html>", "content_type": "text/html"},
         ):
             scripted = Scripted(blocked={"boards-api.greenhouse.io/v1": response})
-            rows, summary, *_ = _run(scripted, **_base_input())
+            rows, summary, *_ = _run(scripted, greenhouse=["exampleco", "otherco"], maxItems=100)
             self.assertEqual([row["sourceStatus"] for row in rows], ["blocked"], response["status"])
             self.assertEqual(summary["status"], "blocked")
             self.assertEqual(summary["billedJobs"], 0)
@@ -589,7 +628,7 @@ class TestBlocksAndMisses(unittest.TestCase):
 
     def test_blocked_run_through_main_exits_cleanly_without_charge(self):
         scripted = Scripted(blocked={"boards-api.greenhouse.io/v1": {"status": 401, "text": "", "content_type": ""}})
-        actor, _ = _run_main(_base_input(), scripted=scripted)
+        actor, _ = _run_main({"greenhouse": ["exampleco"], "maxSpendUsd": 5}, scripted=scripted)
         self.assertEqual([row["sourceStatus"] for row in actor.pushed], ["blocked"])
         self.assertEqual(actor.charges, [])
         self.assertEqual(actor.values["SUMMARY"]["status"], "blocked")
@@ -648,23 +687,62 @@ class TestCharging(unittest.TestCase):
         self.assertEqual(summary["spendUsd"], 0.018)
         self.assertFalse(summary["chargeCapped"])
 
-    def test_max_spend_stops_charging_but_keeps_rows(self):
+    def test_max_spend_stops_pushing_unbilled_jobs(self):
         actor, _ = _run_main(_base_input(maxSpendUsd=0.01))
-        self.assertEqual(len([r for r in actor.pushed if r["sourceStatus"] == "found"]), 12)
+        self.assertEqual(len([r for r in actor.pushed if r["sourceStatus"] == "found"]), 5)
         self.assertEqual(actor.charges, ["job"] * 5)
+        capped = [r for r in actor.pushed if r["sourceStatus"] == "spend_capped"]
+        self.assertEqual(len(capped), 1)
+        self.assertIn("7 matching job(s)", capped[0]["error"])
+        self.assertFalse(mapping.billable_row(capped[0]))
         summary = actor.values["SUMMARY"]
+        self.assertEqual(summary["found"], 5)
         self.assertEqual(summary["billedJobs"], 5)
+        self.assertEqual(summary["heldBackJobs"], 7)
         self.assertEqual(summary["spendUsd"], 0.01)
         self.assertTrue(summary["chargeCapped"])
+        self.assertTrue(summary["truncated"])
 
+    def test_zero_spend_gives_no_free_jobs(self):
         actor, _ = _run_main(_base_input(maxSpendUsd=0))
         self.assertEqual(actor.charges, [])
-        self.assertTrue(actor.values["SUMMARY"]["chargeCapped"])
+        self.assertEqual([r["sourceStatus"] for r in actor.pushed], ["spend_capped"])
+        summary = actor.values["SUMMARY"]
+        self.assertTrue(summary["chargeCapped"])
+        self.assertEqual(summary["status"], "spend_capped")
 
-    def test_platform_charge_limit_stops_charging(self):
+    def test_platform_charge_limit_stops_pushing(self):
         actor, _ = _run_main(_base_input(), limit_after=3)
         self.assertEqual(len(actor.charges), 3)
-        self.assertEqual(len(actor.pushed), 12)
+        self.assertEqual(len([r for r in actor.pushed if r["sourceStatus"] == "found"]), 3)
+        self.assertEqual(actor.values["SUMMARY"]["heldBackJobs"], 9)
+
+    def test_capped_jobs_stay_new_for_the_next_run(self):
+        stores = {}
+        first, _ = _run_main(_base_input(newSinceLastRun=True, maxSpendUsd=0.01), stores=stores)
+        self.assertEqual(len(stores["ats-jobs-state"]["SEEN"]["jobs"]), 5)
+        second, _ = _run_main(_base_input(newSinceLastRun=True), stores=stores)
+        first_ids = {r["jobId"] for r in first.pushed if r["sourceStatus"] == "found"}
+        second_ids = {r["jobId"] for r in second.pushed if r["sourceStatus"] == "found"}
+        self.assertEqual(len(second_ids), 7)
+        self.assertFalse(first_ids & second_ids)
+
+    def test_push_failure_is_not_recorded_as_seen(self):
+        stores = {}
+        calls = {"n": 0}
+        original = FakeActor.push_data
+
+        async def flaky(self, row):
+            calls["n"] += 1
+            if calls["n"] == 3:
+                raise RuntimeError("dataset unavailable")
+            await original(self, row)
+
+        with mock.patch.object(FakeActor, "push_data", flaky):
+            actor, _ = _run_main(_base_input(newSinceLastRun=True), stores=stores)
+        self.assertEqual(actor.charges, ["job"] * 2)
+        self.assertEqual(len(stores["ats-jobs-state"]["SEEN"]["jobs"]), 2)
+        self.assertEqual(actor.values["SUMMARY"]["stopped"], "pushFailed")
 
     def test_micro_dollar_ledger(self):
         ledger = spend.JobLedger(0.005)

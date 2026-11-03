@@ -5,9 +5,6 @@
   "description": "Open jobs from the public Greenhouse, Lever, Ashby, and Workable job-board APIs for a list of companies. Salary, remote flag, and new-since-last-run.",
   "version": "0.1",
   "buildTag": "latest",
-  "meta": {
-    "generatedBy": "Cursor with Claude Opus 5.5"
-  },
   "dockerfile": "../Dockerfile",
   "dockerContextDir": "../../../..",
   "readme": "../README.md",

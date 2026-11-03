@@ -160,6 +160,7 @@ def actor_input_to_config(actor_input):
         "locations": [item.lower() for item in locations],
         "remote": remote,
         "keywords": [item.lower() for item in keywords],
+        "keyword_patterns": keyword_patterns(keywords),
         "new_since_last_run": bool(raw.get("newSinceLastRun")),
         "state_store": store,
         "max_items": _bounded_int(raw.get("maxItems"), 100, 1, 10000),
@@ -557,10 +558,21 @@ PARSERS = {
 # ---------------------------------------------------------------- filters
 
 
+def keyword_patterns(words):
+    """Whole-word matchers. Lookarounds instead of \\b so C++ and .NET still match."""
+    return [re.compile(rf"(?<!\w){re.escape(word.lower())}(?!\w)") for word in words if word]
+
+
+def _location_match(needle, places, record):
+    if needle == "remote" and record.get("remote"):
+        return True
+    return any(needle in place for place in places)
+
+
 def keep_job(record, config):
     places = [item.lower() for item in record.get("locations") or []]
     if config.get("locations"):
-        if not any(needle in place for needle in config["locations"] for place in places):
+        if not any(_location_match(needle, places, record) for needle in config["locations"]):
             return False
     remote = config.get("remote") or "any"
     if remote == "remote" and not record.get("remote"):
@@ -569,7 +581,8 @@ def keep_job(record, config):
         return False
     if config.get("keywords"):
         haystack = f"{record.get('title') or ''} {record.get('department') or ''}".lower()
-        if not any(word in haystack for word in config["keywords"]):
+        patterns = config.get("keyword_patterns") or keyword_patterns(config["keywords"])
+        if not any(pattern.search(haystack) for pattern in patterns):
             return False
     return True
 
@@ -655,7 +668,8 @@ def _blocked_message(result):
     what = f"HTTP {status}" if status and status != 200 else "a challenge page instead of JSON"
     return (
         f"Blocked by {_host(result.get('url'))} ({what}). This Actor does not use a proxy "
-        "or a CAPTCHA solver, so the run stopped without charging for this row."
+        "or a CAPTCHA solver, so later boards on this host were skipped. Other hosts "
+        "still ran. This row is not charged."
     )
 
 
@@ -672,7 +686,8 @@ def scrape(config, fetch, seen=None, now=None):
 
     kept = []
     keys = set()
-    counts = {"duplicates": 0, "filtered": 0, "skippedSeen": 0}
+    counts = {"duplicates": 0, "filtered": 0, "skippedSeen": 0, "skippedBlockedHost": 0}
+    blocked_hosts = set()
     reports = []
     truncated = False
     stopped = ""
@@ -684,6 +699,12 @@ def scrape(config, fetch, seen=None, now=None):
         ats, slug = target["ats"], target["slug"]
         url = board_url(ats, slug, target.get("eu"))
         report = {"ats": ats, "slug": slug, "status": "ok", "fetched": 0, "kept": 0}
+        if _host(url) in blocked_hosts:
+            report["status"] = "skipped_blocked_host"
+            counts["skippedBlockedHost"] += 1
+            reports.append(report)
+            _log_company(report)
+            continue
         result = fetch(url)
         kind = outcome(result)
         if kind == "ok":
@@ -701,8 +722,9 @@ def scrape(config, fetch, seen=None, now=None):
             _log_company(report)
             if kind == "blocked":
                 status_rows.append(_blank_row("blocked", _blocked_message(result), scraped_at, ats, slug, url, "stopped"))
+                blocked_hosts.add(_host(url))
                 stopped = "blocked"
-                break
+                continue
             if kind == "not_found":
                 status_rows.append(_blank_row(
                     "not_found", f"{ATS[ats]['title']} has no public board named {slug!r} (HTTP 404).",
@@ -813,6 +835,7 @@ def _summarize(rows, config, counts, reports, stopped, truncated, scraped_at):
         "duplicateCompanies": counts.get("duplicateTargets", 0),
         "filteredOut": counts.get("filtered", 0),
         "skippedSeen": counts.get("skippedSeen", 0),
+        "skippedBlockedHost": counts.get("skippedBlockedHost", 0),
         "truncated": bool(truncated),
         "maxItems": config.get("max_items"),
         "newSinceLastRun": bool(config.get("new_since_last_run")),
