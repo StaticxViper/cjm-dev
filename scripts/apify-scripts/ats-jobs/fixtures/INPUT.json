@@ -1,0 +1,15 @@
+{
+  "greenhouse": ["airbnb"],
+  "lever": ["leverdemo"],
+  "leverEu": [],
+  "ashby": ["Ashby"],
+  "workable": ["huggingface"],
+  "location": "",
+  "remote": "any",
+  "keywords": ["engineer", "engineering"],
+  "newSinceLastRun": true,
+  "stateStoreName": "ats-jobs-state",
+  "maxItems": 50,
+  "delaySeconds": 1,
+  "maxSpendUsd": 5
+}
