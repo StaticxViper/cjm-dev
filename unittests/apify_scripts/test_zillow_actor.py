@@ -428,6 +428,10 @@ class TestRemoteDownload(unittest.TestCase):
             listings = json.loads(Path(report["paths"]["listings_json"]).read_text(encoding="utf-8"))
             self.assertEqual(listings["listings"][0]["listing_id"], "111")
 
+    def test_remote_repo_root_is_the_checkout(self):
+        self.assertEqual(remote._REPO, _REPO)
+        self.assertNotIn("_ACTOR.parents", (_SRC / "remote.py").read_text(encoding="utf-8"))
+
     def test_actor_id_uses_token_env_not_the_store_catalog(self):
         self.assertEqual(
             remote.actor_id_from_env({"ZILLOW_ACTOR_ID": "someone~zillow-agents"}),

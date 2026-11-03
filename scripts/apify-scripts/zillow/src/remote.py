@@ -10,17 +10,19 @@ import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
 
-_SRC = Path(__file__).resolve().parent
-_ACTOR = _SRC.parent
-_REPO = _ACTOR.parents[2]
+try:
+    from .runtime import prepare_imports
+except ImportError:
+    from runtime import prepare_imports
+
+# Same search path as pipeline.py. prepare_imports() reads CJM_REPO_ROOT, so this
+# does not depend on how deep the Actor folder sits in the image.
+_REPO = prepare_imports()
 for _entry in (
-    _REPO,
     _REPO / "scripts",
     _REPO / "scripts" / "lead_automation",
     _REPO / "scripts" / "zillow_automation",
-    _SRC,
 ):
     _text = str(_entry)
     if _text not in sys.path:

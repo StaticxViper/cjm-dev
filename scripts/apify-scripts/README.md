@@ -29,7 +29,7 @@ Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one i
 
 ## Build and budgets
 
-Each Actor folder is its own Docker build context. `apify push` from the folder uploads only that folder, and the Dockerfile copies only local files. Repo modules the Actor imports are listed in `bundle.txt` and copied into the committed `platform_bundle/` folder; `CJM_REPO_ROOT` points there in the image. A `!module` line in `bundle.txt` names an import that only the local CLI reaches, left out on purpose.
+Each Actor folder is its own Docker build context. `apify push` from the folder uploads only that folder, and the Dockerfile copies only local files. Repo modules the Actor imports are listed in `bundle.txt` and copied into the committed `platform_bundle/` folder; `CJM_REPO_ROOT` points there in the image. The Dockerfile leaves the base image `WORKDIR` (`/usr/src/app`) and its `./xvfb-entrypoint.sh` entrypoint in place. A `!module` line in `bundle.txt` names an import that only the local CLI reaches, left out on purpose.
 
 `actor_build.py` (standard library only) keeps that honest:
 

@@ -85,11 +85,18 @@ jobs:
           python-version: "3.12"
       - name: Build the image from the Actor folder only
         run: docker build -t "cjm-actor-${{ matrix.actor }}:smoke" "scripts/apify-scripts/${{ matrix.actor }}"
+      - name: Show how the image starts
+        run: |
+          image="cjm-actor-${{ matrix.actor }}:smoke"
+          docker image inspect "$image" --format '{{json .Config.Entrypoint}} {{json .Config.Cmd}} {{json .Config.WorkingDir}}'
+          docker run --rm --entrypoint sh "$image" -c 'which python; python -V; ls -la /home/myuser /usr/src/app'
       - name: Import every module from the bundle inside the image
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" --entrypoint python \
             "cjm-actor-${{ matrix.actor }}:smoke" \
-            /repo/scripts/apify-scripts/actor_build.py probe --actor-dir /home/myuser --repo /repo
+            /repo/scripts/apify-scripts/actor_build.py probe --actor-dir /usr/src/app --repo /repo
+      - name: Default entrypoint can import the Actor
+        run: docker run --rm "cjm-actor-${{ matrix.actor }}:smoke" python -c "import src"
       - name: Fixture smoke against fixtures/budget.json
         run: |
           python scripts/apify-scripts/actor_build.py smoke "${{ matrix.actor }}" \
@@ -99,7 +106,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smoke-${{ matrix.actor }}
-          path: smoke-${{ matrix.actor }}.json
+          path: |
+            smoke-${{ matrix.actor }}.json
+            smoke-${{ matrix.actor }}.log
           if-no-files-found: ignore
 
   platform:

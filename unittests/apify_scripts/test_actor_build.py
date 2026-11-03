@@ -7,13 +7,17 @@ Run from repo root:
 No Docker and no Apify calls. The smoke gate is tested through evaluate().
 """
 import importlib.util
+import io
 import json
 import shutil
+import subprocess
 import tempfile
 import textwrap
 import unittest
+from contextlib import redirect_stderr
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import patch
 
 _REPO = Path(__file__).resolve().parents[2]
 _PATH = _REPO / "scripts" / "apify-scripts" / "actor_build.py"
@@ -83,6 +87,13 @@ class TestRepoActors(unittest.TestCase):
         for name in ACTORS:
             text = (build.HERE / name / "Dockerfile").read_text(encoding="utf-8")
             self.assertEqual(text[text.index("FROM ") :], body, name)
+
+    def test_dockerfiles_keep_the_base_image_workdir(self):
+        for actor in build.actor_dirs():
+            text = (actor / "Dockerfile").read_text(encoding="utf-8")
+            with self.subTest(actor=actor.name):
+                self.assertFalse(any(line.startswith("WORKDIR") for line in text.splitlines()))
+                self.assertIn("CJM_REPO_ROOT=/usr/src/app/platform_bundle", text)
 
 
 class TestDrift(unittest.TestCase):
@@ -246,6 +257,33 @@ class TestImportProbe(unittest.TestCase):
     def test_manifest_exclusions(self):
         self.assertEqual(build.unbundled_imports(build.HERE / "new-business"), {"leadgen"})
         self.assertNotIn("!leadgen", build.read_manifest(build.HERE / "new-business"))
+
+
+class TestSmokeReport(unittest.TestCase):
+    def test_failed_docker_prints_stderr(self):
+        def fake_run(cmd, check, capture_output, text):
+            raise subprocess.CalledProcessError(127, cmd, output="stdout-text", stderr="exec: not found")
+
+        with patch.object(build.subprocess, "run", fake_run):
+            with redirect_stderr(buf := io.StringIO()):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    build._docker("run", "-d", "img")
+        self.assertIn("exec: not found", buf.getvalue())
+        self.assertIn("stdout-text", buf.getvalue())
+
+    def test_report_is_written_when_smoke_raises(self):
+        def boom(*_args, **_kwargs):
+            raise subprocess.CalledProcessError(127, ["docker", "run"], stderr="not found")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            report = Path(tmp) / "smoke-city-data.json"
+            with patch.object(build, "smoke_docker", boom):
+                code = build.smoke(build.HERE / "city-data", image="img", report=report)
+            self.assertEqual(code, 1)
+            payload = json.loads(report.read_text(encoding="utf-8"))
+            self.assertEqual(payload["status"], "FAILED (CalledProcessError)")
+            self.assertTrue(payload["problems"])
+            self.assertIn("not found", report.with_suffix(".log").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

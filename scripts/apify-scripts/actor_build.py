@@ -491,7 +491,47 @@ def read_charging_log(storage):
 
 
 def _docker(*args, check=True, capture=True):
-    return subprocess.run(["docker", *args], check=check, capture_output=capture, text=True)
+    try:
+        return subprocess.run(["docker", *args], check=check, capture_output=capture, text=True)
+    except subprocess.CalledProcessError as error:
+        if error.stdout:
+            print(error.stdout, file=sys.stderr)
+        if error.stderr:
+            print(error.stderr, file=sys.stderr)
+        raise
+
+
+def _host_owner():
+    """Numeric uid:gid of this process. Missing on Windows, where Docker Desktop owns the mount."""
+    getuid = getattr(os, "getuid", None)
+    getgid = getattr(os, "getgid", None)
+    if getuid is None or getgid is None:
+        return None
+    return f"{getuid()}:{getgid()}"
+
+
+def _chown_tree(image, folder, owner):
+    """Give the storage mount to the container user, then back to the host so the temp dir can be removed."""
+    result = _docker(
+        "run", "--rm", "--user", "0", "--entrypoint", "chown",
+        "-v", f"{folder}:/storage",
+        image, "-R", owner, "/storage",
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "").strip()
+        print(f"chown {owner} {folder} failed ({result.returncode}): {detail}", file=sys.stderr)
+
+
+def _empty_result(status):
+    return {
+        "status": status,
+        "durationSecs": 0.0,
+        "memoryMaxMbytes": None,
+        "itemCount": 0,
+        "chargeUsd": Decimal("0"),
+        "chargedEvents": {},
+    }
 
 
 def smoke_docker(actor, budget, image):
@@ -502,63 +542,84 @@ def smoke_docker(actor, budget, image):
     events = read_json(actor / ".actor" / "pay_per_event.json").get("actorChargeEvents", {})
     pricing = {"pricingModel": "PAY_PER_EVENT", "pricingPerEvent": {"actorChargeEvents": events}}
     name = f"smoke-{actor.name}-{os.getpid()}"
-    # The container user owns what it writes, so the host may not be able to delete it.
     with tempfile.TemporaryDirectory(prefix=f"smoke-{actor.name}-", ignore_cleanup_errors=True) as tmp:
         storage = Path(tmp) / "storage"
         kvs = storage / "key_value_stores" / "default"
         kvs.mkdir(parents=True)
         shutil.copyfile(actor / FIXTURE, kvs / "INPUT.json")
-        for path in [storage, *storage.rglob("*")]:
-            path.chmod(0o777)
+        host = _host_owner()
+        if host:
+            _chown_tree(image, storage, "myuser:myuser")
         memory = budget["memoryMbytes"]
-        _docker(
-            "run", "-d", "--name", name,
-            f"--memory={memory}m", f"--memory-swap={memory}m", "--shm-size=512m",
-            "-v", f"{storage}:/home/myuser/storage",
-            "-e", "APIFY_LOCAL_STORAGE_DIR=/home/myuser/storage",
-            "-e", "CRAWLEE_STORAGE_DIR=/home/myuser/storage",
-            "-e", "ACTOR_TEST_PAY_PER_EVENT=true",
-            "-e", f"APIFY_ACTOR_PRICING_INFO={json.dumps(pricing)}",
-            # The SDK reads an empty object as unset and then ignores the pricing info.
-            "-e", f"APIFY_CHARGED_ACTOR_EVENT_COUNTS={json.dumps({event: 0 for event in events})}",
-            image,
-        )
         peak = [0.0]
         done = threading.Event()
-
-        def watch():
-            while not done.is_set():
-                out = _docker("stats", "--no-stream", "--format", "{{.MemUsage}}", name, check=False)
-                if out.returncode == 0 and out.stdout.strip():
-                    peak[0] = max(peak[0], _parse_mem(out.stdout))
-                done.wait(1)
-
-        watcher = threading.Thread(target=watch, daemon=True)
-        watcher.start()
+        watcher = None
         started = time.monotonic()
         timed_out = False
+        state = {}
+        logs = None
+        start_error = None
         try:
-            while _docker("inspect", "-f", "{{.State.Running}}", name).stdout.strip() == "true":
-                if time.monotonic() - started > budget["maxDurationSecs"]:
-                    timed_out = True
-                    _docker("kill", name, check=False)
-                    break
-                time.sleep(1)
-            duration = time.monotonic() - started
+            try:
+                _docker(
+                    "run", "-d", "--name", name,
+                    f"--memory={memory}m", f"--memory-swap={memory}m", "--shm-size=512m",
+                    "-v", f"{storage}:/home/myuser/storage",
+                    "-e", "APIFY_LOCAL_STORAGE_DIR=/home/myuser/storage",
+                    "-e", "CRAWLEE_STORAGE_DIR=/home/myuser/storage",
+                    "-e", "ACTOR_TEST_PAY_PER_EVENT=true",
+                    "-e", f"APIFY_ACTOR_PRICING_INFO={json.dumps(pricing)}",
+                    # The SDK reads an empty object as unset and then ignores the pricing info.
+                    "-e", f"APIFY_CHARGED_ACTOR_EVENT_COUNTS={json.dumps({event: 0 for event in events})}",
+                    image,
+                )
+            except subprocess.CalledProcessError as error:
+                start_error = error
+            else:
+                def watch():
+                    while not done.is_set():
+                        out = _docker("stats", "--no-stream", "--format", "{{.MemUsage}}", name, check=False)
+                        if out.returncode == 0 and out.stdout.strip():
+                            peak[0] = max(peak[0], _parse_mem(out.stdout))
+                        done.wait(1)
+
+                watcher = threading.Thread(target=watch, daemon=True)
+                watcher.start()
+                while True:
+                    running = _docker("inspect", "-f", "{{.State.Running}}", name, check=False)
+                    if running.returncode != 0 or running.stdout.strip() != "true":
+                        break
+                    if time.monotonic() - started > budget["maxDurationSecs"]:
+                        timed_out = True
+                        _docker("kill", name, check=False)
+                        break
+                    time.sleep(1)
         finally:
             done.set()
-            watcher.join(timeout=5)
-        state = json.loads(_docker("inspect", "-f", "{{json .State}}", name).stdout)
-        logs = _docker("logs", "--tail", "60", name, check=False)
-        _docker("rm", "-f", name, check=False)
+            if watcher is not None:
+                watcher.join(timeout=5)
+            inspected = _docker("inspect", "-f", "{{json .State}}", name, check=False)
+            if inspected.returncode == 0 and inspected.stdout.strip():
+                try:
+                    state = json.loads(inspected.stdout)
+                except json.JSONDecodeError:
+                    state = {}
+            logs = _docker("logs", "--tail", "60", name, check=False)
+            _docker("rm", "-f", name, check=False)
+            if host:
+                _chown_tree(image, storage, host)
+        duration = time.monotonic() - started
+        exit_code = state.get("ExitCode")
+        if exit_code is None and start_error is not None:
+            exit_code = start_error.returncode
         if timed_out:
             status = "TIMED-OUT"
         elif state.get("OOMKilled"):
             status = "FAILED (out of memory)"
-        elif state.get("ExitCode") == 0:
+        elif exit_code == 0:
             status = "SUCCEEDED"
         else:
-            status = f"FAILED (exit {state.get('ExitCode')})"
+            status = f"FAILED (exit {exit_code})"
         charge, charged = read_charging_log(storage)
         result = {
             "status": status,
@@ -571,7 +632,12 @@ def smoke_docker(actor, budget, image):
         unknown = sorted(set(charged) - set(ppe_prices(actor)))
         if unknown:
             print(f"Charged events not in pay_per_event.json (priced $1 locally): {', '.join(unknown)}")
-        return result, (logs.stdout + logs.stderr)
+        log_text = ""
+        if logs is not None:
+            log_text = (logs.stdout or "") + (logs.stderr or "")
+        if start_error is not None and not log_text.strip():
+            log_text = (start_error.stderr or start_error.stdout or str(start_error)).strip()
+        return result, log_text
 
 
 def smoke_platform(actor, budget, actor_id=None, build=None):
@@ -616,13 +682,33 @@ def smoke_platform(actor, budget, actor_id=None, build=None):
     return result, "\n".join(log.splitlines()[-60:])
 
 
+def _write_report(report, actor, result, problems, log):
+    path = Path(report)
+    payload = dict(result, chargeUsd=str(result["chargeUsd"]), actor=actor.name, problems=problems)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    path.with_suffix(".log").write_text(log or "", encoding="utf-8")
+
+
 def smoke(actor, image=None, platform=False, actor_id=None, build=None, report=None):
     budget = load_budget(actor)
-    if platform:
-        result, log = smoke_platform(actor, budget, actor_id, build)
+    try:
+        if platform:
+            result, log = smoke_platform(actor, budget, actor_id, build)
+        else:
+            result, log = smoke_docker(actor, budget, image)
+    except Exception as error:  # noqa: BLE001 - the report has to exist even when Docker dies
+        detail = getattr(error, "stderr", None) or getattr(error, "stdout", None) or ""
+        message = f"{type(error).__name__}: {error}"
+        if detail and str(detail) not in message:
+            message = f"{message}\n{detail}"
+        print(message, file=sys.stderr)
+        result = _empty_result(f"FAILED ({type(error).__name__})")
+        log = message
+        problems = [message]
     else:
-        result, log = smoke_docker(actor, budget, image)
-    problems = evaluate(budget, result)
+        problems = evaluate(budget, result)
+    if report:
+        _write_report(report, actor, result, problems, log)
     print(f"\n{actor.name} fixture smoke ({'platform' if platform else 'docker'})")
     print(f"  status          {result['status']}")
     memory = result.get("memoryMaxMbytes")
@@ -634,9 +720,6 @@ def smoke(actor, image=None, platform=False, actor_id=None, build=None, report=N
         print(f"  platform usage  ${result['usageUsd']:.4f}")
     if result.get("runUrl"):
         print(f"  run             {result['runUrl']}")
-    if report:
-        payload = dict(result, chargeUsd=str(result["chargeUsd"]), actor=actor.name, problems=problems)
-        Path(report).write_text(json.dumps(payload, indent=2), encoding="utf-8")
     if problems:
         print("\nOver budget:\n  " + "\n  ".join(problems))
         print("\nLast log lines:\n" + log)
