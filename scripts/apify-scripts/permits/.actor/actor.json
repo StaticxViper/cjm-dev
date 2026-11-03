@@ -6,7 +6,6 @@
   "version": "0.1",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",
-  "dockerContextDir": "../../../..",
   "readme": "../README.md",
   "changelog": "./CHANGELOG.md",
   "input": "./input_schema.json",

@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 512,
+  "maxDurationSecs": 180,
+  "minItems": 1,
+  "maxItems": 5,
+  "maxChargeUsd": 0.02,
+  "maxUsageUsd": 0.05,
+  "notes": "One Greenhouse board, HTTP only, maxItems 3 at $0.002. Status rows are free and count toward the dataset cap."
+}

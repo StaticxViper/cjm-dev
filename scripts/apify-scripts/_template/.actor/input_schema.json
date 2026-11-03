@@ -48,6 +48,7 @@
     "proxyGroups": {
       "title": "Proxy groups",
       "type": "array",
+      "maxItems": 5,
       "description": "Optional group names, such as DATACENTER or RESIDENTIAL. Used after a block when proxyConfiguration has no apifyProxyGroups. The first request stays direct.",
       "editor": "stringList"
     }

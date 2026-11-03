@@ -119,7 +119,7 @@ python -m unittest unittests.zillow_automation.test_zillow_agents unittests.apif
 
 ## Apify Actor
 
-The Actor is `scripts/apify-scripts/zillow`. On Apify the only required input is `zip_codes`. `max_listings` defaults to 100 across every ZIP. `max_agents` defaults to 50 unique agents. Listing status, price range, enrichment, and the proxy group sit in the Advanced section.
+The Actor is `scripts/apify-scripts/zillow`. On Apify the only required input is `zip_codes`. `max_listings` defaults to 25 across every ZIP (max 1000). `max_agents` defaults to 10 unique agents (max 500). The Script Manager entry passes its own limits. Listing status, price range, enrichment, and the proxy group sit in the Advanced section.
 
 Platform runs send Zillow traffic through Apify Proxy (`Actor.create_proxy_configuration`, residential unless the input picks another group). A local run of the same input connects directly and still writes `zillow_agents_YYYY-MM-DD_<area>.csv` and the matching JSON files. A block or captcha page is recorded on that ZIP and the run continues. The Actor does not solve captchas.
 

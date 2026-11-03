@@ -32,20 +32,22 @@ Rows are filtered by location, remote, and keyword, then deduped on `(ats, compa
 ```json
 {
   "greenhouse": ["airbnb"],
-  "lever": ["leverdemo"],
+  "lever": [],
   "leverEu": [],
-  "ashby": ["Ashby"],
-  "workable": ["huggingface"],
+  "ashby": [],
+  "workable": [],
   "location": "",
   "remote": "any",
-  "keywords": ["engineer", "engineering"],
-  "newSinceLastRun": true,
+  "keywords": [],
+  "newSinceLastRun": false,
   "stateStoreName": "ats-jobs-state",
-  "maxItems": 50,
+  "maxItems": 3,
   "delaySeconds": 1,
-  "maxSpendUsd": 5
+  "maxSpendUsd": 1
 }
 ```
+
+This file is the CI fixture: one Greenhouse board and three jobs. Add Lever, Ashby, or Workable slugs for a wider run. `keywords` of `engineer` and `engineering` keep both word forms.
 
 - Slugs are the last part of the public board URL: `boards.greenhouse.io/airbnb`, `jobs.lever.co/leverdemo`, `jobs.ashbyhq.com/Ashby`, `apply.workable.com/huggingface`. A full board URL is accepted and reduced to its slug. A `jobs.eu.lever.co` URL, or a name under `leverEu`, goes to Lever's EU API.
 - `location` keeps a job when any of its locations contains the text (case-insensitive). Commas separate alternatives. The alternative `Remote` also matches any job whose ATS flags it as remote (Ashby `isRemote`, Workable `telecommuting`, a remote workplace type), even when the location text does not say "Remote".
@@ -141,7 +143,7 @@ The template keeps `headless`, `maxProxyCostUsd`, `allowCaptcha`, `proxyConfigur
 Two further differences:
 
 - The shared `SpendLedger` counts whole cents, so $0.002 would round to 0 and the cap would never stop charging. `src/spend.py` subclasses it as `JobLedger` in micro-dollars with the same `can()` / `commit()` contract, and `push_charged_rows` uses it.
-- The Dockerfile uses `apify/actor-python:3.12` instead of the shared Playwright image. It keeps the same user, workdir, `COPY --chown`, and `CJM_REPO_ROOT` layout.
+- The Dockerfile uses `apify/actor-python:3.12` instead of the shared Playwright image. It still leaves `WORKDIR` at `/usr/src/app`, copies only files inside this folder, and sets `CJM_REPO_ROOT=/usr/src/app/platform_bundle`. The slim image has no `xvfb-entrypoint.sh`.
 
 ## Categories
 

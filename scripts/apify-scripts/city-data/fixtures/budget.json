@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 2048,
+  "maxDurationSecs": 300,
+  "minItems": 1,
+  "maxItems": 2,
+  "maxChargeUsd": 0.05,
+  "maxUsageUsd": 0.1,
+  "notes": "One city, Chromium. One profile row ($0.01 result). Proxy is off in the fixture."
+}
