@@ -1,0 +1,8 @@
+{
+  "memoryMbytes": 1024,
+  "maxDurationSecs": 300,
+  "minItems": 0,
+  "maxItems": 1,
+  "maxChargeUsd": 0.05,
+  "notes": "Copy and tighten for a new Actor. One fixture row at most."
+}

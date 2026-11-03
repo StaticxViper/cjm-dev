@@ -61,6 +61,7 @@
     "mapsDataset": {
       "title": "Maps dataset",
       "type": "array",
+      "maxItems": 500,
       "description": "Upstream Maps rows. When set, the Actor scores these listings and does not open Google Maps.",
       "editor": "json"
     },

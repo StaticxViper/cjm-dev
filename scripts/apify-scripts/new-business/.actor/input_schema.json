@@ -8,6 +8,7 @@
     "states": {
       "title": "States",
       "type": "array",
+      "maxItems": 10,
       "description": "Two-letter codes. Verified open-data feeds: NY (DOS active corporations), PA (registered businesses), CO (business entities in Good Standing). New York, Pennsylvania, and Colorado are also accepted.",
       "editor": "stringList",
       "prefill": ["NY"]
@@ -15,6 +16,7 @@
     "counties": {
       "title": "Counties",
       "type": "array",
+      "maxItems": 50,
       "description": "Optional. Case-insensitive county names. A row with no county is omitted when this list is set. Leave empty for every county the feed publishes.",
       "editor": "stringList"
     },
@@ -28,6 +30,7 @@
     "entityTypes": {
       "title": "Entity types",
       "type": "array",
+      "maxItems": 20,
       "description": "Optional. Matched against the feed's entity type. LLC matches a limited liability company. Leave empty for every type.",
       "editor": "stringList"
     },

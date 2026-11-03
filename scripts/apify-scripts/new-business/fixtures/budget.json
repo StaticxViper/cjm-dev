@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 1024,
+  "maxDurationSecs": 300,
+  "minItems": 1,
+  "maxItems": 10,
+  "maxChargeUsd": 0.5,
+  "maxUsageUsd": 0.05,
+  "notes": "NY open-data feed, HTTP only, maxResults 10 at $0.05. Enrichment is off."
+}

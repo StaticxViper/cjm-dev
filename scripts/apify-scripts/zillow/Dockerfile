@@ -1,16 +1,15 @@
-# Build context is this Actor directory. Shared modules are in platform_bundle
-# because the platform rejects a context outside the Actor directory.
-# Refresh that folder with: python bundle_context.py
+# Build context is this Actor folder. The repo modules it imports are copied
+# into platform_bundle/ by ../actor_build.py bundle; CI fails if they drift.
 FROM apify/actor-python-playwright:3.12
 
 USER myuser
+WORKDIR /home/myuser
 
 COPY --chown=myuser:myuser requirements.txt ./requirements.txt
 RUN python -m pip install --no-cache-dir --user -r requirements.txt
 
-COPY --chown=myuser:myuser src ./src
-COPY --chown=myuser:myuser platform_bundle /home/myuser/repo
+COPY --chown=myuser:myuser . ./
 
-ENV CJM_REPO_ROOT=/home/myuser/repo
+ENV CJM_REPO_ROOT=/home/myuser/platform_bundle
 ENV PYTHONUNBUFFERED=1
 CMD ["python", "-m", "src"]

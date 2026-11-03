@@ -1,28 +1,15 @@
-# Repo-root build context. See .actor/actor.json dockerContextDir.
+# Build context is this Actor folder. The repo modules it imports are copied
+# into platform_bundle/ by ../actor_build.py bundle; CI fails if they drift.
 FROM apify/actor-python-playwright:3.12
-
-ARG ACTOR_PATH_IN_DOCKER_CONTEXT=scripts/apify-scripts/city-data
 
 USER myuser
 WORKDIR /home/myuser
 
-COPY --chown=myuser:myuser ${ACTOR_PATH_IN_DOCKER_CONTEXT}/requirements.txt ./requirements.txt
+COPY --chown=myuser:myuser requirements.txt ./requirements.txt
 RUN python -m pip install --no-cache-dir --user -r requirements.txt
 
-COPY --chown=myuser:myuser ${ACTOR_PATH_IN_DOCKER_CONTEXT}/ ./
+COPY --chown=myuser:myuser . ./
 
-ENV CJM_REPO_ROOT=/home/myuser/repo
-COPY --chown=myuser:myuser scripts/apify-scripts/runtime.py /home/myuser/repo/scripts/apify-scripts/runtime.py
-COPY --chown=myuser:myuser scripts/apify-scripts/access.py /home/myuser/repo/scripts/apify-scripts/access.py
-COPY --chown=myuser:myuser scripts/city_data /home/myuser/repo/scripts/city_data
-COPY --chown=myuser:myuser scripts/lead_automation/crm_enrich_robots.py /home/myuser/repo/scripts/lead_automation/crm_enrich_robots.py
-COPY --chown=myuser:myuser helper_scripts/__init__.py /home/myuser/repo/helper_scripts/__init__.py
-COPY --chown=myuser:myuser helper_scripts/http/__init__.py /home/myuser/repo/helper_scripts/http/__init__.py
-COPY --chown=myuser:myuser helper_scripts/http/client.py /home/myuser/repo/helper_scripts/http/client.py
-COPY --chown=myuser:myuser helper_scripts/browser/__init__.py /home/myuser/repo/helper_scripts/browser/__init__.py
-COPY --chown=myuser:myuser helper_scripts/browser/route_block.py /home/myuser/repo/helper_scripts/browser/route_block.py
-COPY --chown=myuser:myuser helper_scripts/utils/__init__.py /home/myuser/repo/helper_scripts/utils/__init__.py
-COPY --chown=myuser:myuser helper_scripts/utils/logger/logger.py /home/myuser/repo/helper_scripts/utils/logger/logger.py
-
+ENV CJM_REPO_ROOT=/home/myuser/platform_bundle
 ENV PYTHONUNBUFFERED=1
 CMD ["python", "-m", "src"]
