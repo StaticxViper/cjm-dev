@@ -5,6 +5,7 @@ Playwright scrapers packaged for the Apify Marketplace. Issue #128. Local CLIs s
 | Folder | Status | Source CLI |
 |--------|--------|------------|
 | [`_template/`](_template/) | Copy this for a new Actor | — |
+| [`ats-jobs/`](ats-jobs/) | Job listings | Public Greenhouse, Lever, Ashby, and Workable job-board APIs for a company list. HTTP only, no proxy or CAPTCHA. A block stops with one `blocked` row. |
 | [`city-data/`](city-data/) | Phase 1 | [`scripts/city_data/`](../city_data/) (issue #99) |
 | [`google-business/`](google-business/) | Phase 1 | Maps session in [`scripts/lead_automation/playwright_discovery.py`](../lead_automation/playwright_discovery.py); match rules from issue #127 |
 | [`contractor-license/`](contractor-license/) | Public records | CA CSLB open CSV. AZ, NJ, and PA adapters stop on a challenge or a closed portal. Issue #155. |

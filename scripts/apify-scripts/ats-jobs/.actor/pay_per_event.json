@@ -1,0 +1,10 @@
+{
+  "actorChargeEvents": {
+    "job": {
+      "eventTitle": "Job row",
+      "eventDescription": "Charged when a job row is pushed. not_found, blocked, robots, and error rows are saved and not billed. Placeholder price pending a pricing decision.",
+      "eventPriceUsd": 0.002,
+      "isPrimaryEvent": true
+    }
+  }
+}

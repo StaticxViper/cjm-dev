@@ -1,0 +1,101 @@
+{
+  "title": "ATS job listings",
+  "description": "Company board slugs per ATS. Each board is read from its public job-board API. Unknown slugs return a not_found row and the run continues. No proxy, CAPTCHA solver, or browser is used.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "greenhouse": {
+      "title": "Greenhouse boards",
+      "type": "array",
+      "description": "Greenhouse board tokens, such as airbnb from boards.greenhouse.io/airbnb. A board URL is accepted too.",
+      "editor": "stringList",
+      "prefill": ["airbnb"]
+    },
+    "lever": {
+      "title": "Lever sites",
+      "type": "array",
+      "description": "Lever site names, such as leverdemo from jobs.lever.co/leverdemo. A jobs.eu.lever.co URL is sent to the EU API.",
+      "editor": "stringList"
+    },
+    "leverEu": {
+      "title": "Lever EU sites",
+      "type": "array",
+      "description": "Lever site names hosted on the EU instance (jobs.eu.lever.co). Read from api.eu.lever.co.",
+      "editor": "stringList"
+    },
+    "ashby": {
+      "title": "Ashby job boards",
+      "type": "array",
+      "description": "Ashby job board names, such as Ashby from jobs.ashbyhq.com/Ashby. Compensation is requested.",
+      "editor": "stringList"
+    },
+    "workable": {
+      "title": "Workable accounts",
+      "type": "array",
+      "description": "Workable account slugs, such as huggingface from apply.workable.com/huggingface.",
+      "editor": "stringList"
+    },
+    "location": {
+      "title": "Location contains",
+      "type": "string",
+      "description": "Optional. Keep jobs where any listed location contains this text (case-insensitive). Separate alternatives with commas, for example: New York, Remote.",
+      "editor": "textfield"
+    },
+    "remote": {
+      "title": "Remote",
+      "type": "string",
+      "description": "Any keeps every job. Remote only keeps fully remote jobs. Exclude remote drops them. Hybrid counts as not remote.",
+      "editor": "select",
+      "enum": ["any", "remote", "exclude"],
+      "enumTitles": ["Any", "Remote only", "Exclude remote"],
+      "default": "any"
+    },
+    "keywords": {
+      "title": "Keywords",
+      "type": "array",
+      "description": "Optional. Keep jobs whose title or department contains any of these words (case-insensitive).",
+      "editor": "stringList"
+    },
+    "newSinceLastRun": {
+      "title": "Only new since last run",
+      "type": "boolean",
+      "description": "Skip jobs already pushed by an earlier run. Seen job keys and their firstSeen time are kept in the named key-value store below, so they survive between runs.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "stateStoreName": {
+      "title": "State store name",
+      "type": "string",
+      "description": "Named key-value store that holds seen jobs. Use a different name per saved task to keep separate feeds.",
+      "editor": "textfield",
+      "default": "ats-jobs-state"
+    },
+    "maxItems": {
+      "title": "Max jobs",
+      "type": "integer",
+      "description": "Hard cap on job rows pushed this run, after filters and dedupe. Status rows do not count and are not billed.",
+      "editor": "number",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Requests run one at a time. The pause jitters upward by up to 1 second.",
+      "editor": "number",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "Stop charging when the next job event would pass this amount. Default 5, maximum 100. Later job rows are saved and are not billed.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 0,
+      "maximum": 100
+    }
+  }
+}
