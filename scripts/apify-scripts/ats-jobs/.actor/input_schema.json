@@ -9,31 +9,36 @@
       "type": "array",
       "description": "Greenhouse board tokens, such as airbnb from boards.greenhouse.io/airbnb. A board URL is accepted too.",
       "editor": "stringList",
-      "prefill": ["airbnb"]
+      "prefill": ["airbnb"],
+      "maxItems": 50
     },
     "lever": {
       "title": "Lever sites",
       "type": "array",
       "description": "Lever site names, such as leverdemo from jobs.lever.co/leverdemo. A jobs.eu.lever.co URL is sent to the EU API.",
-      "editor": "stringList"
+      "editor": "stringList",
+      "maxItems": 50
     },
     "leverEu": {
       "title": "Lever EU sites",
       "type": "array",
       "description": "Lever site names hosted on the EU instance (jobs.eu.lever.co). Read from api.eu.lever.co.",
-      "editor": "stringList"
+      "editor": "stringList",
+      "maxItems": 50
     },
     "ashby": {
       "title": "Ashby job boards",
       "type": "array",
       "description": "Ashby job board names, such as Ashby from jobs.ashbyhq.com/Ashby. Compensation is requested.",
-      "editor": "stringList"
+      "editor": "stringList",
+      "maxItems": 50
     },
     "workable": {
       "title": "Workable accounts",
       "type": "array",
       "description": "Workable account slugs, such as huggingface from apply.workable.com/huggingface.",
-      "editor": "stringList"
+      "editor": "stringList",
+      "maxItems": 50
     },
     "location": {
       "title": "Location contains",
@@ -54,7 +59,8 @@
       "title": "Keywords",
       "type": "array",
       "description": "Optional. Keep jobs whose title or department contains any of these as a whole word (case-insensitive). engineer does not match Engineering; list both if you want both.",
-      "editor": "stringList"
+      "editor": "stringList",
+      "maxItems": 50
     },
     "newSinceLastRun": {
       "title": "Only new since last run",

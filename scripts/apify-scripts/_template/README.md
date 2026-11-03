@@ -15,7 +15,7 @@ Every Actor is a copy of this folder:
 - `src/__main__.py` runs `asyncio.run(main())`. `src/main.py` uses `async with Actor` and runs sync Playwright inside `asyncio.to_thread`.
 - `src/runtime.py` re-exports `scripts/apify-scripts/runtime.py` (repo imports, robots fetches with jittered retry on HTTP 429 / 5xx, timestamps, the pay-per-event push, and the access ladder in `access.py`). Business logic stays in the local CLIs and is imported, not moved.
 - `Dockerfile` uses `apify/actor-python-playwright:3.12`, user `myuser`, and `COPY --chown=myuser:myuser`. Leave the base image `WORKDIR` (`/usr/src/app`) and `./xvfb-entrypoint.sh` entrypoint alone. `CJM_REPO_ROOT` is `/usr/src/app/platform_bundle`. Do not pip-install a different Playwright build.
-- `requirements.txt` stays lean. `fixtures/INPUT.json` is the committed sample. Local `apify run` storage is gitignored.
+- `requirements.txt` stays lean. `fixtures/INPUT.json` is the small smoke run and `fixtures/budget.json` is its memory, duration, row, and charge cap. `bundle.txt` lists the repo files copied into `platform_bundle/`. `actor_build.py check` fails when any of those three is missing, and that check is a merge blocker. Local `apify run` storage is gitignored.
 - `README.md` is the marketplace draft: what it does, input, output sample, limitations, robots / ToS, pricing placeholder.
 
 Shared behavior:

@@ -253,6 +253,7 @@ class TestInput(unittest.TestCase):
             self.assertIn(key, props)
         for key in ("greenhouse", "lever", "leverEu", "ashby", "workable", "keywords"):
             self.assertEqual(props[key]["editor"], "stringList")
+            self.assertIn("maxItems", props[key])
         self.assertEqual(props["remote"]["editor"], "select")
         self.assertEqual(props["remote"]["enum"], ["any", "remote", "exclude"])
         for dropped in ("maxProxyCostUsd", "allowCaptcha", "proxyConfiguration", "proxyGroups", "headless"):
@@ -273,11 +274,16 @@ class TestInput(unittest.TestCase):
 
         actor = json.loads((_ACTOR / ".actor" / "actor.json").read_text(encoding="utf-8"))
         self.assertEqual(actor["name"], "ats-jobs")
-        self.assertEqual(actor["dockerContextDir"], "../../../..")
+        self.assertNotIn("dockerContextDir", actor)
         self.assertIn("timeoutSecs", actor["defaultRunOptions"])
         docker = (_ACTOR / "Dockerfile").read_text(encoding="utf-8")
-        self.assertIn("scripts/apify-scripts/runtime.py", docker)
-        self.assertIn("scripts/apify-scripts/access.py", docker)
+        self.assertNotIn("ACTOR_PATH_IN_DOCKER_CONTEXT", docker)
+        self.assertIn("CJM_REPO_ROOT=/usr/src/app/platform_bundle", docker)
+        bundle = (_ACTOR / "bundle.txt").read_text(encoding="utf-8")
+        self.assertIn("scripts/apify-scripts/runtime.py", bundle)
+        self.assertIn("scripts/apify-scripts/access.py", bundle)
+        self.assertTrue((_ACTOR / "fixtures" / "budget.json").is_file())
+        self.assertTrue((_ACTOR / "fixtures" / "INPUT.json").is_file())
         requirements = (_ACTOR / "requirements.txt").read_text(encoding="utf-8").splitlines()
         packages = [line for line in requirements if line.strip() and not line.startswith("#")]
         self.assertFalse(any("playwright" in line for line in packages))

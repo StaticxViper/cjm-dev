@@ -26,6 +26,7 @@ build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
 
 ACTORS = (
+    "ats-jobs",
     "city-data",
     "contractor-license",
     "google-business",
@@ -81,12 +82,26 @@ class TestRepoActors(unittest.TestCase):
             config = json.loads((actor / ".actor" / "actor.json").read_text(encoding="utf-8"))
             self.assertNotIn("dockerContextDir", config, actor.name)
 
-    def test_template_matches_the_actor_dockerfiles(self):
+    def test_template_matches_the_playwright_actor_dockerfiles(self):
         template = (build.HERE / "_template" / "Dockerfile").read_text(encoding="utf-8")
         body = template[template.index("FROM ") :]
+        base = body.splitlines()[0]
+        matched = []
         for name in ACTORS:
             text = (build.HERE / name / "Dockerfile").read_text(encoding="utf-8")
-            self.assertEqual(text[text.index("FROM ") :], body, name)
+            actor_body = text[text.index("FROM ") :]
+            if not actor_body.startswith(base):
+                continue
+            matched.append(name)
+            self.assertEqual(actor_body, body, name)
+        self.assertIn("city-data", matched)
+        self.assertNotIn("ats-jobs", matched)
+
+    def test_ats_jobs_image_is_self_contained_http(self):
+        text = (build.HERE / "ats-jobs" / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("FROM apify/actor-python:3.12", text)
+        self.assertNotIn("ACTOR_PATH_IN_DOCKER_CONTEXT", text)
+        self.assertIn("CJM_REPO_ROOT=/usr/src/app/platform_bundle", text)
 
     def test_dockerfiles_keep_the_base_image_workdir(self):
         for actor in build.actor_dirs():
@@ -150,6 +165,36 @@ class TestDrift(unittest.TestCase):
         errors = build.schema_errors(self.actor)
         self.assertIn("input maxResults has no maximum", errors)
         self.assertIn("input names is a free-form list with no maxItems", errors)
+
+    def test_missing_bundle_and_fixture_are_rejected(self):
+        (self.actor / build.MANIFEST).unlink()
+        (self.actor / build.FIXTURE).unlink()
+        (self.actor / build.BUDGET).unlink()
+        self.assertIn("bundle.txt is missing", build.drift_errors(self.actor))
+        errors = build.budget_errors(self.actor)
+        self.assertTrue(any("budget.json is missing" in error for error in errors), errors)
+        self.assertIn("fixtures/INPUT.json is missing", errors)
+
+    def test_actor_folder_without_a_bundle_is_still_discovered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            actor = root / "new-actor" / ".actor"
+            actor.mkdir(parents=True)
+            (actor / "actor.json").write_text('{"dockerfile": "../Dockerfile"}', encoding="utf-8")
+            with patch.object(build, "HERE", root):
+                found = build.actor_dirs()
+                self.assertEqual([path.name for path in found], ["new-actor"])
+                errors = (
+                    build.drift_errors(found[0])
+                    + build.build_errors(found[0])
+                    + build.schema_errors(found[0])
+                    + build.budget_errors(found[0])
+                )
+            self.assertIn("bundle.txt is missing", errors)
+            self.assertIn("Dockerfile is missing", errors)
+            self.assertIn("input_schema.json is missing", errors)
+            self.assertIn("fixtures/INPUT.json is missing", errors)
+            self.assertTrue(any("budget.json is missing" in error for error in errors), errors)
 
     def test_budget_outside_actor_memory_is_rejected(self):
         path = self.actor / build.BUDGET

@@ -65,8 +65,16 @@ SEARCH_DIRS = (
 
 
 def actor_dirs(names=None):
+    """Every Actor folder, including one that has no bundle or fixture yet.
+
+    Discovery is the ``.actor/actor.json`` file. ``check`` then fails if the
+    bundle or the smoke fixture is missing, so a new Actor cannot pass CI on
+    unit tests alone.
+    """
     found = sorted(
-        path.parent for path in HERE.glob(f"*/{MANIFEST}") if (path.parent / ".actor").is_dir()
+        path
+        for path in HERE.iterdir()
+        if path.is_dir() and (path / ".actor" / "actor.json").is_file()
     )
     if not names:
         return found
@@ -125,6 +133,8 @@ def _bundled_files(actor):
 
 def drift_errors(actor):
     errors = []
+    if not (actor / MANIFEST).is_file():
+        return [f"{MANIFEST} is missing"]
     files = read_manifest(actor)
     if len(files) != len(set(files)):
         errors.append(f"{MANIFEST} lists a path twice")
@@ -151,7 +161,12 @@ def build_errors(actor):
         errors.append(f"actor.json dockerContextDir is {context!r}; omit it so the Actor folder is the context")
     if config.get("dockerfile", "../Dockerfile") != "../Dockerfile":
         errors.append("actor.json dockerfile must be ../Dockerfile")
-    dockerfile = (actor / "Dockerfile").read_text(encoding="utf-8")
+    dockerfile_path = actor / "Dockerfile"
+    if not dockerfile_path.is_file():
+        errors.append("Dockerfile is missing")
+        dockerfile = ""
+    else:
+        dockerfile = dockerfile_path.read_text(encoding="utf-8")
     if "ACTOR_PATH_IN_DOCKER_CONTEXT" in dockerfile:
         errors.append("Dockerfile uses ACTOR_PATH_IN_DOCKER_CONTEXT")
     for number, line in enumerate(dockerfile.splitlines(), 1):
@@ -170,7 +185,13 @@ def build_errors(actor):
 def schema_errors(actor):
     """Store users get schema defaults. A limit with no default or ceiling can start a huge job."""
     errors = []
-    schema = read_json(actor / ".actor" / "input_schema.json")
+    path = actor / ".actor" / "input_schema.json"
+    if not path.is_file():
+        return ["input_schema.json is missing"]
+    try:
+        schema = read_json(path)
+    except (OSError, json.JSONDecodeError) as error:
+        return [f"input_schema.json is not valid JSON ({error})"]
     for name, prop in schema.get("properties", {}).items():
         kind = prop.get("type")
         if kind == "integer" and name.lower().startswith("max"):
@@ -200,11 +221,13 @@ def load_budget(actor):
 
 
 def budget_errors(actor):
+    errors = []
+    if not (actor / FIXTURE).is_file():
+        errors.append(f"{FIXTURE.as_posix()} is missing")
     try:
         budget = load_budget(actor)
     except ValueError as error:
-        return [str(error)]
-    errors = []
+        return errors + [str(error)]
     config = read_json(actor / ".actor" / "actor.json")
     memory = budget["memoryMbytes"]
     if memory < 128 or memory & (memory - 1):
@@ -218,7 +241,13 @@ def budget_errors(actor):
         errors.append(f"budget maxDurationSecs is above actor.json defaultRunOptions.timeoutSecs {timeout}")
     if budget["minItems"] > budget["maxItems"]:
         errors.append("budget minItems is above maxItems")
-    fixture = read_json(actor / FIXTURE)
+    if not (actor / FIXTURE).is_file():
+        return errors
+    try:
+        fixture = read_json(actor / FIXTURE)
+    except (OSError, json.JSONDecodeError) as error:
+        errors.append(f"{FIXTURE.as_posix()} is not valid JSON ({error})")
+        return errors
     spend = fixture.get("maxSpendUsd")
     if spend is not None and budget["maxChargeUsd"] > spend:
         errors.append("budget maxChargeUsd is above the fixture maxSpendUsd")
