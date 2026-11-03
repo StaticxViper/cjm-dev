@@ -1,0 +1,74 @@
+{
+  "feed": {
+    "author": {
+      "name": {"label": "iTunes Store"},
+      "uri": {"label": "http://www.apple.com/itunes/"}
+    },
+    "entry": [
+      {
+        "im:name": {"label": "Facebook"},
+        "title": {"label": "Facebook"},
+        "id": {
+          "label": "https://apps.apple.com/us/app/facebook/id284882215?uo=2",
+          "attributes": {"im:id": "284882215"}
+        },
+        "link": {
+          "attributes": {
+            "rel": "alternate",
+            "type": "text/html",
+            "href": "https://apps.apple.com/us/app/facebook/id284882215?uo=2"
+          }
+        },
+        "im:artist": {"label": "Meta Platforms, Inc."},
+        "category": {
+          "attributes": {"im:id": "6005", "term": "Social Networking", "label": "Social Networking"}
+        }
+      },
+      {
+        "im:rating": {"label": "5"},
+        "id": {"label": "1001"},
+        "title": {"label": "Love this app"},
+        "content": {
+          "label": "Really great and helpful every day.",
+          "attributes": {"type": "text"}
+        },
+        "im:version": {"label": "532.0"},
+        "author": {
+          "name": {"label": "Alex Rivera"},
+          "uri": {"label": "https://itunes.apple.com/us/reviews/id1001"}
+        },
+        "updated": {"label": "2026-10-20T08:15:00-07:00"},
+        "link": {
+          "attributes": {
+            "rel": "related",
+            "href": "https://itunes.apple.com/us/review?id=284882215&type=Purple%20Software"
+          }
+        }
+      },
+      {
+        "im:rating": {"label": "1"},
+        "id": {"label": "1002"},
+        "title": {"label": "Terrible"},
+        "content": {
+          "label": "Awful crashes and a broken feed.",
+          "attributes": {"type": "text"}
+        },
+        "im:version": {"label": "531.0"},
+        "author": {
+          "name": {"label": "Sam Lee"},
+          "uri": {"label": "https://itunes.apple.com/us/reviews/id1002"}
+        },
+        "updated": {"label": "2026-09-01T11:00:00-07:00"},
+        "link": {
+          "attributes": {
+            "rel": "related",
+            "href": "https://itunes.apple.com/us/review?id=284882215&type=Purple%20Software"
+          }
+        }
+      }
+    ],
+    "id": {"label": "https://itunes.apple.com/us/rss/customerreviews/page=1/id=284882215/sortby=mostrecent/json"},
+    "title": {"label": "iTunes Store: Customer Reviews"},
+    "updated": {"label": "2026-10-21T12:00:00-07:00"}
+  }
+}

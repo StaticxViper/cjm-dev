@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 512,
+  "maxDurationSecs": 180,
+  "minItems": 1,
+  "maxItems": 5,
+  "maxChargeUsd": 0.02,
+  "maxUsageUsd": 0.05,
+  "notes": "3-review iTunes RSS smoke for Facebook iOS (284882215), country us, sentiment off, HTTP only. Three reviews at $0.001 stay under maxChargeUsd, and maxChargeUsd is within the fixture maxSpendUsd of 1. Status rows are free and count toward the dataset cap."
+}

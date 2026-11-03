@@ -1,0 +1,32 @@
+{
+  "feed": {
+    "entry": [
+      {
+        "im:name": {"label": "Facebook"},
+        "title": {"label": "Facebook"},
+        "id": {
+          "label": "https://apps.apple.com/us/app/facebook/id284882215?uo=2",
+          "attributes": {"im:id": "284882215"}
+        }
+      },
+      {
+        "im:rating": {"label": "1"},
+        "id": {"label": "1002"},
+        "title": {"label": "Terrible"},
+        "content": {
+          "label": "Awful crashes and a broken feed.",
+          "attributes": {"type": "text"}
+        },
+        "im:version": {"label": "531.0"},
+        "author": {"name": {"label": "Sam Lee"}},
+        "updated": {"label": "2026-09-01T11:00:00-07:00"},
+        "link": {
+          "attributes": {
+            "rel": "related",
+            "href": "https://itunes.apple.com/us/review?id=284882215&type=Purple%20Software"
+          }
+        }
+      }
+    ]
+  }
+}

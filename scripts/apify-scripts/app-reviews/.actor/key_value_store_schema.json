@@ -1,0 +1,13 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "App reviews run summary",
+  "description": "Default key-value store containing the run summary written after review rows are pushed.",
+  "collections": {
+    "summary": {
+      "title": "Summary",
+      "description": "Status, counts, spend, and one report per app for the finished run.",
+      "key": "SUMMARY",
+      "contentTypes": ["application/json"]
+    }
+  }
+}

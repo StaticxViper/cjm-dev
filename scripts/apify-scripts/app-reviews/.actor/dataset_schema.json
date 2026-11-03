@@ -1,0 +1,98 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "App reviews",
+    "fields": {
+      "app": {"type": "string"},
+      "appId": {"type": "string"},
+      "store": {"type": "string"},
+      "country": {"type": "string"},
+      "reviewId": {"type": "string"},
+      "rating": {"type": "integer"},
+      "title": {"type": "string"},
+      "text": {"type": "string"},
+      "version": {"type": "string"},
+      "date": {"type": "string"},
+      "author": {"type": "string"},
+      "url": {"type": "string"},
+      "sentiment": {"type": "string"},
+      "sentimentScore": {"type": "number"},
+      "sourceStatus": {"type": "string"},
+      "decision": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["app", "store", "country", "rating", "title", "author", "date", "sourceStatus"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "app": {"label": "App", "format": "text"},
+          "store": {"label": "Store", "format": "text"},
+          "country": {"label": "Country", "format": "text"},
+          "rating": {"label": "Rating", "format": "number"},
+          "title": {"label": "Title", "format": "text"},
+          "author": {"label": "Author", "format": "text"},
+          "date": {"label": "Date", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "app",
+          "appId",
+          "store",
+          "country",
+          "reviewId",
+          "rating",
+          "title",
+          "text",
+          "version",
+          "date",
+          "author",
+          "url",
+          "sentiment",
+          "sentimentScore",
+          "sourceStatus",
+          "decision",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "app": {"label": "App", "format": "text"},
+          "appId": {"label": "App id", "format": "text"},
+          "store": {"label": "Store", "format": "text"},
+          "country": {"label": "Country", "format": "text"},
+          "reviewId": {"label": "Review id", "format": "text"},
+          "rating": {"label": "Rating", "format": "number"},
+          "title": {"label": "Title", "format": "text"},
+          "text": {"label": "Text", "format": "text"},
+          "version": {"label": "Version", "format": "text"},
+          "date": {"label": "Date", "format": "text"},
+          "author": {"label": "Author", "format": "text"},
+          "url": {"label": "URL", "format": "link"},
+          "sentiment": {"label": "Sentiment", "format": "text"},
+          "sentimentScore": {"label": "Sentiment score", "format": "number"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}
