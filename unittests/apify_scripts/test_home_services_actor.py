@@ -141,10 +141,28 @@ class TestHomeServicesInput(unittest.TestCase):
             self.assertIn(key, dataset["fields"]["fields"])
         self.assertIn("detail", dataset["views"])
         pricing = json.loads((actor_dir / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
-        self.assertEqual(set(pricing["actorChargeEvents"]), {"place", "email-found", "score"})
-        self.assertTrue(pricing["actorChargeEvents"]["place"]["isPrimaryEvent"])
-        self.assertGreater(pricing["actorChargeEvents"]["email-found"]["eventPriceUsd"], 0)
-        self.assertGreater(pricing["actorChargeEvents"]["score"]["eventPriceUsd"], 0)
+        events = pricing["actorChargeEvents"]
+        self.assertEqual(set(events), {"place", "email-found", "score"})
+        self.assertTrue(events["place"]["isPrimaryEvent"])
+        self.assertFalse(events["email-found"]["isPrimaryEvent"])
+        self.assertFalse(events["score"]["isPrimaryEvent"])
+        self.assertEqual(
+            {name: row["tieredEventPriceUsd"] for name, row in events["place"]["eventTieredPricingUsd"].items()},
+            {
+                "FREE": 0.008,
+                "BRONZE": 0.007,
+                "SILVER": 0.006,
+                "GOLD": 0.005,
+                "PLATINUM": 0.005,
+                "DIAMOND": 0.005,
+            },
+        )
+        for name, price in (("email-found", 0.008), ("score", 0.004)):
+            self.assertNotIn("eventPriceUsd", events[name])
+            self.assertEqual(
+                {tier: row["tieredEventPriceUsd"] for tier, row in events[name]["eventTieredPricingUsd"].items()},
+                {tier: price for tier in ("FREE", "BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND")},
+            )
 
     def test_source_does_not_call_places_or_web_search(self):
         text = "\n".join(path.read_text(encoding="utf-8") for path in _SRC.glob("*.py"))

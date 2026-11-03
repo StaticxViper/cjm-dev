@@ -3,18 +3,44 @@
     "place": {
       "eventTitle": "Accepted place",
       "eventDescription": "Charged when a listing is an accepted match under the issue #127 rules. Rejected, blocked, empty, and error rows are saved and not billed.",
-      "eventPriceUsd": 0.05,
-      "isPrimaryEvent": true
+      "isOneTimeEvent": false,
+      "isPrimaryEvent": true,
+      "eventTieredPricingUsd": {
+        "FREE": { "tieredEventPriceUsd": 0.008 },
+        "BRONZE": { "tieredEventPriceUsd": 0.007 },
+        "SILVER": { "tieredEventPriceUsd": 0.006 },
+        "GOLD": { "tieredEventPriceUsd": 0.005 },
+        "PLATINUM": { "tieredEventPriceUsd": 0.005 },
+        "DIAMOND": { "tieredEventPriceUsd": 0.005 }
+      }
     },
     "email-found": {
       "eventTitle": "Email found",
       "eventDescription": "Charged only when website enrichment returns a validated email for an accepted place. A miss, a robots skip, or a failed fetch is not billed.",
-      "eventPriceUsd": 0.03
+      "isOneTimeEvent": false,
+      "isPrimaryEvent": false,
+      "eventTieredPricingUsd": {
+        "FREE": { "tieredEventPriceUsd": 0.008 },
+        "BRONZE": { "tieredEventPriceUsd": 0.008 },
+        "SILVER": { "tieredEventPriceUsd": 0.008 },
+        "GOLD": { "tieredEventPriceUsd": 0.008 },
+        "PLATINUM": { "tieredEventPriceUsd": 0.008 },
+        "DIAMOND": { "tieredEventPriceUsd": 0.008 }
+      }
     },
     "score": {
       "eventTitle": "Lead score",
       "eventDescription": "Charged only when an accepted place receives a lead score. Scoring that does not produce a number is not billed.",
-      "eventPriceUsd": 0.02
+      "isOneTimeEvent": false,
+      "isPrimaryEvent": false,
+      "eventTieredPricingUsd": {
+        "FREE": { "tieredEventPriceUsd": 0.004 },
+        "BRONZE": { "tieredEventPriceUsd": 0.004 },
+        "SILVER": { "tieredEventPriceUsd": 0.004 },
+        "GOLD": { "tieredEventPriceUsd": 0.004 },
+        "PLATINUM": { "tieredEventPriceUsd": 0.004 },
+        "DIAMOND": { "tieredEventPriceUsd": 0.004 }
+      }
     }
   }
 }

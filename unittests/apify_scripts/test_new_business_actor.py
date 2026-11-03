@@ -550,14 +550,27 @@ class TestAccessAndSpend(unittest.TestCase):
 
 
 class TestPricingFile(unittest.TestCase):
-    def test_pay_per_event_matches_the_ledger(self):
+    def test_pay_per_event_matches_console(self):
         path = _REPO / "scripts" / "apify-scripts" / "new-business" / ".actor" / "pay_per_event.json"
         events = json.loads(path.read_text(encoding="utf-8"))["actorChargeEvents"]
-        self.assertEqual(set(events), set(spend.PRICES_USD))
-        for name, price in spend.PRICES_USD.items():
-            self.assertEqual(events[name]["eventPriceUsd"], price)
+        self.assertEqual(set(events), {"business", "enrichment"})
         self.assertTrue(events["business"]["isPrimaryEvent"])
-        self.assertNotIn("isPrimaryEvent", events["enrichment"])
+        self.assertFalse(events["enrichment"]["isPrimaryEvent"])
+        self.assertEqual(
+            {name: row["tieredEventPriceUsd"] for name, row in events["business"]["eventTieredPricingUsd"].items()},
+            {
+                "FREE": 0.008,
+                "BRONZE": 0.007,
+                "SILVER": 0.006,
+                "GOLD": 0.005,
+                "PLATINUM": 0.005,
+                "DIAMOND": 0.005,
+            },
+        )
+        self.assertEqual(
+            {name: row["tieredEventPriceUsd"] for name, row in events["enrichment"]["eventTieredPricingUsd"].items()},
+            {tier: 0.01 for tier in ("FREE", "BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND")},
+        )
 
     def test_image_copies_the_pipeline_modules(self):
         text = (_REPO / "scripts" / "apify-scripts" / "new-business" / "Dockerfile").read_text(encoding="utf-8")

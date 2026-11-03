@@ -1,6 +1,6 @@
 """Pay-per-event prices and the run spend ledger.
 
-Prices match ``.actor/pay_per_event.json``. Amounts are cents so a cap check
+Local cap schedule. Store billing is ``.actor/pay_per_event.json``. Amounts are cents so a cap check
 does not drift on binary floats. A charge is recorded only after the Actor
 actually did the billable thing.
 """

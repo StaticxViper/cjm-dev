@@ -28,7 +28,7 @@ except ImportError:
         stop_message,
     )
 
-# Matches .actor/pay_per_event.json. The shared ladder adds proxy and captcha.
+# Local cap schedule. Store billing is the tiered result price in .actor/pay_per_event.json.
 PRICES_USD = {
     "result": 0.05,
     "proxy": 0.01,
