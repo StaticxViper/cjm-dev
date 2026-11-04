@@ -506,10 +506,21 @@ class TestStoreContract(unittest.TestCase):
         self.assertEqual(state["editor"], "select")
         self.assertEqual(state["enum"], ["CA", "AZ", "NJ", "PA"])
         pricing = json.loads((_ACTOR / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(pricing["actorChargeEvents"]), {"license"})
         event = pricing["actorChargeEvents"]["license"]
         self.assertTrue(event["isPrimaryEvent"])
-        self.assertGreater(event["eventPriceUsd"], 0)
-        self.assertNotIn("result", pricing["actorChargeEvents"])
+        self.assertNotIn("eventPriceUsd", event)
+        self.assertEqual(
+            {name: row["tieredEventPriceUsd"] for name, row in event["eventTieredPricingUsd"].items()},
+            {
+                "FREE": 0.008,
+                "BRONZE": 0.007,
+                "SILVER": 0.006,
+                "GOLD": 0.005,
+                "PLATINUM": 0.005,
+                "DIAMOND": 0.005,
+            },
+        )
         dataset = json.loads((_ACTOR / ".actor" / "dataset_schema.json").read_text(encoding="utf-8"))
         for key in ("license_no", "name", "status", "class", "issue_date", "expiry_date", "bond", "insurance", "address", "source_url"):
             self.assertIn(key, dataset["fields"]["fields"])

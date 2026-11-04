@@ -483,7 +483,36 @@ def evaluate(budget, result):
 
 def ppe_prices(actor):
     events = read_json(actor / ".actor" / "pay_per_event.json").get("actorChargeEvents", {})
-    return {name: Decimal(str(event.get("eventPriceUsd", 0))) for name, event in events.items()}
+    return {name: _event_price_usd(event) for name, event in events.items()}
+
+
+def _event_price_usd(event):
+    """Flat price, or the FREE tier when Console stored only tiered prices."""
+    if event.get("eventPriceUsd") is not None:
+        return Decimal(str(event["eventPriceUsd"]))
+    tiers = event.get("eventTieredPricingUsd") or {}
+    free = (tiers.get("FREE") or {}).get("tieredEventPriceUsd")
+    if free is None:
+        return Decimal(0)
+    return Decimal(str(free))
+
+
+def local_sdk_events(events):
+    """Pricing payload for the image SDK.
+
+    Apify 3.x requires eventPriceUsd and rejects a tier-only event. The value
+    is the FREE tier and is sent only in the smoke environment. The file on
+    disk stays the Console price list.
+    """
+    ready = {}
+    for name, event in events.items():
+        item = dict(event)
+        if item.get("eventPriceUsd") is None:
+            free = ((event.get("eventTieredPricingUsd") or {}).get("FREE") or {}).get("tieredEventPriceUsd")
+            if free is not None:
+                item["eventPriceUsd"] = free
+        ready[name] = item
+    return ready
 
 
 def _parse_mem(text):
@@ -568,7 +597,7 @@ def smoke_docker(actor, budget, image):
         image = f"cjm-actor-{actor.name}:smoke"
         print(f"Building {image} from {actor}")
         _docker("build", "-t", image, str(actor), capture=False)
-    events = read_json(actor / ".actor" / "pay_per_event.json").get("actorChargeEvents", {})
+    events = local_sdk_events(read_json(actor / ".actor" / "pay_per_event.json").get("actorChargeEvents", {}))
     pricing = {"pricingModel": "PAY_PER_EVENT", "pricingPerEvent": {"actorChargeEvents": events}}
     name = f"smoke-{actor.name}-{os.getpid()}"
     with tempfile.TemporaryDirectory(prefix=f"smoke-{actor.name}-", ignore_cleanup_errors=True) as tmp:

@@ -3,23 +3,30 @@
     "business": {
       "eventTitle": "Returned entity",
       "eventDescription": "Charged when a formed entity is returned. not_found, unsupported, blocked, robots, and error rows are saved and not billed.",
-      "eventPriceUsd": 0.05,
-      "isPrimaryEvent": true
+      "isOneTimeEvent": false,
+      "isPrimaryEvent": true,
+      "eventTieredPricingUsd": {
+        "FREE": { "tieredEventPriceUsd": 0.008 },
+        "BRONZE": { "tieredEventPriceUsd": 0.007 },
+        "SILVER": { "tieredEventPriceUsd": 0.006 },
+        "GOLD": { "tieredEventPriceUsd": 0.005 },
+        "PLATINUM": { "tieredEventPriceUsd": 0.005 },
+        "DIAMOND": { "tieredEventPriceUsd": 0.005 }
+      }
     },
     "enrichment": {
       "eventTitle": "Website or email found",
       "eventDescription": "Charged only when enrichWebsite is on and a website or email is found. A row with neither is not charged.",
-      "eventPriceUsd": 0.03
-    },
-    "proxy": {
-      "eventTitle": "Proxy request",
-      "eventDescription": "Charged when a request is retried through Apify Proxy after a direct request is blocked. Direct requests are free.",
-      "eventPriceUsd": 0.01
-    },
-    "captcha": {
-      "eventTitle": "CAPTCHA solve",
-      "eventDescription": "Charged only when a solver returns a token after the proxy retry is still a challenge. A disabled or unconfigured solve is not billed.",
-      "eventPriceUsd": 1.0
+      "isOneTimeEvent": false,
+      "isPrimaryEvent": false,
+      "eventTieredPricingUsd": {
+        "FREE": { "tieredEventPriceUsd": 0.01 },
+        "BRONZE": { "tieredEventPriceUsd": 0.01 },
+        "SILVER": { "tieredEventPriceUsd": 0.01 },
+        "GOLD": { "tieredEventPriceUsd": 0.01 },
+        "PLATINUM": { "tieredEventPriceUsd": 0.01 },
+        "DIAMOND": { "tieredEventPriceUsd": 0.01 }
+      }
     }
   }
 }

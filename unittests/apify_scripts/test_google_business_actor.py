@@ -105,12 +105,21 @@ class TestGoogleInput(unittest.TestCase):
             self.assertIn(key, dataset["fields"]["fields"])
         self.assertIn("detail", dataset["views"])
         pricing = json.loads((_SRC.parent / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(pricing["actorChargeEvents"]), {"result"})
         event = pricing["actorChargeEvents"]["result"]
         self.assertTrue(event["isPrimaryEvent"])
-        self.assertGreater(event["eventPriceUsd"], 0)
-        self.assertEqual(set(pricing["actorChargeEvents"]), set(mapping.PRICES_USD))
-        for name, price in mapping.PRICES_USD.items():
-            self.assertEqual(pricing["actorChargeEvents"][name]["eventPriceUsd"], price)
+        self.assertNotIn("eventPriceUsd", event)
+        self.assertEqual(
+            {name: row["tieredEventPriceUsd"] for name, row in event["eventTieredPricingUsd"].items()},
+            {
+                "FREE": 0.006,
+                "BRONZE": 0.005,
+                "SILVER": 0.004,
+                "GOLD": 0.003,
+                "PLATINUM": 0.003,
+                "DIAMOND": 0.003,
+            },
+        )
         for key in ("maxSpendUsd", "maxProxyCostUsd", "allowCaptcha", "proxyConfiguration"):
             self.assertIn(key, form["properties"])
         self.assertIn("charge_usage", (_SRC / "main.py").read_text(encoding="utf-8"))

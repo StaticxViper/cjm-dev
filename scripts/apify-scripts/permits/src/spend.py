@@ -1,6 +1,6 @@
 """Pay-per-event prices for the permit Actor.
 
-Amounts match ``.actor/pay_per_event.json``. The shared spend ledger in
+Local cap schedule. Store billing is ``.actor/pay_per_event.json``. The shared spend ledger in
 ``scripts/apify-scripts/access.py`` records a charge only after the run
 actually did the billable thing.
 """

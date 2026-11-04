@@ -150,12 +150,21 @@ class TestCityDataset(unittest.TestCase):
             self.assertEqual(declared[key]["type"], "object")
         self.assertIn("detail", dataset["views"])
         pricing = json.loads((_SRC.parent / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(pricing["actorChargeEvents"]), {"result"})
         event = pricing["actorChargeEvents"]["result"]
         self.assertTrue(event["isPrimaryEvent"])
-        self.assertGreater(event["eventPriceUsd"], 0)
-        self.assertEqual(set(pricing["actorChargeEvents"]), set(mapping.PRICES_USD))
-        for name, price in mapping.PRICES_USD.items():
-            self.assertEqual(pricing["actorChargeEvents"][name]["eventPriceUsd"], price)
+        self.assertNotIn("eventPriceUsd", event)
+        self.assertEqual(
+            {name: row["tieredEventPriceUsd"] for name, row in event["eventTieredPricingUsd"].items()},
+            {
+                "FREE": 0.008,
+                "BRONZE": 0.007,
+                "SILVER": 0.006,
+                "GOLD": 0.005,
+                "PLATINUM": 0.005,
+                "DIAMOND": 0.005,
+            },
+        )
         for key in ("maxSpendUsd", "maxProxyCostUsd", "allowCaptcha", "proxyConfiguration"):
             self.assertIn(key, form["properties"])
         runtime = (_SRC / "runtime.py").read_text(encoding="utf-8")
