@@ -35,6 +35,7 @@ ACTORS = (
     "home-services",
     "new-business",
     "permits",
+    "shopify-store",
     "zillow",
 )
 

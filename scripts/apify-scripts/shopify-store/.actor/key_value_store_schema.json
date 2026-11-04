@@ -1,0 +1,13 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "Shopify store run summary",
+  "description": "Default key-value store containing the run summary written after rows are pushed. Variant prices live in the named store from stateStoreName, not here.",
+  "collections": {
+    "summary": {
+      "title": "Summary",
+      "description": "Status, counts, spend, and one report per domain for the finished run.",
+      "key": "SUMMARY",
+      "contentTypes": ["application/json"]
+    }
+  }
+}

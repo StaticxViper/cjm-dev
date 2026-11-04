@@ -1,0 +1,19 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "Shopify store intel",
+  "description": "Store profiles and product rows from public Shopify JSON, plus the run summary.",
+  "properties": {
+    "results": {
+      "type": "string",
+      "title": "Results",
+      "description": "Dataset containing store profiles, products, and status rows",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "files": {
+      "type": "string",
+      "title": "Files",
+      "description": "Key-value store containing the SUMMARY record for this run",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/keys"
+    }
+  }
+}

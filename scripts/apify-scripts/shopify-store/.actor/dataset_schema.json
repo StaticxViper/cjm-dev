@@ -1,0 +1,218 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Shopify store intel",
+    "fields": {
+      "kind": {"type": "string"},
+      "store": {"type": "string"},
+      "storeUrl": {"type": "string"},
+      "title": {"type": "string"},
+      "productId": {"type": "string"},
+      "handle": {"type": "string"},
+      "vendor": {"type": "string"},
+      "productType": {"type": "string"},
+      "tags": {"type": "array", "items": {"type": "string"}},
+      "url": {"type": "string"},
+      "publishedAt": {"type": "string"},
+      "updatedAt": {"type": "string"},
+      "available": {"type": "boolean"},
+      "priceMin": {"type": "number"},
+      "priceMax": {"type": "number"},
+      "currency": {"type": "string"},
+      "variantCount": {"type": "integer"},
+      "variants": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "variantId": {"type": "string"},
+            "title": {"type": "string"},
+            "sku": {"type": "string"},
+            "price": {"type": "number"},
+            "compareAtPrice": {"type": "number"},
+            "available": {"type": "boolean"},
+            "option1": {"type": "string"},
+            "option2": {"type": "string"},
+            "option3": {"type": "string"},
+            "previousPrice": {"type": "number"},
+            "priceDelta": {"type": "number"},
+            "priceChanged": {"type": "boolean"}
+          }
+        }
+      },
+      "priceChange": {
+        "type": "object",
+        "properties": {
+          "tracked": {"type": "boolean"},
+          "changed": {"type": "boolean"},
+          "variantsChanged": {"type": "integer"},
+          "previousMin": {"type": "number"},
+          "previousMax": {"type": "number"},
+          "previousSeenAt": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      },
+      "priceChanged": {"type": "boolean"},
+      "theme": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "id": {"type": "string"},
+          "themeStoreId": {"type": "string"},
+          "schemaName": {"type": "string"},
+          "schemaVersion": {"type": "string"},
+          "role": {"type": "string"}
+        }
+      },
+      "themeName": {"type": "string"},
+      "themeStatus": {"type": "string"},
+      "appHints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "source": {"type": "string"},
+            "url": {"type": "string"}
+          }
+        }
+      },
+      "collections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "string"},
+            "title": {"type": "string"},
+            "handle": {"type": "string"},
+            "productsCount": {"type": "integer"}
+          }
+        }
+      },
+      "collectionCount": {"type": "integer"},
+      "collectionsStatus": {"type": "string"},
+      "myshopifyDomain": {"type": "string"},
+      "partial": {"type": "boolean"},
+      "sourceStatus": {"type": "string"},
+      "decision": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["store", "kind", "title", "priceMin", "priceMax", "available", "priceChanged", "themeName", "sourceStatus"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "store": {"label": "Store", "format": "text"},
+          "kind": {"label": "Kind", "format": "text"},
+          "title": {"label": "Title", "format": "text"},
+          "priceMin": {"label": "Price min", "format": "number"},
+          "priceMax": {"label": "Price max", "format": "number"},
+          "available": {"label": "Available", "format": "boolean"},
+          "priceChanged": {"label": "Price changed", "format": "boolean"},
+          "themeName": {"label": "Theme", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "flatten": ["theme", "priceChange"],
+        "fields": [
+          "kind",
+          "store",
+          "storeUrl",
+          "title",
+          "productId",
+          "handle",
+          "vendor",
+          "productType",
+          "tags",
+          "url",
+          "publishedAt",
+          "updatedAt",
+          "available",
+          "priceMin",
+          "priceMax",
+          "currency",
+          "variantCount",
+          "variants",
+          "priceChange.tracked",
+          "priceChange.changed",
+          "priceChange.variantsChanged",
+          "priceChange.previousMin",
+          "priceChange.previousMax",
+          "priceChange.previousSeenAt",
+          "priceChange.reason",
+          "priceChanged",
+          "theme.name",
+          "theme.themeStoreId",
+          "themeStatus",
+          "appHints",
+          "collections",
+          "collectionCount",
+          "collectionsStatus",
+          "myshopifyDomain",
+          "partial",
+          "sourceStatus",
+          "decision",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "kind": {"label": "Kind", "format": "text"},
+          "store": {"label": "Store", "format": "text"},
+          "storeUrl": {"label": "Store URL", "format": "link"},
+          "title": {"label": "Title", "format": "text"},
+          "productId": {"label": "Product ID", "format": "text"},
+          "handle": {"label": "Handle", "format": "text"},
+          "vendor": {"label": "Vendor", "format": "text"},
+          "productType": {"label": "Type", "format": "text"},
+          "tags": {"label": "Tags", "format": "array"},
+          "url": {"label": "URL", "format": "link"},
+          "publishedAt": {"label": "Published", "format": "text"},
+          "updatedAt": {"label": "Updated", "format": "text"},
+          "available": {"label": "Available", "format": "boolean"},
+          "priceMin": {"label": "Price min", "format": "number"},
+          "priceMax": {"label": "Price max", "format": "number"},
+          "currency": {"label": "Currency", "format": "text"},
+          "variantCount": {"label": "Variants", "format": "number"},
+          "variants": {"label": "Variant detail", "format": "array"},
+          "priceChange.tracked": {"label": "Tracked", "format": "boolean"},
+          "priceChange.changed": {"label": "Any price changed", "format": "boolean"},
+          "priceChange.variantsChanged": {"label": "Variants changed", "format": "number"},
+          "priceChange.previousMin": {"label": "Previous min", "format": "number"},
+          "priceChange.previousMax": {"label": "Previous max", "format": "number"},
+          "priceChange.previousSeenAt": {"label": "Previous seen", "format": "text"},
+          "priceChange.reason": {"label": "Price reason", "format": "text"},
+          "priceChanged": {"label": "Price changed", "format": "boolean"},
+          "theme.name": {"label": "Theme", "format": "text"},
+          "theme.themeStoreId": {"label": "Theme store id", "format": "text"},
+          "themeStatus": {"label": "Theme status", "format": "text"},
+          "appHints": {"label": "App hints", "format": "array"},
+          "collections": {"label": "Collections", "format": "array"},
+          "collectionCount": {"label": "Collections", "format": "number"},
+          "collectionsStatus": {"label": "Collections status", "format": "text"},
+          "myshopifyDomain": {"label": "myshopify domain", "format": "text"},
+          "partial": {"label": "Partial", "format": "boolean"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "title": "Shopify store intel",
+  "description": "Public /products.json and /collections.json for a list of store domains. No proxy, CAPTCHA solver, or browser. A block pushes one blocked row and stops the run.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "domains": {
+      "title": "Store domains",
+      "type": "array",
+      "description": "Shopify store hostnames or storefront URLs, such as allbirds.com or https://allbirds.com. Paths are ignored. A leading www is stripped. Duplicate hosts are read once.",
+      "editor": "stringList",
+      "prefill": ["allbirds.com"],
+      "maxItems": 100
+    },
+    "maxProductsPerStore": {
+      "title": "Max products per store",
+      "type": "integer",
+      "description": "Cap on product rows kept from each store after dedupe. Pagination stops once this cap or maxItems is filled. Default 50, maximum 1000.",
+      "editor": "number",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "trackPriceChanges": {
+      "title": "Track price changes",
+      "type": "boolean",
+      "description": "Compare each variant price with the last price saved for this state store. The first run has no prior prices. Prices of pushed products are saved either way, so a later run can compare.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "stateStoreName": {
+      "title": "State store name",
+      "type": "string",
+      "description": "Named key-value store that holds variant prices between runs. Use a different name per saved task to keep feeds apart.",
+      "editor": "textfield",
+      "default": "shopify-store-state"
+    },
+    "maxItems": {
+      "title": "Max products",
+      "type": "integer",
+      "description": "Hard cap on product rows this run, after dedupe. Store profile rows and status rows do not count and are still saved. Later stores are not requested once the cap is filled.",
+      "editor": "number",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 5000
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Requests run one at a time. The pause jitters upward by up to 1 second.",
+      "editor": "number",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "A store row is pushed only when the $0.01 store charge fits. Each product row is pushed only when the $0.002 product charge fits. When the next charge would pass this amount, the feed stops and one free spend_capped row records how many products were held back. Default 5, minimum 0.01, maximum 100.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 0.01,
+      "maximum": 100
+    }
+  }
+}

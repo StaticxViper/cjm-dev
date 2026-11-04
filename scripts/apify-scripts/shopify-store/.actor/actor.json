@@ -1,0 +1,29 @@
+{
+  "actorSpecification": 1,
+  "name": "shopify-store",
+  "title": "Shopify Store Intel – Products, Prices & Theme Hints",
+  "description": "Public Shopify catalog intel for a list of stores: products, variants, prices, availability, collections, and theme or app hints. Direct HTTP only.",
+  "version": "0.1",
+  "meta": {
+    "generatedBy": "Cursor with Grok 4.7",
+    "templateId": "scripts/apify-scripts/_template"
+  },
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "changelog": "./CHANGELOG.md",
+  "input": "./input_schema.json",
+  "output": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json",
+    "keyValueStore": "./key_value_store_schema.json"
+  },
+  "minMemoryMbytes": 256,
+  "maxMemoryMbytes": 2048,
+  "defaultMemoryMbytes": 512,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 1800,
+    "memoryMbytes": 512
+  }
+}

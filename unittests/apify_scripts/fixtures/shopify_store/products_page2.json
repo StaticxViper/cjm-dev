@@ -1,0 +1,44 @@
+{
+  "products": [
+    {
+      "id": 1001,
+      "title": "Wool Runner",
+      "handle": "wool-runner",
+      "vendor": "Example",
+      "product_type": "Shoes",
+      "tags": ["wool"],
+      "variants": [
+        {
+          "id": 5001,
+          "title": "8 / Natural",
+          "sku": "WR-8",
+          "price": "98.00",
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": 1003,
+      "title": "Runner Sock",
+      "handle": "runner-sock",
+      "vendor": "Example",
+      "product_type": "Socks",
+      "tags": [],
+      "published_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "variants": [
+        {
+          "id": 5004,
+          "title": "M",
+          "sku": "RS-M",
+          "price": "16.00",
+          "compare_at_price": "18.00",
+          "available": true,
+          "option1": "M",
+          "option2": null,
+          "option3": null
+        }
+      ]
+    }
+  ]
+}

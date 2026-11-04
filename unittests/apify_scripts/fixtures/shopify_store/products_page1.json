@@ -1,0 +1,61 @@
+{
+  "products": [
+    {
+      "id": 1001,
+      "title": "Wool Runner",
+      "handle": "wool-runner",
+      "vendor": "Example",
+      "product_type": "Shoes",
+      "tags": ["wool", "runner"],
+      "published_at": "2024-01-15T00:00:00-08:00",
+      "updated_at": "2026-10-01T12:00:00Z",
+      "variants": [
+        {
+          "id": 5001,
+          "title": "8 / Natural",
+          "sku": "WR-8",
+          "price": "98.00",
+          "compare_at_price": "110.00",
+          "available": true,
+          "option1": "8",
+          "option2": "Natural",
+          "option3": null
+        },
+        {
+          "id": 5002,
+          "title": "9 / Natural",
+          "sku": "WR-9",
+          "price": "98.00",
+          "compare_at_price": null,
+          "available": false,
+          "option1": "9",
+          "option2": "Natural",
+          "option3": null
+        }
+      ]
+    },
+    {
+      "id": 1002,
+      "title": "Tree Dasher",
+      "handle": "tree-dasher",
+      "vendor": "Example",
+      "product_type": "Shoes",
+      "tags": "tree, dasher",
+      "published_at": "2024-06-01T00:00:00Z",
+      "updated_at": "2026-09-01T00:00:00Z",
+      "variants": [
+        {
+          "id": 5003,
+          "title": "Default Title",
+          "sku": "TD-1",
+          "price": "135.00",
+          "compare_at_price": null,
+          "available": true,
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null
+        }
+      ]
+    }
+  ]
+}
