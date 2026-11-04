@@ -1,0 +1,16 @@
+{
+  "actorChargeEvents": {
+    "opportunity": {
+      "eventTitle": "SAM.gov opportunity",
+      "eventDescription": "Charged when a SAM.gov opportunity row is pushed. A row is pushed only when this charge fits under maxSpendUsd. skipped, blocked, robots, not_found, spend_capped, and error rows are saved and not billed. $0.01 is the brief's per-opportunity price.",
+      "eventPriceUsd": 0.01,
+      "isPrimaryEvent": true
+    },
+    "award": {
+      "eventTitle": "USAspending award",
+      "eventDescription": "Charged when a USAspending contract-award row is pushed. Same $0.01 success-only price as an opportunity. Status rows are not billed.",
+      "eventPriceUsd": 0.01,
+      "isPrimaryEvent": false
+    }
+  }
+}

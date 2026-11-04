@@ -31,6 +31,7 @@ ACTORS = (
     "city-data",
     "contractor-license",
     "google-business",
+    "gov-contracts",
     "home-services",
     "new-business",
     "permits",

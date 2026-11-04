@@ -1,0 +1,13 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "Federal contract run summary",
+  "description": "Default key-value store containing the run summary written after lead rows are pushed.",
+  "collections": {
+    "summary": {
+      "title": "Summary",
+      "description": "Status, counts, spend, and one report per source for the finished run.",
+      "key": "SUMMARY",
+      "contentTypes": ["application/json"]
+    }
+  }
+}

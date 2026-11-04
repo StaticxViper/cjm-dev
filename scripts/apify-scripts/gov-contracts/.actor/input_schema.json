@@ -1,0 +1,93 @@
+{
+  "title": "Federal contract leads",
+  "description": "SAM.gov contract opportunities and USAspending contract awards for a NAICS code and state. Official APIs only. No proxy, CAPTCHA solver, or browser. Opportunities need a SAM.gov public API key. Awards do not.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "sources": {
+      "title": "Sources",
+      "type": "array",
+      "description": "opportunities calls SAM.gov. awards calls USAspending for contract awards (types A, B, C, and D). Default is both. A block stops that source only.",
+      "editor": "select",
+      "items": {
+        "type": "string",
+        "enum": ["opportunities", "awards"],
+        "enumTitles": ["SAM.gov opportunities", "USAspending awards"]
+      },
+      "default": ["opportunities", "awards"],
+      "maxItems": 2
+    },
+    "naics": {
+      "title": "NAICS codes",
+      "type": "array",
+      "description": "2 to 6 digit NAICS codes. SAM.gov is queried once per code (ncode). USAspending matches codes that start with any listed code. At most 10. Leave empty only when a state is set.",
+      "editor": "stringList",
+      "prefill": ["541512"],
+      "maxItems": 10
+    },
+    "state": {
+      "title": "State",
+      "type": "string",
+      "description": "Place of performance. Two-letter USPS code. Empty searches every state. SAM.gov receives it as state. USAspending receives it as a USA place-of-performance location.",
+      "editor": "select",
+      "enum": ["", "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "PR", "GU", "VI", "AS", "MP"],
+      "enumTitles": ["Any state", "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming", "Puerto Rico", "Guam", "U.S. Virgin Islands", "American Samoa", "Northern Mariana Islands"],
+      "default": ""
+    },
+    "setAside": {
+      "title": "Set-aside",
+      "type": "string",
+      "description": "One SAM.gov set-aside code. Empty means every set-aside. Sent as typeOfSetAside to SAM.gov and as set_aside_type_codes to USAspending. Only one code is accepted.",
+      "editor": "select",
+      "enum": ["", "SBA", "SBP", "8A", "8AN", "HZC", "HZS", "SDVOSBC", "SDVOSBS", "WOSB", "WOSBSS", "EDWOSB", "EDWOSBSS", "LAS", "IEE", "ISBEE", "BICiv", "VSA", "VSS"],
+      "enumTitles": ["Any set-aside", "Total small business (SBA)", "Partial small business (SBP)", "8(a) (8A)", "8(a) sole source (8AN)", "HUBZone (HZC)", "HUBZone sole source (HZS)", "SDVOSB (SDVOSBC)", "SDVOSB sole source (SDVOSBS)", "WOSB", "WOSB sole source (WOSBSS)", "EDWOSB", "EDWOSB sole source (EDWOSBSS)", "Local area (LAS)", "Indian Economic Enterprise (IEE)", "Indian Small Business (ISBEE)", "Buy Indian (BICiv)", "Veteran-owned (VSA)", "Veteran-owned sole source (VSS)"],
+      "default": ""
+    },
+    "postedFrom": {
+      "title": "Posted or awarded from",
+      "type": "string",
+      "description": "YYYY-MM-DD, inclusive. SAM.gov postedFrom (sent as MM/dd/yyyy). USAspending action-date start. Both ends are required together. Empty uses the 90 days ending today. The span cannot exceed 366 days.",
+      "editor": "textfield"
+    },
+    "postedTo": {
+      "title": "Posted or awarded through",
+      "type": "string",
+      "description": "YYYY-MM-DD, inclusive. SAM.gov postedTo. USAspending action-date end. Empty uses today when postedFrom is also empty.",
+      "editor": "textfield"
+    },
+    "maxItems": {
+      "title": "Max leads",
+      "type": "integer",
+      "description": "Hard cap on successful opportunity and award rows after dedupe. Status rows do not count and are not billed. Later pages and the remaining source are not requested once the cap is filled.",
+      "editor": "number",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 200
+    },
+    "samApiKey": {
+      "title": "SAM.gov API key",
+      "type": "string",
+      "description": "Public API key from the SAM.gov Account Details page. Required for opportunities. Stored as a secret and sent only to api.sam.gov. Leave it empty to collect USAspending awards only.",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Requests run one at a time. The pause jitters upward by up to 1 second.",
+      "editor": "number",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "A lead is pushed only when its opportunity or award charge fits under this amount. When the next lead would pass it, the feed stops and one free spend_capped row records how many leads were held back. Default 5, minimum 0.01, maximum 100.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 0.01,
+      "maximum": 100
+    }
+  }
+}
