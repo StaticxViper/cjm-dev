@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 2048,
+  "maxDurationSecs": 420,
+  "minItems": 1,
+  "maxItems": 3,
+  "maxChargeUsd": 0.2,
+  "maxUsageUsd": 0.1,
+  "notes": "One Maps search, up to 3 results at $0.05. A block or miss is a free status row."
+}

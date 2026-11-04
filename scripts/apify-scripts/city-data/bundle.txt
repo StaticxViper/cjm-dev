@@ -1,0 +1,17 @@
+# Repo files copied into platform_bundle/ by ../actor_build.py bundle.
+# One path per line, relative to the repo root.
+helper_scripts/__init__.py
+helper_scripts/browser/__init__.py
+helper_scripts/browser/backoff.py
+helper_scripts/browser/google_session.py
+helper_scripts/browser/route_block.py
+helper_scripts/http/__init__.py
+helper_scripts/http/client.py
+helper_scripts/utils/__init__.py
+helper_scripts/utils/logger/logger.py
+scripts/apify-scripts/access.py
+scripts/apify-scripts/runtime.py
+scripts/city_data/__init__.py
+scripts/city_data/city_data_scraper.py
+scripts/city_data/scrape_config.json
+scripts/lead_automation/crm_enrich_robots.py

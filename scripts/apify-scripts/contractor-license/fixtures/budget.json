@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 512,
+  "maxDurationSecs": 300,
+  "minItems": 1,
+  "maxItems": 5,
+  "maxChargeUsd": 0.25,
+  "maxUsageUsd": 0.03,
+  "notes": "CA CSLB single license lookup. Must not download the full CSV dump (#173). A miss is a free status row."
+}

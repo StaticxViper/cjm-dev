@@ -1,0 +1,70 @@
+{
+  "title": "App Store reviews",
+  "description": "iTunes customer reviews for a list of App Store ids, read from the public lookup and customer-reviews RSS feeds. No proxy, CAPTCHA solver, or browser is used. A non-empty Play package list is not fetched: the run pushes one blocked row and stops.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "appStoreIds": {
+      "title": "App Store ids",
+      "type": "array",
+      "description": "iTunes numeric app ids. A store URL containing id=NNNN or /idNNNN is accepted and reduced to the number. Facebook for iOS is 284882215.",
+      "editor": "stringList",
+      "prefill": ["284882215"],
+      "maxItems": 20
+    },
+    "playIds": {
+      "title": "Google Play packages",
+      "type": "array",
+      "description": "Google Play package names, such as com.facebook.katana. Play is deferred: when this list is non-empty the Actor pushes one blocked row after the App Store apps and does not call Play. Leave it empty.",
+      "editor": "stringList",
+      "maxItems": 20
+    },
+    "country": {
+      "title": "Storefront",
+      "type": "string",
+      "description": "Two-letter iTunes storefront. Lowercased before use. us is the United States.",
+      "editor": "textfield",
+      "default": "us"
+    },
+    "since": {
+      "title": "Since date",
+      "type": "string",
+      "description": "Optional YYYY-MM-DD. Reviews whose calendar date is older than this are dropped. The date is the review's own offset, or the UTC date when the timestamp has no offset.",
+      "editor": "textfield"
+    },
+    "maxItems": {
+      "title": "Max reviews",
+      "type": "integer",
+      "description": "Hard cap on successful review rows after the since filter and dedupe. Status rows do not count and are not billed.",
+      "editor": "number",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "sentiment": {
+      "title": "Sentiment add-on",
+      "type": "boolean",
+      "description": "When on, each pushed review also gets a local lexicon sentiment label and score. No network and no model API. Charged as a separate sentiment event.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Requests run one at a time. The pause jitters upward by up to 1 second.",
+      "editor": "number",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "A review is pushed only when its review charge, and the sentiment charge when that add-on is on, both fit under this amount. When the next review would pass it, the feed stops and one free spend_capped row records how many reviews were held back. Default 5, minimum 0.01, maximum 100.",
+      "editor": "number",
+      "default": 5,
+      "minimum": 0.01,
+      "maximum": 100
+    }
+  }
+}

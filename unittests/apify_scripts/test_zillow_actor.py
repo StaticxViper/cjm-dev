@@ -149,8 +149,8 @@ class TestInput(unittest.TestCase):
         settings = pipeline.read_run_input({"zip_codes": ["08002"]})
         self.assertEqual(settings["criteria"]["zipCodes"], ["08002"])
         self.assertEqual(settings["criteria"]["resultsLimit"], 0)
-        self.assertEqual(settings["max_listings"], 100)
-        self.assertEqual(settings["max_agents"], 50)
+        self.assertEqual(settings["max_listings"], 25)
+        self.assertEqual(settings["max_agents"], 10)
         self.assertTrue(settings["enrich"])
         self.assertTrue(settings["headless"])
         self.assertTrue(settings["criteria"]["forSaleByAgent"])
@@ -427,6 +427,10 @@ class TestRemoteDownload(unittest.TestCase):
             self.assertIn("Jane Smith", csv_path.read_text(encoding="utf-8"))
             listings = json.loads(Path(report["paths"]["listings_json"]).read_text(encoding="utf-8"))
             self.assertEqual(listings["listings"][0]["listing_id"], "111")
+
+    def test_remote_repo_root_is_the_checkout(self):
+        self.assertEqual(remote._REPO, _REPO)
+        self.assertNotIn("_ACTOR.parents", (_SRC / "remote.py").read_text(encoding="utf-8"))
 
     def test_actor_id_uses_token_env_not_the_store_catalog(self):
         self.assertEqual(

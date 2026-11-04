@@ -55,5 +55,8 @@ jobs:
       - name: Check schedule workflow drift
         run: python -m scripts.script_manager schedules --check
 
+      - name: Check Apify Actor bundles and budgets
+        run: python scripts/apify-scripts/actor_build.py check
+
       - name: Unit tests
         run: python -m pytest unittests/

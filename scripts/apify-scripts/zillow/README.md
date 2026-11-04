@@ -71,8 +71,8 @@ That sample is the smoke fixture: two listings, no Google enrichment. The input 
 | Field | Default | Meaning |
 |-------|---------|---------|
 | `zip_codes` | required | ZIP codes to search |
-| `max_listings` | `100` | Total listings across every ZIP |
-| `max_agents` | `50` | Total unique agents to return |
+| `max_listings` | `25` (max 1000) | Total listings across every ZIP |
+| `max_agents` | `10` (max 500) | Total unique agents to return |
 
 The Advanced section holds listing status (`forSaleByAgent`, `forSaleByOwner`, `forRent`, `sold`), `priceMin`, `priceMax`, `enrich`, `headless`, and `proxyConfiguration`. Agent listings are on by default. Enrichment is on by default. The proxy group defaults to residential.
 

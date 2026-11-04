@@ -44,7 +44,7 @@ A robots disallow is not retried through a proxy. If the run is still blocked an
   "dateTo": "2026-10-26",
   "permitTypes": ["roof", "siding", "pool", "deck", "solar"],
   "minValue": 1000,
-  "maxItems": 25,
+  "maxItems": 10,
   "maxRequests": 24,
   "delaySeconds": 2,
   "maxSpendUsd": 5,

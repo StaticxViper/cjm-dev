@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `max_listings` now defaults to 25 (max 1000) and `max_agents` to 10 (max 500). `zip_codes` accepts up to 50 ZIPs. Inputs that set these values are unchanged.
+- The image builds from this folder only.
+
 ## 0.1.1
 
 - On Apify, Zillow search and listing pages use a Chrome impersonation session through residential proxy in the US. The search is pinned to the ZIP's Zillow region so the proxy exit city does not replace it. The search document is the first request on a session. A block retries once on a second session and then stops.

@@ -6,6 +6,7 @@ Playwright scrapers packaged for the Apify Marketplace. Issue #128. Local CLIs s
 |--------|--------|------------|
 | [`_template/`](_template/) | Copy this for a new Actor | — |
 | [`ats-jobs/`](ats-jobs/) | Job listings | Public Greenhouse, Lever, Ashby, and Workable job-board APIs for a company list. HTTP only, no proxy or CAPTCHA. A block stops with one `blocked` row. |
+| [`app-reviews/`](app-reviews/) | App reviews | Public iTunes customer-reviews RSS and lookup. HTTP only, no proxy or CAPTCHA. A block stops with one `blocked` row. Google Play is deferred. |
 | [`city-data/`](city-data/) | Phase 1 | [`scripts/city_data/`](../city_data/) (issue #99) |
 | [`google-business/`](google-business/) | Phase 1 | Maps session in [`scripts/lead_automation/playwright_discovery.py`](../lead_automation/playwright_discovery.py); match rules from issue #127 |
 | [`contractor-license/`](contractor-license/) | Public records | CA CSLB open CSV. AZ, NJ, and PA adapters stop on a challenge or a closed portal. Issue #155. |
@@ -22,9 +23,49 @@ Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one i
 2. Rename `name` / `title` / `description` in `.actor/actor.json`.
 3. Extend the input and dataset schemas. Keep `headless`, `maxSpendUsd`, `maxProxyCostUsd`, `allowCaptcha`, and the proxy group fields from the template. Declare dataset fields for nested objects and add a Detail view next to Overview. Use `editor: "select"` when a field is a list of known values.
 4. Replace `src/main.py`. Call the existing scraper inside `asyncio.to_thread`. Import it; do not move or rewrite the CLI. `src/runtime.py` re-exports `scripts/apify-scripts/runtime.py`, including the access ladder in `access.py`.
-5. Add `COPY` lines to the Dockerfile for the modules you import, copy `scripts/apify-scripts/runtime.py` and `scripts/apify-scripts/access.py`, and set `CJM_REPO_ROOT=/home/myuser/repo`. Set `defaultRunOptions.timeoutSecs`.
-6. Write the marketplace `README.md` from the template headings.
-7. Add unit tests under `unittests/apify_scripts/` for input mapping and dataset shape. No live site calls in those tests.
+5. List every repo file the Actor imports in `bundle.txt` (keep `runtime.py` and `access.py`), then run `python scripts/apify-scripts/actor_build.py bundle <name>` and `isolate <name>`. Leave the Dockerfile as copied. Set `defaultRunOptions.timeoutSecs`.
+6. Give every integer `max*` input a `default` and a `maximum`, and every free-form list a `maxItems`. Keep the defaults small.
+7. Write `fixtures/INPUT.json` as a small run and `fixtures/budget.json` for it (see [Build and budgets](#build-and-budgets)). Run `budgets --write` to refresh the table below.
+8. Write the marketplace `README.md` from the template headings.
+9. Add unit tests under `unittests/apify_scripts/` for input mapping and dataset shape. No live site calls in those tests.
+
+Do not merge an Actor that is missing from `python scripts/apify-scripts/actor_build.py list`, or whose `check` or `smoke <name>` fails. Unit tests are not a substitute. `check` fails when `bundle.txt`, `fixtures/INPUT.json`, or `fixtures/budget.json` is missing, and `ci.yml` runs it on every pull request. The Apify Actors workflow then builds and smokes every name `list` prints, with no hardcoded Actor list. An HTTP-only Actor may use `apify/actor-python:3.12` instead of the Playwright image. It still omits `dockerContextDir` and leaves `WORKDIR` at `/usr/src/app`.
+
+## Build and budgets
+
+Each Actor folder is its own Docker build context. `apify push` from the folder uploads only that folder, and the Dockerfile copies only local files. Repo modules the Actor imports are listed in `bundle.txt` and copied into the committed `platform_bundle/` folder; `CJM_REPO_ROOT` points there in the image. The Dockerfile leaves the base image `WORKDIR` (`/usr/src/app`) and its `./xvfb-entrypoint.sh` entrypoint in place. A `!module` line in `bundle.txt` names an import that only the local CLI reaches, left out on purpose.
+
+`actor_build.py` (standard library only) keeps that honest:
+
+| Command | What it does |
+|---------|--------------|
+| `bundle [ACTOR ...]` | Rewrite `platform_bundle/` from `bundle.txt`. Run it after a shared module changes. |
+| `check [ACTOR ...]` | Fail when `bundle.txt`, `fixtures/INPUT.json`, or `fixtures/budget.json` is missing, on bundle drift, on a Dockerfile or `actor.json` path outside the Actor folder, on an unbounded input limit, on a budget outside the Actor's memory range or timeout, or on a stale budget table. `ci.yml` runs it on every pull request. A folder with `.actor/actor.json` is included even before those files exist, so a new Actor cannot skip the smoke. |
+| `isolate ACTOR` | Copy the build context to a temp folder and import every module the Actor names from the bundle only. |
+| `smoke ACTOR` | Build the image, run `fixtures/INPUT.json` in Docker with the budget memory as a hard limit and pay per event simulated from `.actor/pay_per_event.json`, and fail on an overrun. |
+| `smoke ACTOR --platform` | Run the pushed Actor on Apify with `APIFY_TOKEN` at the budget memory and timeout, and fail on an overrun. Adds the platform usage check. |
+
+A smoke run fails when the status is not `SUCCEEDED` (including out of memory and timeout), peak memory is above `memoryMbytes`, the run takes longer than `maxDurationSecs`, the dataset row count is outside `minItems`-`maxItems`, the pay-per-event charge is above `maxChargeUsd`, or (platform only) usage is above `maxUsageUsd`. An event that is not in `pay_per_event.json` is priced at $1 in a Docker smoke, so it shows up as an overrun.
+
+Budgets live in each `fixtures/budget.json`. The table is generated by `actor_build.py budgets --write`, and `check` fails when it is stale:
+
+<!-- budgets:begin -->
+| Actor | Memory (MB) | Max duration (s) | Dataset rows | Max PPE charge (USD) | Max platform usage (USD) |
+|-------|-------------|------------------|--------------|----------------------|--------------------------|
+| `app-reviews` | 512 | 180 | 1-5 | 0.02 | 0.05 |
+| `ats-jobs` | 512 | 180 | 1-5 | 0.02 | 0.05 |
+| `city-data` | 2048 | 300 | 1-2 | 0.05 | 0.1 |
+| `contractor-license` | 512 | 300 | 1-5 | 0.25 | 0.03 |
+| `google-business` | 2048 | 420 | 1-3 | 0.2 | 0.1 |
+| `home-services` | 2048 | 600 | 1-5 | 0.5 | 0.15 |
+| `new-business` | 1024 | 300 | 1-10 | 0.5 | 0.05 |
+| `permits` | 1024 | 300 | 1-10 | 0.5 | 0.05 |
+| `zillow` | 4096 | 600 | 0-2 | 0.1 | 0.25 |
+<!-- budgets:end -->
+
+`.github/workflows/apify_actors.yml` runs `check`, then builds every image, runs the import probe inside it, and runs the Docker smoke against the budget. It runs on pull requests that touch an Actor or a shared module, weekly, and by hand. A manual run with `platform` checked also runs `apify push` and the platform smoke, with the `APIFY_TOKEN` secret.
+
+A budget is for the fixture, not for a Store run. Store users get the input-schema defaults, which `check` requires to be bounded. Raise a budget only with a note in its `notes` field. Fixture failures caused by Actor logic belong to that Actor's issue, and the fix must pass the same gate.
 
 ## Run locally
 
@@ -42,17 +83,18 @@ apify run --purge
 
 Do this only when a listing is requested. `APIFY_TOKEN` is the CLI / `apify push` credential. `APIFY_API_KEY` and `APIFY_USER_ID` stay the consumer credentials in `api_manager`. Do not register the new Actors in `ACTORS` until after the first public listing.
 
-1. `apify login` with `APIFY_TOKEN` (not `APIFY_API_KEY`).
-2. In the Actor directory, `apify push`.
-3. Run the committed `fixtures/INPUT.json` once on the platform (private build). Confirm dataset rows and key-value `SUMMARY`.
-4. Paste the Actor `README.md` into the Store listing. Set categories in the Console (they are not an `actor.json` field). Suggested starting points are in each README.
-5. Set the Console pricing model to pay per event using `.actor/pay_per_event.json`. Charge `result` only for a successful city profile or an accepted Maps match. Charge `license` only for a found contractor license. Charge `business` only for a returned entity and `enrichment` only when a website or email is found. Charge `permit` only for a pushed building permit. Charge `proxy` only after a blocked request was retried through Apify Proxy, and `captcha` only when a solver returns a token. Do not enable pay per dataset item.
-6. Choose a private listing or a public one. Public Google Business needs the ToS / robots section left intact.
-7. Save a sample dataset export and a screenshot with the listing. Update `.actor/CHANGELOG.md`.
+1. `python scripts/apify-scripts/actor_build.py check <name>` and `smoke <name>` pass (or the Apify Actors workflow is green for the commit).
+2. `apify login` with `APIFY_TOKEN` (not `APIFY_API_KEY`).
+3. In the Actor directory, `apify push`. No staging step is needed; `platform_bundle/` is already in the folder.
+4. `python scripts/apify-scripts/actor_build.py smoke <name> --platform` passes. It runs the committed `fixtures/INPUT.json` on the private build at the budget memory and timeout. Confirm dataset rows and key-value `SUMMARY`.
+5. Paste the Actor `README.md` into the Store listing. Set categories in the Console (they are not an `actor.json` field). Suggested starting points are in each README.
+6. Set the Console pricing model to pay per event using `.actor/pay_per_event.json`. Charge `result` only for a successful city profile or an accepted Maps match. Charge `license` only for a found contractor license. Charge `business` only for a returned entity and `enrichment` only when a website or email is found. Charge `permit` only for a pushed building permit. Charge `review` only for a pushed App Store review and `sentiment` only when that add-on is on for the same pushed review. Charge `proxy` only after a blocked request was retried through Apify Proxy, and `captcha` only when a solver returns a token. Do not enable pay per dataset item.
+7. Choose a private listing or a public one. Public Google Business needs the ToS / robots section left intact.
+8. Save a sample dataset export and a screenshot with the listing. Update `.actor/CHANGELOG.md`.
 
 ## Purpose, inputs, outputs, and secrets
 
-Actors package the local Playwright CLIs for the Apify platform. Input is the Actor `INPUT.json` (`fixtures/INPUT.json` locally). Output is an Apify dataset plus a key-value `SUMMARY`. Local run is `apify run --purge` from the Actor directory, or `python -m src` after copying the fixture into `storage/key_value_stores/default/INPUT.json`. GitHub Actions workflow `ci.yml` runs `pytest unittests/` on every pull request, including `unittests/apify_scripts`. `apify_scripts.yml` is a manual re-run of those actor tests. Publish uses `APIFY_TOKEN`. The Actors themselves do not read `APIFY_API_KEY`. `zillow-apify` is the Script Manager entry that starts the Zillow Actor through the Apify API and downloads the dataset. The other Actors are not Script Manager entries. Longer notes are the sections above.
+Actors package the local Playwright CLIs for the Apify platform. Input is the Actor `INPUT.json` (`fixtures/INPUT.json` locally). Output is an Apify dataset plus a key-value `SUMMARY`. Local run is `apify run --purge` from the Actor directory, or `python -m src` after copying the fixture into `storage/key_value_stores/default/INPUT.json`. GitHub Actions workflow `ci.yml` runs `pytest unittests/` on every pull request, including `unittests/apify_scripts`, and `actor_build.py check`. `apify_actors.yml` builds each Actor image and runs its fixture smoke against the budget. `apify_scripts.yml` is a manual re-run of the actor unit tests. Publish uses `APIFY_TOKEN`. The Actors themselves do not read `APIFY_API_KEY`. `zillow-apify` is the Script Manager entry that starts the Zillow Actor through the Apify API and downloads the dataset. The other Actors are not Script Manager entries. Longer notes are the sections above.
 
 ## Proxy, CAPTCHA, and spend
 

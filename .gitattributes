@@ -1,1 +1,2 @@
 *.pdf binary
+scripts/apify-scripts/*/platform_bundle/** linguist-generated=true

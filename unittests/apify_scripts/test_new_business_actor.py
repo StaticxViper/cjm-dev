@@ -573,7 +573,7 @@ class TestPricingFile(unittest.TestCase):
         )
 
     def test_image_copies_the_pipeline_modules(self):
-        text = (_REPO / "scripts" / "apify-scripts" / "new-business" / "Dockerfile").read_text(encoding="utf-8")
+        text = (_REPO / "scripts" / "apify-scripts" / "new-business" / "bundle.txt").read_text(encoding="utf-8")
         for name in (
             "new_business_pipeline.py",
             "new_business_dedupe.py",
