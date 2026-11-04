@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "gov-contracts",
-  "title": "Federal Contract Leads – SAM.gov Opportunities and USAspending Awards",
+  "title": "Federal Contract Leads – SAM.gov & USAspending",
   "description": "SAM.gov contract opportunities and USAspending contract awards by NAICS, state, set-aside, and date. Official APIs only. No proxy and no CAPTCHA solver.",
   "version": "0.1",
   "buildTag": "latest",

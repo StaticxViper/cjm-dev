@@ -296,13 +296,16 @@ class TestInput(unittest.TestCase):
 
         prices = json.loads((_ACTOR / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
         events = prices["actorChargeEvents"]
-        self.assertEqual(events["opportunity"]["eventPriceUsd"], 0.01)
+        self.assertEqual(events["opportunity"]["eventPriceUsd"], 0.008)
         self.assertTrue(events["opportunity"]["isPrimaryEvent"])
-        self.assertEqual(events["award"]["eventPriceUsd"], 0.01)
+        self.assertEqual(events["award"]["eventPriceUsd"], 0.008)
         self.assertFalse(events["award"]["isPrimaryEvent"])
+        self.assertEqual(spend.PRICES_USD["opportunity"], events["opportunity"]["eventPriceUsd"])
+        self.assertEqual(spend.PRICES_USD["award"], events["award"]["eventPriceUsd"])
 
         actor = json.loads((_ACTOR / ".actor" / "actor.json").read_text(encoding="utf-8"))
         self.assertEqual(actor["name"], "gov-contracts")
+        self.assertLessEqual(len(actor["title"]), 63)
         self.assertNotIn("dockerContextDir", actor)
         dockerfile = (_ACTOR / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("FROM apify/actor-python:3.12", dockerfile)
@@ -365,7 +368,7 @@ class TestRows(unittest.TestCase):
         self.assertEqual(summary["found"], 4)
         self.assertEqual(summary["billedOpportunities"], 2)
         self.assertEqual(summary["billedAwards"], 2)
-        self.assertEqual(summary["spendUsd"], 0.04)
+        self.assertEqual(summary["spendUsd"], 0.032)
         self.assertNotIn(SECRET, json.dumps({"rows": rows, "summary": summary}))
         self.assertTrue(any(SECRET in call["url"] for call in _data_calls(scripted, "api.sam.gov")))
 
@@ -474,7 +477,7 @@ class TestRows(unittest.TestCase):
 
 class TestCharging(unittest.TestCase):
     def test_events_follow_the_row_and_the_cap_holds_the_rest(self):
-        actor, _scripted = _run_main(_base(maxItems=10, maxSpendUsd=0.03))
+        actor, _scripted = _run_main(_base(maxItems=10, maxSpendUsd=0.024))
         found = _ok(actor.pushed)
         self.assertEqual(len(found), 3)
         self.assertEqual(actor.charges, ["opportunity", "opportunity", "award"])
@@ -485,10 +488,37 @@ class TestCharging(unittest.TestCase):
         self.assertEqual(summary["heldBack"], 1)
         self.assertEqual(summary["billedOpportunities"], 2)
         self.assertEqual(summary["billedAwards"], 1)
-        self.assertEqual(summary["spendUsd"], 0.03)
+        self.assertEqual(summary["spendUsd"], 0.024)
         self.assertTrue(summary["chargeCapped"])
         self.assertNotIn(SECRET, json.dumps(summary))
         self.assertNotIn("sam_api_key", json.dumps(summary))
+
+    def test_charge_failure_keeps_the_row_and_does_not_bill_it(self):
+        scripted = Scripted()
+        actor = FakeActor(_base(sources=["awards"], samApiKey="", maxItems=10, maxSpendUsd=5))
+
+        async def flaky(event_name=None):
+            raise RuntimeError("charge down")
+
+        actor.charge = flaky
+        fake_apify = types.ModuleType("apify")
+        fake_apify.Actor = actor
+
+        def live(config):
+            return fetch_mod.build_fetch(config, scripted.direct, sleep=lambda _s: None)
+
+        with mock.patch.dict(sys.modules, {"apify": fake_apify}), \
+                mock.patch.object(main_mod, "Actor", actor), \
+                mock.patch.object(main_mod, "make_live_fetch", live):
+            asyncio.run(main_mod.main())
+        self.assertEqual(len(_ok(actor.pushed)), 1)
+        self.assertEqual(actor.charges, [])
+        summary = actor.values["SUMMARY"]
+        self.assertEqual(summary["billedAwards"], 0)
+        self.assertEqual(summary["spendUsd"], 0)
+        self.assertEqual(summary["stopped"], "chargeFailed")
+        self.assertEqual(summary["heldBack"], 1)
+        self.assertTrue(any(row["sourceStatus"] == "spend_capped" for row in actor.pushed))
 
     def test_micro_dollar_ledger_rejects_proxy(self):
         ledger = spend.LeadLedger(0.02)
@@ -499,7 +529,7 @@ class TestCharging(unittest.TestCase):
         ledger.commit("opportunity")
         ledger.commit("award")
         self.assertFalse(ledger.fits(["award"]))
-        self.assertEqual(ledger.spend_usd, 0.02)
+        self.assertEqual(ledger.spend_usd, 0.016)
 
 
 class TestHttp(unittest.TestCase):
@@ -543,7 +573,9 @@ class TestSmokeFixture(unittest.TestCase):
         self.assertEqual(fixture["maxItems"], 2)
         self.assertEqual(budget["minItems"], fixture["maxItems"])
         self.assertEqual(budget["maxItems"], fixture["maxItems"])
-        self.assertEqual(budget["maxChargeUsd"], round(fixture["maxItems"] * 0.01, 2))
+        price = json.loads((_ACTOR / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
+        award_price = price["actorChargeEvents"]["award"]["eventPriceUsd"]
+        self.assertEqual(budget["maxChargeUsd"], fixture["maxItems"] * award_price)
         self.assertLessEqual(budget["maxChargeUsd"], fixture["maxSpendUsd"])
         self.assertEqual(budget["memoryMbytes"], 512)
         self.assertGreaterEqual(budget["maxDurationSecs"], 60)

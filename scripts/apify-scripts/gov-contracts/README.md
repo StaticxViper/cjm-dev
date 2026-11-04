@@ -1,4 +1,4 @@
-# Federal Contract Leads – SAM.gov Opportunities and USAspending Awards
+# Federal Contract Leads – SAM.gov & USAspending
 
 Contract opportunities from the SAM.gov Get Opportunities API and contract awards from the USAspending spending-by-award API. One dataset row per notice or award, with the id, agency, title, NAICS, value, deadline, awardee, published contact, and a link back to the official page.
 
@@ -38,13 +38,13 @@ The public opportunity URL is `https://sam.gov/opp/{noticeId}/view`, built from 
 }
 ```
 
-Awards only, so the Docker smoke does not call `api.sam.gov` and does not need a SAM key. It asks for two historical USAspending awards (NAICS 541512, Virginia, first quarter of 2024). `fixtures/budget.json` expects exactly two dataset rows and a $0.02 charge. A run that only pushes a status row fails that gate.
+Awards only, so the Docker smoke does not call `api.sam.gov` and does not need a SAM key. SAM.gov parsing, the missing-key skip, and a SAM.gov block are covered by fixture unit tests (`unittests/apify_scripts/fixtures/gov_contracts/sam_page.json`), not by this smoke run. The fixture asks for two historical USAspending awards (NAICS 541512, Virginia, first quarter of 2024). `fixtures/budget.json` expects exactly two dataset rows and a $0.016 charge. A run that only pushes a status row fails that gate.
 
 - `sources` is `opportunities`, `awards`, or both. Default is both. Order is preserved.
 - `naics` is 2 to 6 digits, at most 10. `state` is a 2-letter USPS code, or empty for every state. At least one of the two is required.
 - `setAside` is one SAM.gov set-aside code (`SBA`, `WOSB`, `8A`, and the rest of the GSA list). Empty means every set-aside. SAM.gov accepts one code per request.
 - `postedFrom` and `postedTo` are `YYYY-MM-DD`. Both empty means the 90 days ending today. The span cannot exceed 366 days. A bad or one-sided range is one error row and no request.
-- `maxItems` caps successful rows after dedupe (default 50, maximum 200).
+- `maxItems` caps successful rows after dedupe (default 50, maximum 200). It also bounds the network: later pages are not requested once it is filled. `maxSpendUsd` is applied after the fetch, when rows are pushed.
 - `samApiKey` is the SAM.gov public API key from Account Details. It is a secret input. It is sent only as `api_key` on `api.sam.gov` and is redacted from stored URLs, errors, the dataset, and `SUMMARY`. Leave it empty to skip opportunities: one free `skipped` row is saved and awards still run.
 - `delaySeconds` is the base pause between requests after the first (default 1, maximum 10). The pause jitters upward by up to 1 second.
 - `maxSpendUsd` defaults to 5 (minimum 0.01, maximum 100). A lead is pushed only when its `opportunity` or `award` charge fits. The feed then stops with one free `spend_capped` row.
@@ -104,7 +104,8 @@ One dataset item per opportunity or award, plus a status row when a source is sk
 - A response larger than 32 MB is rejected for that request.
 - On HTTP 401, 403, or 429 the Actor pushes one `blocked` row for that source and does not retry it. It does not send the request through a proxy.
 - A 5xx or a dropped connection is tried once more. The second failure is an `error` row for that source.
-- `maxSpendUsd` is checked before the row is pushed. A lead that would pass the cap is not pushed.
+- `maxSpendUsd` is checked before the row is pushed. A lead that would pass the cap is not pushed. The HTTP fetch has already finished by then, so the cap does not cancel a request that `maxItems` already allowed.
+- If the platform charge raises after a row was pushed, that row stays in the dataset and is not billed. The feed stops. The row is not deleted and it is not charged again.
 
 ## Robots and terms
 
@@ -118,10 +119,10 @@ Pay per event from `.actor/pay_per_event.json`.
 
 | Event | Price | When it is charged |
 |-------|-------|--------------------|
-| `opportunity` (primary) | $0.01 | A SAM.gov opportunity row is pushed |
-| `award` | $0.01 | A USAspending award row is pushed |
+| `opportunity` (primary) | $0.008 | A SAM.gov opportunity row is pushed |
+| `award` | $0.008 | A USAspending award row is pushed |
 
-**$0.01 is the brief's per-opportunity price.** Awards use the same success-only price. No incumbent price was verified for this build. There is no `proxy` or `captcha` event, because an undeclared event is priced at $1 in the Docker smoke and this Actor never uses either.
+**$0.008 is $8 per 1,000 rows.** The brief suggested about $0.01, which is $10 per 1,000 and above the listing's affordability line. Both events use $0.008. No incumbent price was verified for this build. There is no `proxy` or `captcha` event, because an undeclared event is priced at $1 in the Docker smoke and this Actor never uses either.
 
 `skipped`, `not_found`, `blocked`, `robots`, `spend_capped`, and `error` rows are saved and not billed. Dataset items are not a charge event. The platform still applies its start event. Memory default is 512 MB (minimum 256, maximum 2048) and the default timeout is 1,800 seconds.
 
@@ -131,7 +132,7 @@ The template keeps `headless`, `maxProxyCostUsd`, `allowCaptcha`, `proxyConfigur
 
 The Dockerfile uses `apify/actor-python:3.12` instead of the shared Playwright image. It still leaves `WORKDIR` at `/usr/src/app`, copies only files inside this folder, and sets `CJM_REPO_ROOT=/usr/src/app/platform_bundle`. The slim image has no `xvfb-entrypoint.sh`.
 
-`LeadLedger` counts micro-dollars and does not price `proxy` or `captcha`. $0.01 is one cent, so a cent ledger would also stop the feed; the micro-dollar ledger is what the push path checks before a row is saved.
+`LeadLedger` counts micro-dollars and does not price `proxy` or `captcha`. $0.008 is 0.8 cents, so the shared cent ledger would round it to 1 cent. The micro-dollar ledger is what the push path checks before a row is saved.
 
 ## Categories
 

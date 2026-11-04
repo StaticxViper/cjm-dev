@@ -48,7 +48,15 @@ def _limit_reached(result):
 
 
 async def push_leads(rows, ledger):
-    """Push each lead only when its charge fits, then the free status rows."""
+    """Push each lead only when its charge fits, then the free status rows.
+
+    The fetch has already finished. ``maxItems`` is what bounds the network.
+    ``maxSpendUsd`` only decides which of those rows are saved.
+
+    If the platform charge raises after a row was pushed, the row stays in
+    the dataset and the feed stops. It is not billed and it is not deleted.
+    Charging it again would bill a row the user already has.
+    """
     leads = [row for row in rows if billable_row(row)]
     others = [row for row in rows if not billable_row(row)]
     pushed = []
@@ -66,7 +74,6 @@ async def push_leads(rows, ledger):
             stop = "pushFailed"
             break
         placed += 1
-        ledger.commit(event)
         try:
             result = await Actor.charge(event_name=event)
         except Exception as exc:
@@ -74,6 +81,7 @@ async def push_leads(rows, ledger):
             stop = "chargeFailed"
             pushed.append(row)
             break
+        ledger.commit(event)
         pushed.append(row)
         if _limit_reached(result):
             stop = "chargeLimit"

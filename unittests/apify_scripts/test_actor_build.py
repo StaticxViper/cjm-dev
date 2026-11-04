@@ -105,6 +105,14 @@ class TestRepoActors(unittest.TestCase):
         self.assertNotIn("ACTOR_PATH_IN_DOCKER_CONTEXT", text)
         self.assertIn("CJM_REPO_ROOT=/usr/src/app/platform_bundle", text)
 
+    def test_actor_titles_fit_the_apify_limit(self):
+        """Apify rejects an actor.json title longer than 63 characters."""
+        for actor in build.actor_dirs():
+            config = json.loads((actor / ".actor" / "actor.json").read_text(encoding="utf-8"))
+            title = config.get("title") or ""
+            with self.subTest(actor=actor.name):
+                self.assertLessEqual(len(title), 63, title)
+
     def test_dockerfiles_keep_the_base_image_workdir(self):
         for actor in build.actor_dirs():
             text = (actor / "Dockerfile").read_text(encoding="utf-8")

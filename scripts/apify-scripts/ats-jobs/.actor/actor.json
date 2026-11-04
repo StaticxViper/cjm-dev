@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "ats-jobs",
-  "title": "ATS Jobs Feed – Greenhouse, Lever, Ashby & Workable Job Listings",
+  "title": "ATS Jobs Feed – Greenhouse, Lever, Ashby & Workable Jobs",
   "description": "Open jobs from the public Greenhouse, Lever, Ashby, and Workable job-board APIs for a list of companies. Salary, remote flag, and new-since-last-run.",
   "version": "0.1",
   "buildTag": "latest",
