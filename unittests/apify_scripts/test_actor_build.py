@@ -26,6 +26,7 @@ build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
 
 ACTORS = (
+    "app-reviews",
     "ats-jobs",
     "city-data",
     "contractor-license",
