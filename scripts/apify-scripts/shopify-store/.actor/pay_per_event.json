@@ -1,0 +1,16 @@
+{
+  "actorChargeEvents": {
+    "product": {
+      "eventTitle": "Product row",
+      "eventDescription": "Charged when a product row is pushed. A product row is pushed only when this charge fits under maxSpendUsd. Store profile rows use the store event. blocked, unavailable, not_found, robots, spend_capped, and error rows are saved and not billed.",
+      "eventPriceUsd": 0.002,
+      "isPrimaryEvent": true
+    },
+    "store": {
+      "eventTitle": "Store profile",
+      "eventDescription": "Charged when a store profile row is pushed after /products.json returned JSON. A store row is pushed only when this charge fits under maxSpendUsd. A blocked store is not billed.",
+      "eventPriceUsd": 0.01,
+      "isPrimaryEvent": false
+    }
+  }
+}

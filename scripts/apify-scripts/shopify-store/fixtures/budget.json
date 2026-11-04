@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 512,
+  "maxDurationSecs": 180,
+  "minItems": 1,
+  "maxItems": 5,
+  "maxChargeUsd": 0.02,
+  "maxUsageUsd": 0.05,
+  "notes": "CI Docker smoke. One public store, maxProductsPerStore 2 and maxItems 2, so a full catalog is one store row at $0.01 plus two product rows at $0.002. A blocked or error run that pushes one status row still meets minItems and charges nothing. maxChargeUsd covers the full fixture and stays within maxSpendUsd."
+}

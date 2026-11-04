@@ -1,0 +1,6 @@
+{
+  "collections": [
+    {"id": 200, "title": "Men", "handle": "men", "products_count": 12},
+    {"id": 201, "title": "Women", "handle": "women", "products_count": 14}
+  ]
+}

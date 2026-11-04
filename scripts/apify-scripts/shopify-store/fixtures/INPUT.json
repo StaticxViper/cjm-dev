@@ -1,0 +1,9 @@
+{
+  "domains": ["allbirds.com"],
+  "maxProductsPerStore": 2,
+  "trackPriceChanges": false,
+  "stateStoreName": "shopify-store-state",
+  "maxItems": 2,
+  "delaySeconds": 1,
+  "maxSpendUsd": 1
+}
