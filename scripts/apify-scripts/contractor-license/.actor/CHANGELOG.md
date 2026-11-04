@@ -2,6 +2,7 @@
 
 ## 0.2
 
+- Output schema and key-value SUMMARY schema so the Store listing can be public.
 - California license numbers and business names use the CSLB Check a License form. The statewide master file is not downloaded for those lookups.
 - A trade-only search still reads the master file, streamed, and stops at the result cap.
 
