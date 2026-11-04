@@ -1,0 +1,61 @@
+{
+  "totalRecords": 2,
+  "limit": 10,
+  "offset": 0,
+  "opportunitiesData": [
+    {
+      "noticeId": "abc123notice",
+      "title": "Historic Office Renovation",
+      "solicitationNumber": " 47PF0018R0023 ",
+      "fullParentPathName": "GENERAL SERVICES ADMINISTRATION.PUBLIC BUILDINGS SERVICE",
+      "postedDate": "2024-02-01",
+      "type": "Solicitation",
+      "typeOfSetAside": "SBA",
+      "responseDeadLine": "2024-03-15T17:00:00-04:00",
+      "naicsCode": "236220",
+      "award": {
+        "date": "2024-02-01",
+        "number": "47PF0018C0066",
+        "amount": "800620",
+        "awardee": {
+          "name": "D.G. Beyer, Inc.",
+          "ueiSAM": "025114695AST"
+        }
+      },
+      "pointOfContact": [
+        {
+          "type": "secondary",
+          "fullName": "Other Person",
+          "email": "other@example.com",
+          "phone": "2025550199"
+        },
+        {
+          "type": "primary",
+          "email": "co@example.com",
+          "phone": "2025550100",
+          "fullName": "Casey Officer"
+        }
+      ],
+      "placeOfPerformance": {
+        "state": {"code": "WI"}
+      },
+      "uiLink": "https://beta.sam.gov/opp/abc123notice/view"
+    },
+    {
+      "noticeId": "def456notice",
+      "title": "Cloud Help Desk",
+      "solicitationNumber": "FA8771",
+      "department": "DEPT OF DEFENSE",
+      "subTier": "DEPT OF THE AIR FORCE",
+      "postedDate": "2024-02-04",
+      "type": "Combined Synopsis/Solicitation",
+      "typeOfSetAside": null,
+      "responseDeadLine": null,
+      "naicsCode": "541512",
+      "award": null,
+      "pointOfContact": null,
+      "placeOfPerformance": null,
+      "uiLink": "null"
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Federal contract leads",
+    "fields": {
+      "id": {"type": "string"},
+      "recordType": {"type": "string"},
+      "source": {"type": "string"},
+      "agency": {"type": "string"},
+      "subAgency": {"type": "string"},
+      "title": {"type": "string"},
+      "naics": {"type": "string"},
+      "value": {"type": "number"},
+      "deadline": {"type": "string"},
+      "awardee": {"type": "string"},
+      "contactName": {"type": "string"},
+      "contactEmail": {"type": "string"},
+      "contactPhone": {"type": "string"},
+      "uei": {"type": "string"},
+      "setAside": {"type": "string"},
+      "state": {"type": "string"},
+      "noticeType": {"type": "string"},
+      "solicitationNumber": {"type": "string"},
+      "postedDate": {"type": "string"},
+      "periodStart": {"type": "string"},
+      "url": {"type": "string"},
+      "sourceStatus": {"type": "string"},
+      "decision": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["recordType", "agency", "title", "naics", "value", "deadline", "awardee", "state", "sourceStatus"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "recordType": {"label": "Record", "format": "text"},
+          "agency": {"label": "Agency", "format": "text"},
+          "title": {"label": "Title", "format": "text"},
+          "naics": {"label": "NAICS", "format": "text"},
+          "value": {"label": "Value", "format": "number"},
+          "deadline": {"label": "Deadline", "format": "text"},
+          "awardee": {"label": "Awardee", "format": "text"},
+          "state": {"label": "State", "format": "text"},
+          "sourceStatus": {"label": "Source status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "id",
+          "recordType",
+          "source",
+          "agency",
+          "subAgency",
+          "title",
+          "naics",
+          "value",
+          "deadline",
+          "awardee",
+          "contactName",
+          "contactEmail",
+          "contactPhone",
+          "uei",
+          "setAside",
+          "state",
+          "noticeType",
+          "solicitationNumber",
+          "postedDate",
+          "periodStart",
+          "url",
+          "sourceStatus",
+          "decision",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "id": {"label": "Id", "format": "text"},
+          "recordType": {"label": "Record", "format": "text"},
+          "source": {"label": "Source", "format": "text"},
+          "agency": {"label": "Agency", "format": "text"},
+          "subAgency": {"label": "Sub-agency", "format": "text"},
+          "title": {"label": "Title", "format": "text"},
+          "naics": {"label": "NAICS", "format": "text"},
+          "value": {"label": "Value", "format": "number"},
+          "deadline": {"label": "Deadline", "format": "text"},
+          "awardee": {"label": "Awardee", "format": "text"},
+          "contactName": {"label": "Contact", "format": "text"},
+          "contactEmail": {"label": "Email", "format": "text"},
+          "contactPhone": {"label": "Phone", "format": "text"},
+          "uei": {"label": "UEI", "format": "text"},
+          "setAside": {"label": "Set-aside", "format": "text"},
+          "state": {"label": "State", "format": "text"},
+          "noticeType": {"label": "Notice type", "format": "text"},
+          "solicitationNumber": {"label": "Solicitation", "format": "text"},
+          "postedDate": {"label": "Posted", "format": "text"},
+          "periodStart": {"label": "Period start", "format": "text"},
+          "url": {"label": "URL", "format": "link"},
+          "sourceStatus": {"label": "Source status", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}

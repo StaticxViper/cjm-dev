@@ -1,0 +1,10 @@
+{
+  "sources": ["awards"],
+  "naics": ["541512"],
+  "state": "VA",
+  "postedFrom": "2024-01-01",
+  "postedTo": "2024-03-31",
+  "maxItems": 2,
+  "delaySeconds": 1,
+  "maxSpendUsd": 1
+}

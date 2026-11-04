@@ -1,0 +1,31 @@
+{
+  "results": [
+    {
+      "Award ID": "47QFCA21F0001",
+      "Recipient Name": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+      "Recipient UEI": "MMLKPW9JLX64",
+      "Award Amount": 1200.5,
+      "Awarding Agency": "General Services Administration",
+      "Awarding Sub Agency": "Federal Acquisition Service",
+      "NAICS Code": "541512",
+      "Description": "Enterprise IT services",
+      "Start Date": "2024-01-15",
+      "End Date": "2024-12-31",
+      "generated_internal_id": "CONT_AWD_47QFCA21F0001_4732_47QTCK18D0001_4732"
+    },
+    {
+      "Award ID": "W912DY24F0042",
+      "Recipient Name": "EXAMPLE BUILDERS LLC",
+      "Recipient UEI": "",
+      "Award Amount": 50000,
+      "Awarding Agency": "Department of Defense",
+      "Awarding Sub Agency": "Department of the Army",
+      "NAICS Code": null,
+      "Description": "Roof repair",
+      "Start Date": "2024-02-01",
+      "End Date": "2024-08-01",
+      "generated_internal_id": "CONT_AWD_W912DY24F0042_9700_-NONE-_-NONE-"
+    }
+  ],
+  "page_metadata": {"page": 1, "hasNext": false}
+}

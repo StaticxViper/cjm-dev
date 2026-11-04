@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 512,
+  "maxDurationSecs": 180,
+  "minItems": 2,
+  "maxItems": 2,
+  "maxChargeUsd": 0.016,
+  "maxUsageUsd": 0.05,
+  "notes": "CI Docker smoke. Two USAspending contract awards for NAICS 541512 in VA, action dates 2024-01-01 through 2024-03-31. sources is awards only, so the run does not call api.sam.gov and does not need a SAM key. SAM.gov is covered by unit fixtures only. Exactly two dataset rows: a blocked or error run that pushes one status row fails minItems. Two awards at $0.008 equal maxChargeUsd, which is within the fixture maxSpendUsd of 1."
+}
