@@ -1,57 +1,40 @@
 # Federal Contract Leads – SAM.gov & USAspending
 
-Contract opportunities from the SAM.gov Get Opportunities API and contract awards from the USAspending spending-by-award API. One dataset row per notice or award, with the id, agency, title, NAICS, value, deadline, awardee, published contact, and a link back to the official page.
+**Federal Contract Leads returns open SAM.gov contract opportunities and past USAspending contract awards filtered by NAICS code, state, set-aside, and date, with agency, title, value, response deadline, awardee, and contracting contact, for GovCon business-development teams and small businesses bidding on federal work.**
 
-The Actor calls two official JSON APIs over plain HTTP. It does not launch a browser, use a proxy, or solve CAPTCHAs. Requests run one at a time with a jittered pause.
+$0.008 per opportunity or award ($8 per 1,000) on every plan. Official government APIs only: no proxy, no browser, and no CAPTCHA solving.
 
-## What it does
+## Who is it for?
 
-| Source | Endpoint | What is kept |
-|--------|----------|----------------|
-| SAM.gov opportunities | `GET https://api.sam.gov/opportunities/v2/search` | `noticeId`, title, agency path, NAICS, set-aside, response deadline, award amount and awardee when the notice includes them, primary point of contact |
-| USAspending awards | `POST https://api.usaspending.gov/api/v2/search/spending_by_award/` | Contract awards only (types A, B, C, D): award id, recipient, amount, awarding agency, NAICS, description, start and end dates |
+- **GovCon business-development and capture teams** building a pipeline of open solicitations by NAICS.
+- **Small, 8(a), HUBZone, WOSB, and SDVOSB businesses** finding set-aside opportunities they qualify for.
+- **Proposal writers and consultants** monitoring opportunities for several clients.
+- **Teaming and subcontracting leads:** past award winners (`awardee`, `uei`) in your NAICS and state are prime partners to approach.
+- **Market researchers** sizing federal spend by agency, NAICS, and state.
 
-SAM.gov `postedFrom` and `postedTo` are sent as `MM/dd/yyyy`. The same inclusive dates are the USAspending action-date window. SAM.gov is queried once per NAICS code (`ncode`, exact). USAspending receives every code in one `naics_codes.require` filter, which matches codes that start with the value. `offset` on SAM.gov is the page index starting at 0, not a record offset.
+## What data do you get?
 
-Rows are deduped on `(source, recordType, id)`. For an award the id used for dedupe is `generated_internal_id` when USAspending sends one, and the public `Award ID` is what the row shows. A page whose ids were all seen already stops that query.
+One dataset item per opportunity or award.
 
-`maxItems` counts successful rows only. Once it is filled, later pages and the remaining source are not requested.
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `id` | string | SAM.gov notice id, or the USAspending award id |
+| `recordType`, `source` | string | `opportunity` from `sam.gov`, or `award` from `usaspending.gov` |
+| `agency`, `subAgency` | string | Contracting or awarding agency |
+| `title` | string | Notice title or award description |
+| `naics` | string | NAICS code |
+| `value` | number | Award amount, when published |
+| `deadline` | string | SAM.gov response deadline, or the award's period-of-performance end |
+| `awardee`, `uei` | string | Awardee name and Unique Entity ID, when published |
+| `contactName`, `contactEmail`, `contactPhone` | string | SAM.gov primary point of contact. Empty on award rows |
+| `setAside` | string | Set-aside code, such as `SBA` or `WOSB` |
+| `state` | string | Place of performance |
+| `noticeType`, `solicitationNumber` | string | SAM.gov notice type and solicitation number |
+| `postedDate`, `periodStart` | string | Posted date, and award start date |
+| `url` | string | Official `sam.gov` or `usaspending.gov` page |
+| `sourceStatus`, `decision`, `ok`, `error`, `scrapedAt` | | Status, row type, success flag, failure reason, timestamp |
 
-USAspending search does not publish a person, email, or phone. Those contact fields are empty on award rows. The recipient name and UEI are the published awardee fields. SAM.gov contact fields are copied from the primary point of contact when the notice includes one.
-
-The public opportunity URL is `https://sam.gov/opp/{noticeId}/view`, built from the notice id. A `beta.sam.gov` `uiLink` is not stored. The award URL is `https://www.usaspending.gov/award/{generated_internal_id}` when that id matches a safe token. Award `state` is the place-of-performance filter you set, because this search response does not include a state field. An opportunity `state` is the notice's own place of performance.
-
-## Input
-
-`fixtures/INPUT.json` is the CI fixture:
-
-```json
-{
-  "sources": ["awards"],
-  "naics": ["541512"],
-  "state": "VA",
-  "postedFrom": "2024-01-01",
-  "postedTo": "2024-03-31",
-  "maxItems": 2,
-  "delaySeconds": 1,
-  "maxSpendUsd": 1
-}
-```
-
-Awards only, so the Docker smoke does not call `api.sam.gov` and does not need a SAM key. SAM.gov parsing, the missing-key skip, and a SAM.gov block are covered by fixture unit tests (`unittests/apify_scripts/fixtures/gov_contracts/sam_page.json`), not by this smoke run. The fixture asks for two historical USAspending awards (NAICS 541512, Virginia, first quarter of 2024). `fixtures/budget.json` expects exactly two dataset rows and a $0.016 charge. A run that only pushes a status row fails that gate.
-
-- `sources` is `opportunities`, `awards`, or both. Default is both. Order is preserved.
-- `naics` is 2 to 6 digits, at most 10. `state` is a 2-letter USPS code, or empty for every state. At least one of the two is required.
-- `setAside` is one SAM.gov set-aside code (`SBA`, `WOSB`, `8A`, and the rest of the GSA list). Empty means every set-aside. SAM.gov accepts one code per request.
-- `postedFrom` and `postedTo` are `YYYY-MM-DD`. Both empty means the 90 days ending today. The span cannot exceed 366 days. A bad or one-sided range is one error row and no request.
-- `maxItems` caps successful rows after dedupe (default 50, maximum 200). It also bounds the network: later pages are not requested once it is filled. `maxSpendUsd` is applied after the fetch, when rows are pushed.
-- `samApiKey` is the SAM.gov public API key from Account Details. It is a secret input. It is sent only as `api_key` on `api.sam.gov` and is redacted from stored URLs, errors, the dataset, and `SUMMARY`. Leave it empty to skip opportunities: one free `skipped` row is saved and awards still run.
-- `delaySeconds` is the base pause between requests after the first (default 1, maximum 10). The pause jitters upward by up to 1 second.
-- `maxSpendUsd` defaults to 5 (minimum 0.01, maximum 100). A lead is pushed only when its `opportunity` or `award` charge fits. The feed then stops with one free `spend_capped` row.
-
-## Output
-
-One dataset item per opportunity or award, plus a status row when a source is skipped, blocked, disallowed, or failed. Key-value `SUMMARY` records counts (`found`, `billedOpportunities`, `billedAwards`, `heldBack`, `skipped`, `blocked`, `errors`, `robots`, `mergedDuplicates`, `truncated`, `chargeCapped`), the filters, spend, and one report per source (`source`, `status`, `fetched`, `kept`). `SUMMARY` does not contain the API key.
+Sample opportunity row from the Actor's saved SAM.gov fixture:
 
 ```json
 {
@@ -84,75 +67,101 @@ One dataset item per opportunity or award, plus a status row when a source is sk
 }
 ```
 
-`value` is null when the notice or award does not publish an amount. `deadline` is the SAM.gov response deadline, or the USAspending period-of-performance end date. `periodStart` is the award start date.
+## Input
 
-| sourceStatus | Meaning | Charged |
-|--------------|---------|---------|
-| `ok` | An opportunity or award was returned. Pushed only when `maxSpendUsd` covers that row's charge | yes |
-| `skipped` | Opportunities were requested and `samApiKey` is empty. No SAM.gov request. Awards still run | no |
-| `not_found` | Both sources returned no rows | no |
-| `blocked` | HTTP 401, 403, or 429, or a challenge page. That source stops. The other source still runs | no |
-| `spend_capped` | `maxSpendUsd` or the platform charge limit ended the feed | no |
-| `robots` | robots.txt disallows the URL, or robots.txt could not be read (5xx or network). That host is skipped | no |
-| `error` | Bad input, invalid JSON, or a 5xx / network error after one retry. The other source still runs | no |
-
-## Limitations
-
-- SAM.gov opportunities require the caller's own free API key. Daily limits depend on the SAM.gov account role. This Actor does not share a key.
-- USAspending rows are prime contract awards (types A, B, C, and D), sorted by award amount descending. Grants and IDVs are not requested.
-- At most 5 pages per query, 100 records per page, and 200 successful rows per run.
-- A response larger than 32 MB is rejected for that request.
-- On HTTP 401, 403, or 429 the Actor pushes one `blocked` row for that source and does not retry it. It does not send the request through a proxy.
-- A 5xx or a dropped connection is tried once more. The second failure is an `error` row for that source.
-- `maxSpendUsd` is checked before the row is pushed. A lead that would pass the cap is not pushed. The HTTP fetch has already finished by then, so the cap does not cancel a request that `maxItems` already allowed.
-- If the platform charge raises after a row was pushed, that row stays in the dataset and is not billed. The feed stops. The row is not deleted and it is not charged again.
-
-## Robots and terms
-
-robots.txt is fetched once per host and evaluated with `scripts/lead_automation/crm_enrich_robots.py` (longest match, `User-agent: *`). A 4xx robots answer, including the 404 these API hosts return, means no rules. A 5xx or network failure skips that host for the run and records a `robots` row. A disallow is a `robots` row and the API URL is not fetched.
-
-The data is published by SAM.gov and USAspending for public use. Contact fields are copied only when the API publishes them. Award rows do not invent a person, email, or phone.
-
-## Pricing
-
-Pay per event from `.actor/pay_per_event.json`.
-
-| Event | Price | When it is charged |
-|-------|-------|--------------------|
-| `opportunity` (primary) | $0.008 | A SAM.gov opportunity row is pushed |
-| `award` | $0.008 | A USAspending award row is pushed |
-
-**$0.008 is $8 per 1,000 rows.** The brief suggested about $0.01, which is $10 per 1,000 and above the listing's affordability line. Both events use $0.008. No incumbent price was verified for this build. There is no `proxy` or `captcha` event, because an undeclared event is priced at $1 in the Docker smoke and this Actor never uses either.
-
-`skipped`, `not_found`, `blocked`, `robots`, `spend_capped`, and `error` rows are saved and not billed. Dataset items are not a charge event. The platform still applies its start event. Memory default is 512 MB (minimum 256, maximum 2048) and the default timeout is 1,800 seconds.
-
-### Deviation from the template contract
-
-The template keeps `headless`, `maxProxyCostUsd`, `allowCaptcha`, `proxyConfiguration`, and `proxyGroups` in every input schema. This Actor drops them. It reads official JSON APIs with plain HTTP, never launches a browser, and stops a source on a block instead of spending to get past it. Only `maxSpendUsd` is kept.
-
-The Dockerfile uses `apify/actor-python:3.12` instead of the shared Playwright image. It still leaves `WORKDIR` at `/usr/src/app`, copies only files inside this folder, and sets `CJM_REPO_ROOT=/usr/src/app/platform_bundle`. The slim image has no `xvfb-entrypoint.sh`.
-
-`LeadLedger` counts micro-dollars and does not price `proxy` or `captcha`. $0.008 is 0.8 cents, so the shared cent ledger would round it to 1 cent. The micro-dollar ledger is what the push path checks before a row is saved.
-
-## Categories
-
-Set in the Apify Console, not in `actor.json`. Suggested: Lead generation, Business.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/gov-contracts
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "sources": ["opportunities", "awards"],
+  "naics": ["541512", "541519"],
+  "state": "VA",
+  "setAside": "SBA",
+  "postedFrom": "2026-08-01",
+  "postedTo": "2026-10-31",
+  "maxItems": 50,
+  "samApiKey": "YOUR_SAM_GOV_API_KEY"
+}
 ```
 
-That sample is the CI fixture: two USAspending awards, no SAM.gov call. Add `samApiKey` and include `opportunities` in `sources` to read SAM.gov.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `sources` | both | `opportunities` (SAM.gov), `awards` (USAspending), or both |
+| `naics` | — | Up to 10 codes, 2 to 6 digits |
+| `state` | all states | 2-letter USPS code. Set `naics`, `state`, or both |
+| `setAside` | any | One SAM.gov set-aside code: `SBA`, `8A`, `HZC`, `SDVOSBC`, `WOSB`, `EDWOSB`, and others |
+| `postedFrom`, `postedTo` | last 90 days | Date window (`YYYY-MM-DD`), up to 366 days |
+| `maxItems` | 50 (max 200) | Rows returned per run |
+| `samApiKey` | — | Your free SAM.gov public API key. Required for opportunities. Stored as a secret and never written to the output |
+| `delaySeconds` | 1 (max 10) | Pause between requests |
+| `maxSpendUsd` | 5 (max 100) | Hard cap on what one run can charge |
 
-Unit tests read fixtures only. They do not call `api.sam.gov`, `api.usaspending.gov`, or Apify.
+Without `samApiKey`, opportunities are skipped with one free `skipped` row and awards still run.
 
-```bash
-python -m pytest unittests/apify_scripts/test_gov_contracts_actor.py -q
-```
+## How much does it cost?
 
-The Apify Actors workflow builds this image and runs `fixtures/INPUT.json` against `fixtures/budget.json`. Publish with `APIFY_TOKEN` (`apify push`) only after a listing is requested. See `scripts/apify-scripts/README.md`.
+Pay per event.
+
+| Event | When it is charged | Price |
+|-------|--------------------|-------|
+| SAM.gov opportunity (`opportunity`) | An opportunity row is returned | $0.008 |
+| USAspending award (`award`) | An award row is returned | $0.008 |
+
+- **100 opportunities or awards:** 100 × $0.008 = **$0.80**
+- **1,000 opportunities or awards:** 1,000 × $0.008 = **$8.00**
+
+`skipped`, `not_found`, `blocked`, `robots`, `spend_capped`, and `error` rows are free. Apify adds its small per-run start event.
+
+## Limits and data source
+
+| Source | API | What is read |
+|--------|-----|--------------|
+| SAM.gov | Get Opportunities API v2 (`api.sam.gov`) | Open notices by NAICS, state, set-aside, and posted date |
+| USAspending | Spending by Award API (`api.usaspending.gov`) | Prime contract awards (types A, B, C, D) by NAICS, place of performance, and action date |
+
+- **SAM.gov key:** SAM.gov requires each caller's own free API key. Daily limits depend on your SAM.gov account role. This Actor does not share a key.
+- **Awards:** prime contract awards only, sorted by amount, largest first. Grants and IDVs are not included. USAspending does not publish a contact person, so contact fields are empty on award rows.
+- **Volume:** up to 5 pages of 100 records per query and 200 rows per run.
+- **Matching:** SAM.gov matches each NAICS code exactly. USAspending matches codes that start with the value, so `5415` covers every 5415xx code.
+- **Blocks:** on HTTP 401, 403, or 429 that source saves one `blocked` row and stops. The other source still runs. No proxy retry. A 5xx is retried once.
+- **Public data:** all fields come from official federal APIs published for public use. Contacts are copied only when SAM.gov publishes them.
+
+## FAQ
+
+### How do I find federal contracts for my NAICS code?
+
+Put your NAICS codes in `naics`, add your SAM.gov API key, and run with `sources: ["opportunities"]`. Each row is an open notice with its agency, deadline, set-aside, and contracting officer.
+
+### How do I get a SAM.gov API key?
+
+Sign in at SAM.gov, open **Account Details**, and request a public API key. It is free. Paste it into `samApiKey`.
+
+### Can I search small-business set-asides only?
+
+Yes. Set `setAside` to a code such as `SBA` (total small business), `8A`, `HZC` (HUBZone), `SDVOSBC`, or `WOSB`. SAM.gov accepts one set-aside per request.
+
+### Who won past contracts in my market?
+
+Run `sources: ["awards"]` with your NAICS and state. Each row has the awardee, UEI, amount, agency, and period of performance, which are useful for teaming and competitor research.
+
+### Does this need a proxy?
+
+No. SAM.gov and USAspending are official public APIs, so there is no proxy cost.
+
+### What counts as a result?
+
+One opportunity or award row. A skipped source, an empty search, and errors are free.
+
+## Integrations and output
+
+- **Dataset:** one row per opportunity or award plus status rows. Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `SUMMARY` has counts (`found`, `billedOpportunities`, `billedAwards`, `skipped`, `blocked`, `errors`, `mergedDuplicates`, `truncated`), the filters, spend, and a report per source. It never contains your API key.
+- **Automation:** schedule it daily for new solicitations and send them to Slack, email, Google Sheets, a CRM, Make, Zapier, or n8n.
+
+## Related actors
+
+- [New Business Leads](https://apify.com/staticxviper/new-business): newly registered LLCs and corporations by state.
+- [Contractor License Lookup](https://apify.com/staticxviper/contractor-license): verify a California contractor's license.
+- [ATS Jobs Feed](https://apify.com/staticxviper/ats-jobs): open jobs from Greenhouse, Lever, Ashby, and Workable boards.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

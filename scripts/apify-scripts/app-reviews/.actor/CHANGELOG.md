@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated. Title is now "App Store Reviews Scraper – iOS Ratings & Review Text".
+
 ## 0.1
 
 - Read public iTunes lookup and customer-reviews RSS (most recent) for a list of App Store ids. The app-info entry without `im:rating` is skipped. Pages stop when a page is empty, a page repeats review ids, `maxItems` is filled, or the oldest review on the page is before `since`.

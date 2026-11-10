@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "gov-contracts",
   "title": "Federal Contract Leads – SAM.gov & USAspending",
-  "description": "SAM.gov contract opportunities and USAspending contract awards by NAICS, state, set-aside, and date. Official APIs only. No proxy and no CAPTCHA solver.",
+  "description": "Find federal contract leads: SAM.gov opportunities and USAspending contract awards by NAICS code, state, set-aside, and date, with agency, value, deadline, awardee, and contact.",
   "version": "0.1",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated.
+
 ## 0.1
 
 - Read Greenhouse, Lever (global and EU), Ashby, and Workable public job-board APIs for a list of company slugs. Endpoints checked live on 2026-11-02.

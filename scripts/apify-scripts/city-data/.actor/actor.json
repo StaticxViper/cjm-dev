@@ -1,8 +1,8 @@
 {
   "actorSpecification": 1,
-  "name": "city-data",
+  "name": "city-data-scraper",
   "title": "City Data Scraper – Population, Crime & Demographics",
-  "description": "Playwright scrape of city-data.com city and crime pages into one JSON row per city.",
+  "description": "Scrape city-data.com profiles into one row per US city: population, income, housing, cost of living, education, and crime stats. For real estate research and demographic comparisons.",
   "version": "0.3",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",

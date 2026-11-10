@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated.
+
 ## 0.1
 
 - Package the new-business entity feeds as an Actor. New York, Pennsylvania, and Colorado open-data rows are imported from the existing pipeline.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated.
+
 ## 0.2
 
 - Output schema and key-value SUMMARY schema so the Store listing can be public.
