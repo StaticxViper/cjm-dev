@@ -215,9 +215,16 @@ def _stop_playwright(playwright):
         return
     impl = getattr(playwright, "_impl_obj", None)
     connection = getattr(impl, "_connection", None)
+    original_cleanup = getattr(connection, "cleanup", None)
+    if connection is not None and (original_cleanup is None or not hasattr(connection, "stop_sync")):
+        # Playwright builds without these private hooks get the public stop().
+        try:
+            playwright.stop()
+        except Exception as exc:
+            logger.error("Failed to stop Playwright: %s", exc)
+        return
     loop = getattr(connection, "_loop", None) if connection is not None else None
     if connection is not None:
-        original_cleanup = connection.cleanup
 
         def cleanup(cause=None):
             futures = [
