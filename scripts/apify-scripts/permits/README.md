@@ -1,65 +1,36 @@
 # Building Permits Scraper – Roofing, Solar, Pool & Remodel Leads
 
-Recent building permits from verified city and county open-data portals. Issue #128. Aimed at contractor and exterior-cleaning leads: roof, siding, pool, deck, solar, and new construction.
+**Building Permits Scraper returns recently issued building permits from the Chicago, Seattle, Austin, and Los Angeles open-data portals, with address, job value, work description, and contractor, for roofing, solar, pool, deck, and siding contractors who want homeowners with active projects.**
 
-The Actor reads `sources.json` in this folder and reuses `scripts/lead_automation/new_business_sources/open_data.py` and `http_table.py` for Socrata page URLs and HTML tables. Those modules stay the source of truth for polite HTTP and query strings. Permit field mapping lives in this Actor because the shared adapters emit business-formation records.
+$0.008 per permit ($8 per 1,000) on the free tier, lower on paid Apify plans. Empty searches and status rows are free.
 
-Low-volume research. Each feed is requested with a polite delay. The default pause is 2 seconds and jitters upward by up to 2 seconds, which covers the Crawl-delay of 1 on the SODA robots files. There is no browser and no stealth plugin.
+## Who is it for?
 
-Coverage is narrow on purpose. A portal is queried only after its open-data feed is verified in `sources.json`.
+- **Roofing and exterior contractors** following up on reroof and siding permits in their service area.
+- **Solar installers and pool builders** finding properties with new solar or pool permits, and the competitors that pulled them.
+- **Exterior-cleaning, gutter, and landscaping companies** marketing to homes that just finished a project.
+- **Building-material suppliers and distributors** tracking which contractors pull the most permits.
+- **Real estate and construction analysts** measuring permit activity and job value by city.
 
-## What it does
+## What data do you get?
 
-Checked 2026-10-26 with a one-row HTTPS read of each resource:
+One dataset item per permit.
 
-| City | Source id | Endpoint |
-|------|-----------|----------|
-| Chicago | `chicago_building_permits` | `https://data.cityofchicago.org/resource/ydr8-5enu.json` |
-| Seattle | `seattle_building_permits` | `https://data.seattle.gov/resource/76t5-zqzr.json` |
-| Austin | `austin_issued_permits` | `https://data.austintexas.gov/resource/3syk-w9eu.json` |
-| Los Angeles | `los_angeles_building_permits` | `https://data.lacity.org/resource/pi9x-tg5x.json` |
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `permit_id` | string | The city's permit number |
+| `issued_date` | string | Issue date (`YYYY-MM-DD`) |
+| `type`, `description` | string | Permit type and work description as published |
+| `value_usd` | number | Reported job value, when published |
+| `address`, `city`, `state`, `zip` | string | Site address. Chicago does not publish a ZIP |
+| `lat`, `lng` | number | Coordinates, when published |
+| `contractor_name`, `contractor_license` | string | Contractor on the permit, when published |
+| `owner_name` | string | Owner, only where the city publishes one |
+| `source`, `source_url` | string | Feed id and a link to the record in the open-data API |
+| `sourceStatus` | string | `found`, `not_found`, `blocked`, `robots_disallowed`, or `error` |
+| `ok`, `error`, `scrapedAt` | | Success flag, failure reason, timestamp |
 
-Rows are filtered by `dateFrom` / `dateTo`, optional permit types, and optional `minValue`, then deduped on `(source, permit_id)`. The same permit id from two cities stays two rows.
-
-`owner_name` is filled only when that portal publishes an owner. Chicago copies a contact when `contact_N_type` contains "owner", and a contractor when it contains "contractor". Seattle and Austin publish a contractor company and no owner column, so `owner_name` is empty. Los Angeles publishes the site address, value, and work description, and does not publish a contractor or an owner. Chicago does not publish a property ZIP, so `zip` is empty on that feed.
-
-An `http_table` source can be added when a city publishes a plain HTML table and that page has been checked the same way. Query style `arcgis` is supported for a FeatureServer that has been verified the same way. The current catalog is Socrata.
-
-Access ladder, cheapest path first:
-
-1. Direct HTTP.
-2. Apify Proxy only after a real block (HTTP 401, 403, 429, or a challenge page). The group comes from the input. An empty group uses datacenter. Residential is used only when the input selects it.
-3. A CAPTCHA solve only when that proxy retry is still a challenge, `allowCaptcha` is true, and `maxSpendUsd` covers the solve.
-
-A robots disallow is not retried through a proxy. If the run is still blocked and the proxy budget is gone, or CAPTCHA is off, or no solver is configured, the Actor pushes one `blocked` row and stops. It exits 0. This package does not ship a third-party solver key, so `allowCaptcha: true` still stops unpaid until a solver is configured.
-
-## Input
-
-`fixtures/INPUT.json`:
-
-```json
-{
-  "sources": ["chicago_building_permits"],
-  "dateFrom": "2026-09-26",
-  "dateTo": "2026-10-26",
-  "permitTypes": ["roof", "siding", "pool", "deck", "solar"],
-  "minValue": 1000,
-  "maxItems": 10,
-  "maxRequests": 24,
-  "delaySeconds": 2,
-  "maxSpendUsd": 5,
-  "maxProxyCostUsd": 0.5,
-  "allowCaptcha": false,
-  "headless": true,
-  "proxyConfiguration": {"useApifyProxy": false}
-}
-```
-
-Leave `sources` empty to query every verified feed. `dateFrom` defaults to 30 days before the run. `dateTo` defaults to the run date. `permitTypes` accepts `roof`, `siding`, `pool`, `deck`, `solar`, and `new construction`. Roof also matches reroof and shingle. `minValue` of 0 keeps blank job values. A minimum above 0 drops blanks. `maxItems` defaults to 50 and cannot exceed 200. `maxSpendUsd` defaults to 5 and cannot exceed 100. `maxProxyCostUsd` defaults to 0.50 and is clamped to the spend cap. `allowCaptcha` defaults to false. `headless` is kept for the shared Actor contract and has no effect.
-
-## Output
-
-One dataset item per permit, plus a status row when a source is blocked, disallowed, empty, or the input is wrong. Key-value `SUMMARY` records found, billedPermits, proxyCharges, captchaCharges, mergedDuplicates, spendUsd, and one object per source (`id`, `status`, `fetched`, `kept`). The run log writes that same per-source line.
+Sample row in the shape of a Chicago roof permit (names and id are masked):
 
 ```json
 {
@@ -86,62 +57,98 @@ One dataset item per permit, plus a status row when a source is blocked, disallo
 }
 ```
 
-| sourceStatus | Meaning | permit event |
-|--------------|---------|--------------|
-| `found` | A permit was returned | yes, while `maxSpendUsd` still covers it |
-| `not_found` | The feed answered and nothing matched | no |
-| `blocked` | Direct request was rejected and the run could not continue inside the caps | no |
-| `robots_disallowed` | robots.txt disallows the feed | no |
-| `error` | The fetch failed, the request cap was hit, or the input was incomplete | no |
+## Input
 
-## Limitations
-
-- Verified feeds today are Chicago, Seattle, Austin, and Los Angeles. Schemas differ. A city is not added until a live one-row read confirms the columns.
-- The NYC DOB permit-issuance resource `ipu4-2q9a` had no rows with `issuance_date` after 2025-01-01 on 2026-10-26, so it is not in the catalog. San Francisco resource `i98e-djpj` returned 404. Los Angeles resource `nbyu-2ha9` returned 403; `pi9x-tg5x` is the one this Actor calls.
-- Chicago job value is `reported_cost`. Austin is `total_job_valuation`. Los Angeles is `valuation`. Seattle is `estprojectcost`. A blank value is kept only when `minValue` is 0.
-- `maxItems` applies after the date, type, and value filters and after dedupe. `truncated` in `SUMMARY` is true when that cap stopped the run. Permit charges never exceed `maxItems`.
-- Once `maxSpendUsd` cannot cover the next permit event, later permits are saved without a success charge.
-- Empty, failed, blocked, and robots runs do not emit `permit`.
-
-## Robots and terms
-
-robots.txt is fetched for each host and evaluated with `scripts/lead_automation/crm_enrich_robots.py` (longest match, `User-agent: *`). The verified SODA feeds allow `/resource/` and publish Crawl-delay 1. A shorter `Disallow` on browse and catalog URLs does not hide `/resource/`. A disallowed feed is not fetched and is not retried through a proxy.
-
-Terms noted when the feeds were verified (2026-10-26):
-
-- Chicago, Seattle, Austin, and Los Angeles publish these extracts on their Socrata open-data portals. The rows are public data for research. They are not certified permit records and they are not a substitute for the city's permit file.
-
-## Pricing
-
-Pay per event. Prices are the starting Store rates in `.actor/pay_per_event.json`.
-
-| Event | Price | When it is charged |
-|-------|-------|--------------------|
-| `permit` (primary) | $0.05 | A permit row is pushed |
-| `proxy` | $0.01 | One request was sent through Apify Proxy after a direct block |
-| `captcha` | $1.00 | A solver returned a token after the proxy retry was still a challenge |
-
-Direct requests are free. A challenge with `allowCaptcha` false, or with no solver configured, stores a `blocked` row and does not emit `captcha`. A run that pushes no permits does not emit `permit`. Dataset items are not a charge event. The platform still applies its start event. Memory default is 1024 MB and the default timeout is 900 seconds.
-
-Proxy uses the input group, or datacenter when the input leaves the group empty, and only after a block. The proxy password is the platform `APIFY_PROXY_PASSWORD`. It is not logged.
-
-## Categories
-
-Set in the Apify Console, not in `actor.json`. Suggested: Business, Real estate.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/permits
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "sources": ["chicago_building_permits"],
+  "dateFrom": "2026-09-26",
+  "dateTo": "2026-10-26",
+  "permitTypes": ["roof", "siding", "pool", "deck", "solar"],
+  "minValue": 1000,
+  "maxItems": 50
+}
 ```
 
-Unit tests read fixtures only:
+| Field | Default | Notes |
+|-------|---------|-------|
+| `sources` | every city | `chicago_building_permits`, `seattle_building_permits`, `austin_issued_permits`, `los_angeles_building_permits` |
+| `dateFrom`, `dateTo` | last 30 days | Issue-date window (`YYYY-MM-DD`) |
+| `permitTypes` | all | `roof`, `siding`, `pool`, `deck`, `solar`, `new construction`. Roof also matches reroof and shingle |
+| `minValue` | 0 | Minimum job value. `0` keeps permits with no published value |
+| `maxItems` | 50 (max 200) | Permits returned per run, after filters and de-duplication |
+| `maxRequests` | 24 (max 80) | Feed requests per run |
+| `delaySeconds` | 2 | Pause between requests |
+| `maxSpendUsd` | 5 (max 100) | Hard cap on what one run can charge |
+| `maxProxyCostUsd`, `allowCaptcha`, `proxyConfiguration` | 0.5, false, off | Block handling, see below |
 
-```bash
-python -m unittest unittests.apify_scripts.test_permits
-```
+## How much does it cost?
 
-Publish with `APIFY_TOKEN` (`apify push`). That token is not `APIFY_API_KEY`. See `scripts/apify-scripts/README.md`.
+Pay per event. You pay only for permits returned.
+
+| Event | Free tier | Bronze | Silver | Gold and up |
+|-------|-----------|--------|--------|-------------|
+| Permit row (`permit`) | $0.008 | $0.007 | $0.006 | $0.005 |
+
+- **100 permits:** 100 × $0.008 = **$0.80**
+- **1,000 permits:** 1,000 × $0.008 = **$8.00** (as low as $5.00 on Gold)
+
+`not_found`, `blocked`, `robots_disallowed`, and `error` rows are free. Apify adds its small per-run start event. `maxSpendUsd` stops billing before it would pass your cap.
+
+## Limits and data source
+
+| City | Portal | Job value field | Contractor | Owner |
+|------|--------|-----------------|------------|-------|
+| Chicago, IL | data.cityofchicago.org | reported cost | yes | when a contact is typed as owner |
+| Seattle, WA | data.seattle.gov | estimated project cost | yes | no |
+| Austin, TX | data.austintexas.gov | total job valuation | yes | no |
+| Los Angeles, CA | data.lacity.org | valuation | no | no |
+
+- **Coverage:** these four cities only. A city is added after a live read confirms its columns. NYC and San Francisco feeds were checked and are not included because they returned no recent rows or an error.
+- **Source:** official city open-data (Socrata) APIs over plain HTTP. No browser and no login.
+- **Dedupe:** one row per city and permit id.
+- **Pacing:** 2 seconds between requests with jitter. robots.txt is checked for every host, and the portals publish `/resource/` as allowed.
+- **Blocks:** requests start direct. After a real block, the Actor may retry once through Apify Proxy inside `maxProxyCostUsd`. If it is still blocked, one `blocked` row is saved and the run stops cleanly. No CAPTCHA solver ships with this Actor.
+- **Public data:** these are public open-data extracts for research. They are not certified permit records and do not replace the city's permit file.
+
+## FAQ
+
+### How do I find new roofing permits in Chicago?
+
+Set `sources` to `["chicago_building_permits"]`, `permitTypes` to `["roof"]`, and the date window you want. Each row has the address, job value, and the contractor who pulled the permit.
+
+### Which cities are covered?
+
+Chicago, Seattle, Austin, and Los Angeles. Leave `sources` empty to search all four.
+
+### Do permits include the homeowner's name?
+
+Only where the city publishes it. Chicago lists an owner when a permit contact is marked as the owner. Seattle, Austin, and Los Angeles do not publish owner names.
+
+### Can I filter by job value?
+
+Yes. `minValue` drops permits below the amount. Leave it at `0` to also keep permits that have no published value.
+
+### What counts as a result?
+
+One permit row. A search that finds nothing is free.
+
+### Does this need a proxy?
+
+No. City open-data APIs answer direct. A proxy is used only to retry a request that was actually blocked.
+
+## Integrations and output
+
+- **Dataset:** one row per permit plus status rows. Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `SUMMARY` has `found`, `billedPermits`, `mergedDuplicates`, `spendUsd`, and a report per city (`id`, `status`, `fetched`, `kept`).
+- **Automation:** schedule it weekly for a rolling permit feed, or connect it to Make, Zapier, n8n, a CRM, or Google Sheets.
+
+## Related actors
+
+- [Contractor License Lookup](https://apify.com/staticxviper/contractor-license): verify the license of a contractor on a permit.
+- [Home Services Leads](https://apify.com/staticxviper/home-services): local contractors by niche and area, with emails and scores.
+- [Zillow Real Estate Agent Scraper](https://apify.com/staticxviper/zillow-agents): listing agents by ZIP code.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

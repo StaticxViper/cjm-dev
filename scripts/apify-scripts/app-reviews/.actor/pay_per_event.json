@@ -2,7 +2,7 @@
   "actorChargeEvents": {
     "review": {
       "eventTitle": "Review row",
-      "eventDescription": "Charged when a review row is pushed. A review is pushed only when this charge, and the sentiment charge when that add-on is on, fits under maxSpendUsd. blocked, robots, not_found, spend_capped, and error rows are saved and not billed. $0.001 is the top of an unverified $0.0005–0.001 range. thewolves Store comps were not confirmed for this build.",
+      "eventDescription": "Charged when a review row is pushed. A review is pushed only when this charge, and the sentiment charge when that add-on is on, fits under maxSpendUsd. blocked, robots, not_found, spend_capped, and error rows are saved and not billed.",
       "eventPriceUsd": 0.001,
       "isPrimaryEvent": true
     },

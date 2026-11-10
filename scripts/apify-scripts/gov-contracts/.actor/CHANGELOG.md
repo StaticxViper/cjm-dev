@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated.
+
 ## 0.1
 
 - Read SAM.gov Get Opportunities v2 (`api.sam.gov/opportunities/v2/search`) and USAspending contract awards (`api.usaspending.gov/api/v2/search/spending_by_award/`, award types A, B, C, D). Official APIs only.

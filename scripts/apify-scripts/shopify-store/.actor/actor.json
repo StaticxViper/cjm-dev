@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "shopify-store",
   "title": "Shopify Store Intel – Products, Prices & Theme Hints",
-  "description": "Public Shopify catalog intel for a list of stores: products, variants, prices, availability, collections, and theme or app hints. Direct HTTP only.",
+  "description": "Export products, variant prices, availability, and collections from any public Shopify store, plus theme name and app hints. Optional price-change tracking between runs.",
   "version": "0.1",
   "meta": {
     "generatedBy": "Cursor with Grok 4.7",

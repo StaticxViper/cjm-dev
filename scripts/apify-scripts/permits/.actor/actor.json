@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "permits",
   "title": "Building Permits Scraper – Roofing, Solar, Pool & Remodel Leads",
-  "description": "Recent building permits from verified city open-data portals for contractor and exterior-cleaning leads.",
+  "description": "Recent building permits from the Chicago, Seattle, Austin, and Los Angeles open-data portals, filtered by date, permit type, and job value. Leads for roofing, solar, pool, deck, and siding contractors.",
   "version": "0.1",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",

@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "ats-jobs",
   "title": "ATS Jobs Feed – Greenhouse, Lever, Ashby & Workable Jobs",
-  "description": "Open jobs from the public Greenhouse, Lever, Ashby, and Workable job-board APIs for a list of companies. Salary, remote flag, and new-since-last-run.",
+  "description": "Export open jobs from any company's Greenhouse, Lever, Ashby, or Workable job board: title, location, remote flag, salary, department, and posted date. New-since-last-run mode for job alerts.",
   "version": "0.1",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",

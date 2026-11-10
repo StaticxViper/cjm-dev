@@ -1,55 +1,39 @@
-# Home Services / Contractor Leads
+# Home Services Leads – Local Contractor Leads with Emails
 
-Low-volume lead list for one niche and one area. The Actor searches Google Maps with the Playwright session in `scripts/lead_automation/playwright_discovery.py`, then keeps a row only when the issue #127 matcher in `scripts/apify-scripts/google-business/` would accept it. Accepted rows can be enriched from the business website with an email, a website-quality score, and an intent lead score.
+**Home Services Leads builds a local lead list for one service niche and one area from Google Maps, returning each verified business with phone, website, rating, website email, a website-quality score, and an intent lead score, for agencies and freelancers who sell to local service businesses.**
 
-Pass `mapsDataset` to score listings you already have. That path does not open Google Maps.
+$0.008 per accepted business ($8 per 1,000) on the free tier, lower on paid Apify plans. Optional email and score add-ons are billed only when they produce a value.
 
-This Actor does not call the Google Places API. Google web search (`/search`) is never requested. Emails come from the business website, not from a Google query.
+## Who is it for?
 
-## What it does
+- **Web design and SEO agencies** looking for local businesses with weak or missing websites (`website_quality` near 100).
+- **Marketing freelancers** prospecting pool services, appliance repair, septic, radon and mold, or hood-cleaning companies in one city.
+- **Lead-gen sellers** who need a short, verified list per niche and area instead of a raw Maps dump.
+- **SaaS sales teams** selling booking, CRM, or review tools to home-service and specialty-service businesses.
 
-| `decision` | Meaning | Billed |
-|------------|---------|--------|
-| `accepted` | Issue #127 score at or above `minConfidence` (default 80) and no hard reject | `place`, plus add-ons when they produce a value |
-| `rejected` | Negative keyword, hard reject, score below the minimum, or a different city | No |
-| `blocked` | Google showed a block page. Later searches are not run | No |
-| `error` | Input, robots, or unexpected failure | No |
+## What data do you get?
 
-A listing is scored under its own name against the requested city, county, and state. The niche keyword is the Maps search text. It is not treated as the business name, and the first Maps card is never used as a fallback. `low_confidence` stays `rejected` and is not billed.
+One dataset item per Maps listing considered. Accepted rows carry the enrichment.
 
-Name plus state is 60. A city or county match adds the points that clear 80. A state-only area does not copy the card’s city, so those rows usually stay `rejected`. A `mapsDataset` with no area is matched to each listing’s own address.
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `business` | string | Business name from Maps |
+| `phone`, `website` | string | Contact details from the listing |
+| `rating`, `review_count` | number | Google rating and number of reviews |
+| `email` | string | Validated email from the business's own website |
+| `website_quality` | number | 0–100, higher is a weaker site. `100` means no website |
+| `website_label` | string | Plain-language label for that score, such as `Poor` |
+| `website_status` | string | `ok`, `none`, `robots_disallowed`, or `error` for the website check |
+| `lead_score` | number | Intent lead score for the niche |
+| `intent_signals` | array | Signals behind the score, each with `key`, `label`, and `points` |
+| `decision` | string | `accepted`, `rejected`, `blocked`, or `error` |
+| `match_score` | number | Name and location match score |
+| `hardRejects` | array | Why a listing was rejected |
+| `niche`, `area` | string, object | The niche id and the resolved city, county, and state |
+| `search_term` | string | The Maps search text that found the listing |
+| `sourceStatus`, `error`, `scrapedAt` | string | Run status, failure reason, timestamp |
 
-Niche negative keywords (for example Leslie's for `pool_specialists`) are `rejected` before scoring.
-
-## Input
-
-`fixtures/INPUT.json`:
-
-```json
-{
-  "niche": "pool_specialists",
-  "area": "Rochester, NY",
-  "maxItems": 5,
-  "maxSearches": 1,
-  "maxResults": 3,
-  "includeEmail": true,
-  "includeWebsiteQuality": true,
-  "includeScore": true,
-  "headless": true
-}
-```
-
-`niche` is an id from `scripts/lead_automation/niches.json`.
-
-`area` is a name from `scripts/lead_automation/geo_regions.json`, or `City, ST`, or `Monroe County, NY`. `city`, `county`, and `state` override that string. A region with several cities is searched city by city until `maxSearches` or `maxItems` is reached.
-
-`mapsDataset` replaces the Maps search. Each item may use `business` or `business_name`, `phone`, `website`, `address`, `rating`, `review_count`, `category`, and `place_id`. With an area, a listing in another city is `rejected`. Without an area, each listing is matched to its own address.
-
-`maxItems` is the cap on accepted leads (default 10, maximum 25). `maxSearches` caps Maps searches (default 5, maximum 20). `maxResults` caps listings opened per search (default 5, maximum 10). Search and detail delays stay on the Maps session.
-
-`includeEmail`, `includeWebsiteQuality`, and `includeScore` default to true. Turn one off to skip that step.
-
-## Output
+Sample accepted row from the Actor's unit-test fixture:
 
 ```json
 {
@@ -75,54 +59,96 @@ Niche negative keywords (for example Leslie's for `pool_specialists`) are `rejec
 }
 ```
 
-`website_quality` uses the niche model: a higher number is a weaker site. `100` means no website. `lead_score` and `intent_signals` come from `intent_scoring.score_intent_lead`. The legacy `lead_scoring.py` model is not executed.
+### Which listings are accepted?
 
-Key-value `SUMMARY` includes `accepted`, `rejected`, `blocked`, `errors`, `pushed`, `emailsFound`, and `scoresProduced`.
+A listing is `accepted` only when its name and address score at least `minConfidence` (default 80) against the requested city, county, and state, with no hard reject. The niche keyword is the search text, never the business name, and the first Maps card is never used as a fallback. Listings in another city, chains on the niche's negative list (for example Leslie's for pool specialists), and weak matches are `rejected` and not billed.
 
-## Google terms, robots, and blocks
+## Input
 
-Google’s terms restrict automated extraction. A robots.txt `Allow` is not permission to automate Maps. This Actor is for occasional research. The Maps vertical is crowded, and this listing is differentiated by the niche filter and the enrichment, not by bulk scraping.
-
-`https://www.google.com/robots.txt` is read before any Maps navigation and evaluated with longest-match rules (`crm_enrich_robots.py`). `/maps/search/` and `/maps/place/` can be allowed while `/search` stays disallowed. This Actor never requests `https://www.google.com/search`. Python’s `urllib.robotparser` is not used for that file.
-
-Each business website is checked the same way before an email or quality fetch. A disallow, or a robots fetch that fails, skips those fetches. The place can still be saved. No email event is charged for that skip.
-
-If Google returns a block page, the current search is pushed as `blocked`, remaining searches are skipped, and the run exits successfully. This Actor does not yet call the shared proxy and CAPTCHA ladder in `scripts/apify-scripts/access.py`, so a block stops the run with no proxy or solve charge. Chromium starts with `--disable-blink-features=AutomationControlled` from `BusinessDiscoverySession`.
-
-## Limitations
-
-- One Maps page of results per keyword, then place pages up to `maxResults`.
-- Accepted leads stop at `maxItems`. Further keywords are not searched.
-- A listing in another city is `rejected` and is not attached to an accepted row.
-- Emails are not guessed and are not searched on Google.
-- Website-only intent signals (broken site, missing form, ads) are omitted unless website quality actually fetched the page.
-- Official Places API fields are out of scope.
-- ZIP-to-county and area-code checks use `scripts/lead_automation/data/` when those files are present.
-- `geo_regions.json` can be empty. `City, ST` still works.
-
-## Pricing
-
-Pay per event. Prices are the starting Store rates in `.actor/pay_per_event.json`.
-
-| Event | When it is charged | Starting price |
-|-------|--------------------|----------------|
-| `place` | `decision` is `accepted` | $0.05 |
-| `email-found` | That accepted row has a validated `email` | $0.03 |
-| `score` | That accepted row has a `lead_score` | $0.02 |
-
-`rejected`, `blocked`, `error`, a website with no email, and a score that was not produced are stored and not billed. Dataset items are not a charge event. The platform still applies its start event. A local run logs that the charge was ignored until the Console pricing model is pay per event. Default memory is 2048 MB and the default timeout is 900 seconds. Do not price this as a bulk crawler.
-
-## Categories
-
-Set in the Apify Console. Suggested: Business, Lead generation.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/home-services
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "niche": "pool_specialists",
+  "area": "Rochester, NY",
+  "maxItems": 10,
+  "includeEmail": true,
+  "includeWebsiteQuality": true,
+  "includeScore": true
+}
 ```
 
-A local run without `mapsDataset` opens Google Maps. Unit tests do not. Publish with `APIFY_TOKEN`, not `APIFY_API_KEY`. See `scripts/apify-scripts/README.md`.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `niche` | `pool_specialists` | One of 20 niches, including `premium_appliance_repair`, `commercial_hood_cleaning`, `radon_mold_specialists`, `septic_well_drainage`, `premium_mobile_auto_detailers`, `mobile_notaries`, and `professional_organizers` |
+| `area` | — | `City, ST`, `Monroe County, NY`, or a named region. `city`, `county`, and `state` override it |
+| `mapsDataset` | — | Up to 500 listings you already have. Scores them without opening Google Maps |
+| `maxItems` | 10 (max 25) | Accepted leads per run |
+| `maxSearches` | 5 (max 20) | Maps searches per run |
+| `maxResults` | 5 (max 10) | Listings opened per search |
+| `minConfidence`, `lowConfidenceFloor` | 80, 60 | Match thresholds |
+| `includeEmail`, `includeWebsiteQuality`, `includeScore` | true | Turn off an add-on to skip it and its charge |
+
+A state-only area usually returns few accepted rows, because a city or county match is what lifts a listing over 80. Use `City, ST` for the best results.
+
+## How much does it cost?
+
+Pay per event. Every charge is tied to a value in your dataset.
+
+| Event | When it is charged | Free tier | Gold and up |
+|-------|--------------------|-----------|-------------|
+| Accepted place (`place`) | `decision` is `accepted` | $0.008 | $0.005 |
+| Email found (`email-found`) | That accepted row has a validated `email` | $0.008 | $0.008 |
+| Lead score (`score`) | That accepted row has a `lead_score` | $0.004 | $0.004 |
+
+- **100 accepted places, no add-ons:** 100 × $0.008 = **$0.80**
+- **100 accepted places, email found on 40 and scored on all:** $0.80 + 40 × $0.008 + 100 × $0.004 = **$1.52**
+- **1,000 accepted places, no add-ons:** **$8.00**. With every add-on producing a value on every row, the most it can cost is $20.00.
+
+`rejected`, `blocked`, and `error` rows, a website with no email, and a score that was not produced are free. Apify adds its small per-run start event.
+
+## Limits and data source
+
+- **Source:** public Google Maps search and place pages in a real Chromium browser, then each accepted business's own website. This is not the Google Places API.
+- **Never requested:** Google web search (`/search`). Emails are never guessed.
+- **Volume:** one Maps results page per keyword, up to `maxResults` place pages each, and at most 25 accepted leads per run.
+- **Robots:** Google's robots.txt and each business website's robots.txt are checked before any fetch. A disallowed website is skipped, the place is still saved, and no email is charged.
+- **Blocks:** if Google shows a block page, that search is saved as `blocked`, later searches are skipped, and the run ends cleanly. This Actor does not retry through a proxy and does not solve CAPTCHAs.
+- **Website signals:** signals such as a broken site or missing contact form are added only when the website-quality check actually loaded the page.
+- **Terms:** Google's terms restrict automated extraction. Use this Actor for occasional, targeted prospecting.
+
+## FAQ
+
+### How do I find pool service companies in my city?
+
+Set `niche` to `pool_specialists` and `area` to your city, for example `Rochester, NY`. Each accepted row is a verified local business with phone, website, and, when found, email.
+
+### How do I find local businesses with bad websites?
+
+Keep `includeWebsiteQuality` on and sort the dataset by `website_quality`, highest first. A `100` means the business has no website.
+
+### Can I score a list of businesses I already have?
+
+Yes. Pass them in `mapsDataset` with fields like `business`, `phone`, `website`, `address`, and `rating`. The Actor matches and enriches them without opening Google Maps.
+
+### Does this need a proxy or a Google API key?
+
+No. It reads public Maps pages directly and needs no Google API key. A blocked search ends the run instead of buying proxy traffic.
+
+### What counts as a result?
+
+One `accepted` place. Emails and lead scores are separate, smaller charges that apply only when a value is returned.
+
+## Integrations and output
+
+- **Dataset:** one row per listing considered, with Overview and Detail views. Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `SUMMARY` has `accepted`, `rejected`, `blocked`, `errors`, `pushed`, `emailsFound`, and `scoresProduced`.
+- **Automation:** run it from the Apify API, on a schedule, or through Make, Zapier, n8n, or Google Sheets.
+
+## Related actors
+
+- [Google Maps Business Leads](https://apify.com/staticxviper/google-business-lead-generation): match a known business name to its Maps listing.
+- [Building Permits Scraper](https://apify.com/staticxviper/permits): homeowners who just pulled a roofing, solar, or pool permit.
+- [Contractor License Lookup](https://apify.com/staticxviper/contractor-license): check a California contractor's license before you call.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

@@ -1,54 +1,37 @@
-# App Store Reviews – iTunes Customer Reviews RSS
+# App Store Reviews Scraper – iOS Ratings & Review Text
 
-Customer reviews for a list of iOS apps, read from Apple's public iTunes lookup and customer-reviews RSS feeds. One dataset row per review with the app name, star rating, title, text, version, date, author, and a link back to the review.
+**App Store Reviews Scraper exports iOS App Store customer reviews for any list of apps from Apple's public iTunes feeds, with star rating, title, review text, app version, date, author, and optional sentiment, for product managers, app marketers, and analysts who track what users say.**
 
-The Actor calls two public JSON endpoints over plain HTTP. It does not launch a browser, use a proxy, or solve CAPTCHAs. Requests run one at a time with a jittered pause. Google Play is not called.
+$0.001 per review ($1 per 1,000) on every plan. Optional sentiment adds $0.0005 per review. No proxy, no browser, and no CAPTCHA solving.
 
-## What it does
+## Who is it for?
 
-| Source | Endpoint | What is kept |
-|--------|----------|----------------|
-| iTunes lookup | `https://itunes.apple.com/lookup?id={id}&country={country}` | `trackName` (or the id) and `trackViewUrl` |
-| Customer reviews RSS | `https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={id}/sortby=mostrecent/json` | Entries that have `im:rating` |
+- **Product managers** reading the latest reviews after each release, filtered by `since` date.
+- **App marketers and ASO specialists** tracking star ratings and complaints for their app and competitors.
+- **Customer-support and QA teams** spotting bug reports by app version.
+- **Market and competitive analysts** comparing review sentiment across apps and countries.
+- **Agencies** building review dashboards for clients in Google Sheets or BI tools.
 
-The RSS feed is most recent first. Its first entry is often the app itself and has no `im:rating`; that entry is skipped. Pages start at 1 and stop at 10. A page also stops the crawl when it is empty, when it repeats review ids already seen in this run, when `maxItems` is filled, or when the oldest review on the page is before `since` (later pages are older).
+## What data do you get?
 
-`since` compares calendar dates. A timestamp with an offset uses the calendar date in that offset. A timestamp with no offset is treated as UTC. The stored `date` is the original string from the feed.
+One dataset item per review.
 
-Rows are deduped on `(store, appId, reviewId)`, so an RSS page that overlaps the previous page does not emit a second row.
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `app`, `appId` | string | App name and numeric App Store id |
+| `store`, `country` | string | `appstore` and the 2-letter storefront |
+| `reviewId` | string | Apple's review id |
+| `rating` | integer | Stars, 1 to 5 |
+| `title`, `text` | string | Review title and body |
+| `version` | string | App version the review was written for |
+| `date` | string | Review date as published by Apple |
+| `author` | string | Reviewer's display name |
+| `url` | string | Link back to the review, or to the app page |
+| `sentiment`, `sentimentScore` | string, number | `positive`, `neutral`, or `negative`, and a score from -1 to 1. Only when `sentiment` is on |
+| `sourceStatus` | string | `ok`, `not_found`, `blocked`, `spend_capped`, `robots`, or `error` |
+| `decision`, `ok`, `error`, `scrapedAt` | | Row type, success flag, failure reason, timestamp |
 
-Google Play packages in `playIds` are not fetched. The Play details page is a JavaScript shell and its reviews are loaded through a batchexecute session. There is no stable public unproxied document this Actor can fixture-test without a browser or cookies. When `playIds` is non-empty, App Store apps are read first, then the Actor pushes one `blocked` row and stops.
-
-## Input
-
-`fixtures/INPUT.json`:
-
-```json
-{
-  "appStoreIds": ["284882215"],
-  "playIds": [],
-  "country": "us",
-  "maxItems": 3,
-  "sentiment": false,
-  "delaySeconds": 1,
-  "maxSpendUsd": 1
-}
-```
-
-This file is the CI fixture: Facebook for iOS (`284882215`), United States storefront, three reviews, sentiment off. `since` is omitted. `playIds` is empty so the smoke run does not depend on Play.
-
-- `appStoreIds` accepts a numeric id, an `idNNNN` token, or a store URL that contains `id=NNNN` or `/idNNNN`. At most 20.
-- `playIds` accepts Play package names. At most 20. Any non-empty list ends the run with one free `blocked` row and no request to `play.google.com`.
-- `country` is a 2-letter storefront. It is lowercased. `US` becomes `us`. Anything else is one error row and the run stops before fetching.
-- `since` is an optional `YYYY-MM-DD`. A bad value is one error row and the run stops before fetching.
-- `maxItems` caps successful review rows after the date filter and dedupe (default 100, maximum 1,000). Status rows do not count. Later apps and later RSS pages are not requested once the cap is filled.
-- `sentiment` adds `sentiment` (`positive`, `neutral`, or `negative`) and `sentimentScore` (a number from -1 to 1) from a local word list. Nothing is sent to a model. When it is off, those fields are omitted.
-- `delaySeconds` is the base pause between requests after the first (default 1, maximum 10). The pause jitters upward by up to 1 second.
-- `maxSpendUsd` defaults to 5 (minimum 0.01, maximum 100). A review is pushed only when the `review` charge and, if sentiment is on, the `sentiment` charge both fit. The feed then stops with one free `spend_capped` row.
-
-## Output
-
-One dataset item per review, plus a status row when an app is missing, disallowed, or failed. A block is one `blocked` row and the run stops. A spend cap adds one `spend_capped` row. Key-value `SUMMARY` records counts (`found`, `billedReviews`, `billedSentiment`, `heldBackReviews`, `notFound`, `blocked`, `errors`, `robots`, `mergedDuplicates`, `filteredOut`, `truncated`, `chargeCapped`), spend, and one report per app (`store`, `appId`, `status`, `fetched`, `kept`).
+Sample row from the Actor's saved RSS fixture:
 
 ```json
 {
@@ -72,72 +55,93 @@ One dataset item per review, plus a status row when an app is missing, disallowe
 }
 ```
 
-With `sentiment` on, the same row also includes `"sentiment": "positive"` and `"sentimentScore": 1.0`. `url` is the review link from the feed, or the app's `trackViewUrl` when the feed has none. `rating` is an integer from 1 to 5.
+With `sentiment` on, the row also has `"sentiment": "positive"` and `"sentimentScore": 1.0`.
 
-| sourceStatus | Meaning | review event |
-|--------------|---------|----------------|
-| `ok` | A review was returned. Pushed only when `maxSpendUsd` covers the charges that apply | yes |
-| `not_found` | Lookup `resultCount` is 0, or the app has no customer reviews. The run continues | no |
-| `blocked` | HTTP 401, 403, or 429 (not retried), or a consent / CAPTCHA / challenge page. The run stops after this one row. Also the Play-deferred row | no |
-| `spend_capped` | `maxSpendUsd` or the platform charge limit ended the review feed | no |
-| `robots` | robots.txt disallows the URL, or robots.txt could not be read (5xx or network). That host is skipped. The run continues | no |
-| `error` | Bad id, invalid country or `since`, invalid JSON, or a 5xx / network error after one retry. The run continues with the next app | no |
+## Input
 
-## Limitations
-
-- Coverage is the public iTunes customer-reviews RSS. Google Play is deferred on purpose.
-- At most 10 RSS pages per app. Apple's feed is most-recent and about one page of reviews at a time.
-- A response larger than 32 MB is rejected for that URL.
-- Sentiment is a small local lexicon, not a model. Words are matched whole. Unlisted wording scores neutral.
-- On HTTP 401, 403, 429, or a challenge page the Actor pushes one `blocked` row and does not fetch later apps. It does not retry those statuses and does not send the request through a proxy.
-- A 5xx or a dropped connection is tried once more. The second failure is an `error` row for that app and the next app still runs.
-- `maxSpendUsd` is checked in micro-dollars. A review that would pass the cap is not pushed.
-
-## Robots and terms
-
-robots.txt is fetched once per host and evaluated with `scripts/lead_automation/crm_enrich_robots.py` (longest match, `User-agent: *`). A 4xx robots answer means no rules (RFC 9309). A 5xx or network failure skips that host for the run and records a `robots` row. A disallow is a `robots` row for that app and the reviews URL is not fetched. It is not a block and it is not retried through a proxy.
-
-The customer-reviews RSS and the lookup endpoint are public Apple feeds used by iTunes storefront pages. Review text belongs to the reviewer. Use the URL to link back to the original review.
-
-## Pricing
-
-Pay per event from `.actor/pay_per_event.json`.
-
-| Event | Price | When it is charged |
-|-------|-------|--------------------|
-| `review` (primary) | $0.001 | A review row is pushed |
-| `sentiment` | $0.0005 | `sentiment` is on and that same review row was pushed |
-
-**$0.001 is the top of the brief's unverified $0.0005–0.001 range.** thewolves Store comps were not confirmed for this build. There is no `proxy` or `captcha` event, because an undeclared event is priced at $1 in the Docker smoke and this Actor never uses either.
-
-`not_found`, `blocked`, `robots`, `spend_capped`, and `error` rows are saved and not billed. Sentiment is never charged for a status row, and never charged when the add-on is off. If the sentiment charge fails after the review was pushed, no further reviews are pushed. Dataset items are not a charge event. The platform still applies its start event. Memory default is 512 MB (minimum 256, maximum 2048) and the default timeout is 1,800 seconds.
-
-### Deviation from the template contract
-
-The template keeps `headless`, `maxProxyCostUsd`, `allowCaptcha`, `proxyConfiguration`, and `proxyGroups` in every input schema. This Actor drops them. It reads public JSON with plain HTTP, never launches a browser, and stops on a block instead of spending to get past it. Only `maxSpendUsd` is kept.
-
-Two further differences:
-
-- The shared `SpendLedger` counts whole cents, so $0.001 would round to 0 and the cap would never stop the feed. `src/spend.py` subclasses it as `ReviewLedger` in micro-dollars with the same `can()` / `commit()` contract. A review is pushed only when every charge that applies still fits.
-- The Dockerfile uses `apify/actor-python:3.12` instead of the shared Playwright image. It still leaves `WORKDIR` at `/usr/src/app`, copies only files inside this folder, and sets `CJM_REPO_ROOT=/usr/src/app/platform_bundle`. The slim image has no `xvfb-entrypoint.sh`.
-
-## Categories
-
-Set in the Apify Console, not in `actor.json`. Suggested: Social media, E-commerce, Lead generation.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/app-reviews
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "appStoreIds": ["284882215", "https://apps.apple.com/us/app/instagram/id389801252"],
+  "country": "us",
+  "since": "2026-10-01",
+  "maxItems": 100,
+  "sentiment": false
+}
 ```
 
-Unit tests read fixtures only. They do not call `itunes.apple.com`, `play.google.com`, or Apify.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `appStoreIds` | — | Up to 20 ids, `idNNNN` tokens, or App Store URLs |
+| `country` | `us` | 2-letter App Store storefront, such as `gb`, `de`, or `jp` |
+| `since` | — | Only reviews on or after this date (`YYYY-MM-DD`) |
+| `maxItems` | 100 (max 1,000) | Reviews returned per run |
+| `sentiment` | false | Add a positive, neutral, or negative label to each review |
+| `delaySeconds` | 1 (max 10) | Pause between requests |
+| `maxSpendUsd` | 5 (max 100) | Hard cap on what one run can charge |
+| `playIds` | — | Reserved for Google Play. Not fetched yet, see Limits |
 
-```bash
-python -m pytest unittests/apify_scripts/test_app_reviews_actor.py -q
-```
+## How much does it cost?
 
-Publish with `APIFY_TOKEN` (`apify push`) only after a listing is requested. See `scripts/apify-scripts/README.md`.
+Pay per event.
+
+| Event | When it is charged | Price |
+|-------|--------------------|-------|
+| Review row (`review`) | A review is returned | $0.001 |
+| Sentiment add-on (`sentiment`) | `sentiment` is on, for that same review | $0.0005 |
+
+- **100 reviews:** **$0.10**, or $0.15 with sentiment
+- **1,000 reviews:** **$1.00**, or $1.50 with sentiment
+
+`not_found`, `blocked`, `robots`, `spend_capped`, and `error` rows are free. Apify adds its small per-run start event. Once `maxSpendUsd` cannot cover the next review, the feed stops with one free `spend_capped` row.
+
+## Limits and data source
+
+- **Source:** Apple's public iTunes lookup API and customer-reviews RSS feed (`itunes.apple.com`), over plain HTTP. No login, no browser, no proxy.
+- **Depth:** Apple's feed returns the most recent reviews, up to 10 pages per app and country. Older reviews past that depth are not available from this feed.
+- **iOS only:** Google Play is not covered yet. Its reviews load through a browser session with no stable public feed. Any `playIds` you pass return one free `blocked` row after the App Store apps run.
+- **Sentiment:** a small built-in word list, not an AI model. Nothing is sent to a third party.
+- **Blocks:** on HTTP 401, 403, 429, or a challenge page the Actor saves one `blocked` row and stops. It does not retry through a proxy. A 5xx or dropped connection is retried once.
+- **Robots:** robots.txt is checked for every host before any request.
+- **Content:** review text belongs to the reviewer. Link back to the original with `url`.
+
+## FAQ
+
+### How do I export App Store reviews to CSV?
+
+Add the app's App Store id or URL to `appStoreIds` and run. Open the dataset tab and download it as CSV or Excel.
+
+### How do I find an app's App Store id?
+
+It is the number after `id` in the App Store URL. For `https://apps.apple.com/us/app/facebook/id284882215` it is `284882215`. You can also paste the full URL.
+
+### Can I get reviews from other countries?
+
+Yes. Set `country` to the storefront code, such as `gb`, `ca`, `de`, or `jp`. Run once per country.
+
+### Does it scrape Google Play reviews?
+
+Not yet. This Actor covers the iOS App Store only.
+
+### Does this need a proxy?
+
+No. Apple's feeds are public and answer direct, so there is no proxy cost.
+
+### What counts as a result?
+
+One review row. Apps with no reviews, unknown ids, and errors are free.
+
+## Integrations and output
+
+- **Dataset:** one row per review plus status rows. Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `SUMMARY` has counts (`found`, `billedReviews`, `billedSentiment`, `notFound`, `blocked`, `errors`, `mergedDuplicates`, `truncated`), spend, and a report per app.
+- **Automation:** schedule it daily with `since` set to yesterday for a review feed, or send rows to Slack, Google Sheets, Make, Zapier, or n8n.
+
+## Related actors
+
+- [ATS Jobs Feed](https://apify.com/staticxviper/ats-jobs): open jobs from Greenhouse, Lever, Ashby, and Workable boards, for competitor hiring signals.
+- [Google Maps Business Leads](https://apify.com/staticxviper/google-business-lead-generation): a business's Google rating, review count, phone, and website.
+- [Federal Contract Leads](https://apify.com/staticxviper/gov-contracts): SAM.gov opportunities and USAspending awards.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

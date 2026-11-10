@@ -1,73 +1,38 @@
-## What does Shopify Store Intel do?
+# Shopify Store Intel – Products, Prices & Theme Hints
 
-**Shopify Store Intel** reads the public catalog of Shopify stores you list. For each domain it requests [`/products.json`](https://shopify.dev/docs/api/ajax/reference/product) and `/collections.json`, then reads the storefront homepage for `Shopify.theme` and script URLs that look like apps.
+**Shopify Store Intel exports the public product catalog of any list of Shopify stores, with titles, variants, prices, compare-at prices, availability, and collections, plus the store's theme name and app hints and optional price-change tracking between runs, for ecommerce analysts, brands, and agencies that monitor competitors.**
 
-It does **not** log in, call the Admin API, rotate proxies, or solve CAPTCHAs. A store that answers HTTP 401, 403, or 429, or a challenge page, on those catalog URLs is saved as one `blocked` row and the run stops.
+$0.002 per product ($2 per 1,000) plus $0.01 per store, on every plan. Direct HTTP only: no login, no proxy, and no CAPTCHA solving.
 
-## Why use Shopify Store Intel?
+## Who is it for?
 
-Use it to watch a list of Shopify catalogs: product titles, variant prices, availability, collections, and a light read of the theme. Schedule a run when you want price changes against the previous push. Results go to an Apify dataset you can download or call from the API, with a `SUMMARY` record for the run.
+- **Ecommerce and pricing analysts** tracking competitor prices, discounts, and stock across Shopify stores.
+- **DTC brands** watching how rivals launch products and run sales.
+- **Shopify agencies and app developers** finding stores by theme and spotting the apps they load.
+- **Dropshippers and product researchers** exporting catalogs to compare assortments.
+- **Market researchers** building product datasets by vendor, type, and tag.
 
-This Actor stays on a direct connection. It will not spend money to get past a block.
+## What data do you get?
 
-## What data can Shopify Store Intel extract?
+Each store returns one store row, then one row per product.
 
-| Field | Where | What it is |
-|-------|--------|------------|
-| `title`, `handle`, `vendor`, `productType`, `tags` | product | Catalog text from `/products.json` |
-| `variants` | product | Id, SKU, price, compare-at price, availability, options |
-| `priceChange` | product | Set when tracking is on. `reason` is `no_prior` until a saved price exists |
-| `collections` | store | Id, title, handle, and `productsCount` from `/collections.json` |
-| `theme` | store | `Shopify.theme` from the homepage, when that script is present |
-| `appHints` | store | Script URLs under `/apps/` or `/extensions/`. These are hints, not a verified install list |
+| Field | Row | What it holds |
+|-------|-----|---------------|
+| `kind` | both | `store` or `product` |
+| `store`, `storeUrl`, `myshopifyDomain` | both | Store domain, storefront URL, and `.myshopify.com` domain |
+| `title`, `handle`, `productId`, `url` | product | Product title, handle, id, and product page URL |
+| `vendor`, `productType`, `tags` | product | Catalog attributes |
+| `publishedAt`, `updatedAt` | product | Product timestamps |
+| `available`, `priceMin`, `priceMax`, `currency` | product | Availability and price range |
+| `variantCount`, `variants` | product | Each variant's id, title, SKU, price, compare-at price, availability, and options |
+| `priceChange`, `priceChanged` | product | Comparison with the last run, when tracking is on |
+| `themeName` | product | Theme name, copied from the store row |
+| `theme`, `themeStatus` | store | `Shopify.theme` details from the homepage |
+| `appHints` | store | Script URLs that look like Shopify apps. Hints, not a verified install list |
+| `collections`, `collectionCount`, `collectionsStatus` | store | Collection id, title, handle, and product count |
+| `sourceStatus`, `decision`, `partial`, `ok`, `error`, `scrapedAt` | both | Status, change decision, partial flag, success flag, failure reason, timestamp |
 
-Product rows also copy `themeName` so a product export still names the theme. App hints stay on the store row.
-
-## How to scrape a Shopify store
-
-1. Open the Actor and add store domains (`allbirds.com` or a full storefront URL).
-2. Set `maxProductsPerStore` and `maxItems`. `maxItems` counts products only.
-3. Turn on `trackPriceChanges` when you want each variant compared with the last pushed price in `stateStoreName`.
-4. Run the Actor. Download the dataset as JSON, CSV, Excel, or HTML, or read it from the API tab.
-
-The first tracked run has no prior prices. Prices of products that were pushed are saved either way, so the next run can compare.
-
-## How much will it cost to scrape a Shopify store?
-
-Pay per event from `.actor/pay_per_event.json`.
-
-| Event | Price | When it is charged |
-|-------|-------|--------------------|
-| `product` (primary) | $0.002 | A product row is pushed |
-| `store` | $0.01 | A store profile is pushed after `/products.json` returned JSON |
-
-A store with 100 products is about $0.01 + 100 × $0.002 = $0.21, plus the platform start event. `blocked`, `unavailable`, `not_found`, `robots_disallowed`, `spend_capped`, and `error` rows are saved and not billed. There is no proxy event and no CAPTCHA event. `maxSpendUsd` stops the feed before a charge that would pass the cap. One store at the $0.01 minimum cap is the store profile only. The next product needs another $0.002.
-
-## Input
-
-See the input tab for the full form. `fixtures/INPUT.json` is the small smoke run:
-
-```json
-{
-  "domains": ["allbirds.com"],
-  "maxProductsPerStore": 2,
-  "trackPriceChanges": false,
-  "stateStoreName": "shopify-store-state",
-  "maxItems": 2,
-  "delaySeconds": 1,
-  "maxSpendUsd": 1
-}
-```
-
-- `domains` accepts a hostname or a storefront URL. A path is dropped. A leading `www.` is stripped. The same host twice is read once. At most 100 domains.
-- `maxProductsPerStore` defaults to 50 (maximum 1,000). `maxItems` defaults to 100 (maximum 5,000) and counts product rows only. Later stores are not requested once `maxItems` is filled.
-- `trackPriceChanges` compares variant prices with the named key-value store. Keys are `domain|productId|variantId`. The store keeps the latest pushed price, up to 200,000 keys.
-- `delaySeconds` waits 1–2 seconds between requests. Requests run one at a time.
-- `maxSpendUsd` defaults to 5 (minimum 0.01, maximum 100).
-
-## Output
-
-You can download the dataset as JSON, HTML, CSV, or Excel. One store row, then that store's product rows. Status rows follow. Key-value `SUMMARY` records counts, spend, and one report per domain.
+Sample product row from the Actor's saved test catalog, with price tracking on:
 
 ```json
 {
@@ -113,72 +78,94 @@ You can download the dataset as JSON, HTML, CSV, or Excel. One store row, then t
 }
 ```
 
-`decision` is `listed` when tracking is off, `new` when tracking is on and no saved price exists, `changed` when a saved variant price differs, and `unchanged` when saved prices match. `priceChange` is null when tracking is off.
+`decision` is `listed` when tracking is off, `new` for a product with no saved price, `changed` when a variant price moved, and `unchanged` when prices match.
 
-The store row uses `kind: "store"` and carries `theme`, `appHints`, and `collections`. `themeStatus: "blocked"` means the homepage was a challenge or an HTTP block. That does not stop the run. `themeStatus: "not_found"` means the HTML loaded and had no `Shopify.theme` object. `collectionsStatus: "not_found"` means `/collections.json` answered 404. The store and its products are still returned.
+## Input
 
-| sourceStatus | Meaning | Charged |
-|--------------|---------|---------|
-| `found` | A store profile or a product parsed from JSON | `store` or `product` |
-| `blocked` | HTTP 401, 403, or 429, or a challenge page, on `/products.json` or `/collections.json`. The run stops | no |
-| `unavailable` | HTML instead of catalog JSON, including a password page | no |
-| `not_found` | HTTP 404 on the catalog URL | no |
-| `robots_disallowed` | robots.txt disallows the catalog URL | no |
-| `spend_capped` | The next charge did not fit under `maxSpendUsd` or the platform limit | no |
-| `error` | Bad domain, invalid JSON, or a 5xx after one retry | no |
-
-## Limitations
-
-- Only public storefront JSON. The Admin API, checkout, and customer accounts are out of scope. `/meta.json` is not requested. It is not a stable public catalog route, and a 403 there would look like a block on a store whose `/products.json` is open.
-- Theme and app hints come from the homepage. A theme that does not print `Shopify.theme`, or a homepage that answers 403 while `/products.json` is open, leaves `themeStatus` as `blocked` or `not_found`. App hints are script paths containing `/apps/` or `/extensions/`. They are not Shopify's installed-app list.
-- A block on a later `/products.json` page keeps products already parsed, skips collections and the homepage for that store, pushes one `blocked` row, and does not request later domains. A block on `/collections.json` keeps the products and any collections already parsed, skips the homepage, and stops the same way.
-- Pagination uses `limit` and `page`. Shopify's page size cap is 250. A page that repeats product ids already seen ends that catalog. `maxItems` and `maxProductsPerStore` stop further product requests.
-- Variant prices are numbers rounded to cents. A change smaller than one cent is not a change. Compare-at price is stored and is not the baseline.
-- The shared spend ledger counts whole cents, so this Actor uses a micro-dollar ledger. $0.002 would otherwise round to zero and the cap would never stop.
-
-## Robots and terms
-
-robots.txt is fetched once per host and evaluated with `scripts/lead_automation/crm_enrich_robots.py` (longest match, `User-agent: *`). A 4xx robots answer, including 403 and 429, means no rules (RFC 9309). A 5xx or a network failure skips that host. A robots disallow is not a block and is not retried through a proxy.
-
-The catalog URLs are the public Ajax feeds a Shopify storefront serves without a token. Product text belongs to the merchant. Use it in line with Shopify's terms and the store's own terms. This Actor does not bypass a password page, a challenge, or a rate limit.
-
-## Pricing
-
-See the cost section above. Dataset items are not a charge event. Memory default is 512 MB (minimum 256, maximum 2048) and the default timeout is 1,800 seconds.
-
-### Deviation from the template contract
-
-The template keeps `headless`, `maxProxyCostUsd`, `allowCaptcha`, `proxyConfiguration`, and `proxyGroups`, and it retries a block once through Apify Proxy. This Actor drops those fields. It reads public JSON with plain HTTP, never launches a browser, and stops on a catalog block instead of spending to get past it. The run still finishes with exit 0 so the dataset and `SUMMARY` are saved. `SUMMARY.status` is `blocked` or `partial`.
-
-A homepage challenge is recorded on the store row and does not end the run. Stopping there would drop catalogs whose `/products.json` is public and whose homepage is walled.
-
-The Dockerfile uses `apify/actor-python:3.12` instead of the Playwright image. It leaves `WORKDIR` at `/usr/src/app` and sets `CJM_REPO_ROOT=/usr/src/app/platform_bundle`.
-
-## Categories
-
-Set in the Apify Console, not in `actor.json`. Suggested: E-commerce, Marketplace.
-
-## FAQ, disclaimers, and support
-
-Our Actors are ethical and do not extract private customer data such as orders, emails, or accounts. They only read public catalog JSON and public storefront HTML. You should be aware that a product listing can still contain personal data a merchant chose to publish, which is protected by the GDPR in the European Union and by other laws. Do not collect personal data unless you have a legitimate reason. If you are unsure, consult your lawyers.
-
-Questions and bugs belong on the issue tracker. Programmatic runs use the API tab. A `blocked` row means the store refused the catalog request. Narrow the domain list or raise `delaySeconds`. Do not expect a proxy retry from this Actor.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/shopify-store
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "domains": ["allbirds.com", "https://www.gymshark.com"],
+  "maxProductsPerStore": 50,
+  "maxItems": 100,
+  "trackPriceChanges": true
+}
 ```
 
-`--purge` clears the default stores only. The named `shopify-store-state` store survives, so a later run with `trackPriceChanges` can see prices from products that were pushed.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `domains` | — | Up to 100 store hostnames or storefront URLs. `www.` and paths are dropped |
+| `maxProductsPerStore` | 50 (max 1,000) | Products read per store |
+| `maxItems` | 100 (max 5,000) | Product rows per run, across all stores |
+| `trackPriceChanges` | false | Compare each variant price with the last run |
+| `stateStoreName` | `shopify-store-state` | Named store that keeps the last seen prices. Use one per saved task |
+| `delaySeconds` | 1 (max 10) | Pause between requests |
+| `maxSpendUsd` | 5 (max 100) | Hard cap on what one run can charge |
 
-Unit tests read fixtures only:
+The first tracked run has no saved prices, so every product is `new`. Later runs show what changed.
 
-```bash
-python -m pytest unittests/apify_scripts/test_shopify_store_actor.py -q
-```
+## How much does it cost?
 
-Publish with `APIFY_TOKEN` (`apify push`) only after a listing is requested. See `scripts/apify-scripts/README.md`.
+Pay per event.
+
+| Event | When it is charged | Price |
+|-------|--------------------|-------|
+| Product row (`product`) | A product is returned | $0.002 |
+| Store profile (`store`) | A store's catalog was readable and its profile row is returned | $0.01 |
+
+- **1 store with 100 products:** $0.01 + 100 × $0.002 = **$0.21**
+- **10 stores with 100 products each (1,000 products):** 10 × $0.01 + 1,000 × $0.002 = **$2.10**
+
+`blocked`, `unavailable`, `not_found`, `robots_disallowed`, `spend_capped`, and `error` rows are free. Apify adds its small per-run start event.
+
+## Limits and data source
+
+- **Source:** each store's public storefront feeds, `/products.json` and `/collections.json`, plus the homepage HTML for theme and app hints. No Admin API, no login, no checkout or customer data.
+- **Shopify only:** a site that serves HTML instead of catalog JSON, including a password page, returns `unavailable`.
+- **Theme and apps:** the theme comes from the homepage `Shopify.theme` object. App hints are script paths with `/apps/` or `/extensions/` and are not Shopify's installed-app list.
+- **Pagination:** up to 250 products per page. `maxProductsPerStore` and `maxItems` stop further requests.
+- **Prices:** rounded to cents. A change under one cent is not counted. Compare-at price is stored but is not the tracking baseline.
+- **Blocks:** HTTP 401, 403, 429, or a challenge on a catalog URL saves one `blocked` row and stops the run. Products already read are kept. A blocked homepage only marks `themeStatus: "blocked"` and the run continues.
+- **Robots:** robots.txt is checked for every host before any request.
+- **Personal data:** product listings can still contain personal data a merchant chose to publish, which the GDPR and similar laws protect. Collect it only with a legitimate reason.
+
+## FAQ
+
+### How do I export all products from a Shopify store?
+
+Add the store domain to `domains`, raise `maxProductsPerStore` and `maxItems` to cover the catalog, and run. Download the dataset as CSV or Excel.
+
+### How do I track competitor price changes on Shopify?
+
+Turn on `trackPriceChanges` and schedule the Actor daily. Each product row shows `priceChanged`, the previous price, and the price delta per variant.
+
+### How do I tell which theme a Shopify store uses?
+
+The store row's `theme` and every product row's `themeName` show the theme from the storefront's `Shopify.theme` object.
+
+### Does it work on any Shopify store?
+
+It works on stores whose public `/products.json` feed is open, which is the Shopify default. Password-protected stores and stores that block the feed return a free status row.
+
+### Does this need a proxy?
+
+No. The catalog feeds are public, so there is no proxy cost. A store that blocks the request is reported, not bypassed.
+
+### What counts as a result?
+
+One product row ($0.002) and one store profile ($0.01) per readable store.
+
+## Integrations and output
+
+- **Dataset:** store rows, product rows, then status rows. Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `SUMMARY` has counts, spend, and one report per domain. Last seen prices live in the named store from `stateStoreName`.
+- **Automation:** schedule daily price checks and send changes to Slack, Google Sheets, Airtable, Make, Zapier, or n8n.
+
+## Related actors
+
+- [App Store Reviews Scraper](https://apify.com/staticxviper/app-reviews): iOS App Store reviews for a brand's app.
+- [Google Maps Business Leads](https://apify.com/staticxviper/google-business-lead-generation): a business's Google Maps phone, website, and rating.
+- [ATS Jobs Feed](https://apify.com/staticxviper/ats-jobs): hiring signals from Greenhouse, Lever, Ashby, and Workable boards.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.
