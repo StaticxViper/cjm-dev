@@ -73,11 +73,21 @@ Trigger rows have the same shape and price as entity rows. Each row's `trigger` 
 ```json
 {
   "states": ["NY", "PA"],
-  "triggers": ["entity_formation", "liquor_license"],
   "formedSince": "2026-09-01",
   "counties": [],
   "entityTypes": ["LLC"],
   "enrichWebsite": false,
+  "maxResults": 50
+}
+```
+
+For new openings, add triggers and leave `entityTypes` empty. It is matched against the license or inspection type on trigger rows, so `LLC` would drop them:
+
+```json
+{
+  "states": ["NY", "CO"],
+  "triggers": ["entity_formation", "liquor_license", "restaurant_inspection"],
+  "formedSince": "2026-09-01",
   "maxResults": 50
 }
 ```
