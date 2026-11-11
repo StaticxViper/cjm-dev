@@ -1,0 +1,51 @@
+[
+  {
+    "address": "100 Example St",
+    "owner": "Example Homeowner",
+    "description": "Gunite 16ftx8ft pool installation with bench and spa. To be built as per scope.",
+    "numstring": "26-00001-POOL",
+    "isclosed": "False",
+    "type": "Swimming Pool",
+    "code": "POOL",
+    "division": "SP",
+    "filingdate": "2026-10-01T09:00:00.000",
+    "issuedate": "2026-10-16T10:20:12.000",
+    "currentstatus": "Permit Issued",
+    "landuse": "Single Family",
+    "constrval": "53095.0",
+    "applicant": "Example Pool Builders LLC",
+    "contractors": "Example Pool Builders LLC",
+    "location_1": {"latitude": "29.9275", "longitude": "-90.0778"},
+    ":@computed_region_ewbu_t8bu": "1868"
+  },
+  {
+    "address": "200 Sample Ave",
+    "owner": "Example Owner Two",
+    "description": "Interior renovation of kitchen and one bathroom. No structural work.",
+    "numstring": "26-00002-RNVS",
+    "isclosed": "False",
+    "type": "Renovation (Non-Structural)",
+    "code": "RNVS",
+    "division": "BLD",
+    "issuedate": "2026-10-18T14:05:00.000",
+    "currentstatus": "Permit Issued",
+    "constrval": "18000.0",
+    "contractors": "Example Renovations LLC",
+    "location_1": {"latitude": "29.9655", "longitude": "-90.0192"}
+  },
+  {
+    "address": "300 Example Blvd",
+    "owner": "Example Owner Three",
+    "description": "Electrical vacancy ",
+    "numstring": "26-00003-EVAC",
+    "isclosed": "False",
+    "type": "Electrical Vacancy",
+    "code": "EVAC",
+    "division": "SP",
+    "issuedate": "2026-10-20T18:54:12.000",
+    "currentstatus": "Permit Issued",
+    "constrval": "510.0",
+    "contractors": "Example Electric",
+    "location_1": {"latitude": "29.9716", "longitude": "-90.0707"}
+  }
+]

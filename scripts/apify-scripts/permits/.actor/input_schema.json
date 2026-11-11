@@ -1,13 +1,13 @@
 {
   "title": "Building permit leads",
-  "description": "Verified city open-data feeds. Chicago, Seattle, Austin, and Los Angeles are live. An unknown source id returns an error row and is not billed.",
+  "description": "Verified city open-data feeds. Chicago, Seattle, Austin, Los Angeles, New York City, New Orleans, and Cincinnati are live. An unknown source id returns an error row and is not billed.",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "sources": {
       "title": "Sources",
       "type": "array",
-      "description": "Preset source ids. Leave empty to query every verified feed. Chicago, Seattle, Austin, and Los Angeles were checked on 2026-10-26.",
+      "description": "Preset source ids. Leave empty to query every verified feed. Chicago, Seattle, Austin, and Los Angeles were checked on 2026-10-26. New York City, New Orleans, and Cincinnati were checked on 2026-11-11.",
       "editor": "select",
       "items": {
         "type": "string",
@@ -15,13 +15,19 @@
           "chicago_building_permits",
           "seattle_building_permits",
           "austin_issued_permits",
-          "los_angeles_building_permits"
+          "los_angeles_building_permits",
+          "nyc_dob_now_permits",
+          "new_orleans_permits",
+          "cincinnati_building_permits"
         ],
         "enumTitles": [
           "Chicago building permits",
           "Seattle building permits",
           "Austin issued construction permits",
-          "Los Angeles building permits"
+          "Los Angeles building permits",
+          "New York City DOB NOW approved permits (initial permits only)",
+          "New Orleans permits",
+          "Cincinnati building permits"
         ]
       }
     },
@@ -30,24 +36,24 @@
       "type": "string",
       "description": "Keep permits issued on or after this date (YYYY-MM-DD). Default is 30 days before the run.",
       "editor": "textfield",
-      "prefill": "2026-09-26"
+      "prefill": "2026-10-12"
     },
     "dateTo": {
       "title": "Issued through",
       "type": "string",
       "description": "Keep permits issued on or before this date (YYYY-MM-DD). Default is the run date.",
       "editor": "textfield",
-      "prefill": "2026-10-26"
+      "prefill": "2026-11-11"
     },
     "permitTypes": {
       "title": "Permit types",
       "type": "array",
-      "description": "Optional. Matched against the permit type and description. Roof also matches reroof and shingle. Leave empty for every type.",
+      "description": "Optional. Matched as whole words against the permit type and description. Roof also matches reroof and shingle. Remodel matches remodel, renovation, alteration, addition, kitchen, bath, and interior. Leave empty for every type. Every row also carries a normalized permit_category.",
       "editor": "select",
       "items": {
         "type": "string",
-        "enum": ["roof", "siding", "pool", "deck", "solar", "new construction"],
-        "enumTitles": ["Roof", "Siding", "Pool", "Deck", "Solar", "New construction"]
+        "enum": ["roof", "siding", "pool", "deck", "solar", "new construction", "remodel"],
+        "enumTitles": ["Roof", "Siding", "Pool", "Deck", "Solar", "New construction", "Remodel"]
       }
     },
     "minValue": {
@@ -58,10 +64,24 @@
       "default": 0,
       "minimum": 0
     },
+    "newSinceLastRun": {
+      "title": "Only new since last run",
+      "type": "boolean",
+      "description": "Skip permits charged by an earlier run. Seen (source, permit_id) keys and their firstSeen time are kept in the named key-value store below, so they survive between runs. Skipped permits are not billed and do not count toward Max permits.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "stateStoreName": {
+      "title": "State store name",
+      "type": "string",
+      "description": "Named key-value store that holds seen permits. Use a different name per saved task to keep separate feeds.",
+      "editor": "textfield",
+      "default": "permits-state"
+    },
     "maxItems": {
       "title": "Max permits",
       "type": "integer",
-      "description": "Cap on permit rows pushed for this run, after dedupe. Default 50, maximum 200. Status rows do not count toward this cap and are not billed.",
+      "description": "Hard cap on permit rows pushed for this run, after filters, dedupe, and newSinceLastRun. Default 50, maximum 200. Status rows do not count toward this cap and are not billed.",
       "editor": "number",
       "default": 50,
       "minimum": 1,
@@ -97,9 +117,9 @@
     "maxProxyCostUsd": {
       "title": "Max proxy spend (USD)",
       "type": "number",
-      "description": "Cap on proxy events alone. Default 0.50. A direct request is always tried first. Proxy is used only after a block, and only when this cap and maxSpendUsd both still have room. 0 skips the proxy retry.",
+      "description": "Cap on proxy events alone. Default 0, so a block pushes one blocked row and the run exits with no proxy retry. A direct request is always tried first. Above 0, one Apify Proxy retry is sent after a block when this cap and maxSpendUsd both still have room. There is no proxy rotation.",
       "editor": "number",
-      "default": 0.5,
+      "default": 0,
       "minimum": 0,
       "maximum": 20
     },

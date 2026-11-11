@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote
 
 try:
@@ -23,6 +23,7 @@ try:
     )
     from .sources import select_sources
     from .spend import PERMIT_EVENT, PRICES_USD
+    from .state import STATE_STORE, permit_key
 except ImportError:
     from runtime import (
         access_summary,
@@ -33,6 +34,7 @@ except ImportError:
     )
     from sources import select_sources
     from spend import PERMIT_EVENT, PRICES_USD
+    from state import STATE_STORE, permit_key
 
 
 prepare_imports()
@@ -52,13 +54,51 @@ TYPE_KEYWORDS = {
     "pool": ("pool",),
     "deck": ("deck",),
     "solar": ("solar", "photovoltaic"),
-    "new construction": ("new construction", "new building"),
+    "new construction": (
+        "new construction",
+        "new building",
+        "new single family",
+        "new dwelling",
+        "new residence",
+    ),
+    "remodel": (
+        "remodel",
+        "remodeling",
+        "renovation",
+        "renovations",
+        "renovate",
+        "alter",
+        "alteration",
+        "alterations",
+        "addition",
+        "additions",
+        "kitchen",
+        "bath",
+        "bathroom",
+        "bathrooms",
+        "interior",
+    ),
 }
+
+# permit_category is the first match in this order. Trade words outrank the
+# broad permit classes, because cities file a pool or a reroof under
+# "NEW CONSTRUCTION" or "RENOVATION" permit types.
+CATEGORY_ORDER = (
+    ("solar", "solar"),
+    ("pool", "pool"),
+    ("roof", "roof"),
+    ("siding", "siding"),
+    ("deck", "deck"),
+    ("new_construction", "new construction"),
+    ("remodel", "remodel"),
+)
+OTHER_CATEGORY = "other"
 
 TEXT_FIELDS = (
     "permit_id",
     "issued_date",
     "type",
+    "permit_category",
     "description",
     "address",
     "city",
@@ -142,7 +182,10 @@ def _ident(name):
 
 
 def _clean(value):
-    return re.sub(r"\s+", " ", str(value or "").replace("\xa0", " ")).strip()
+    text = re.sub(r"\s+", " ", str(value or "").replace("\xa0", " ")).strip()
+    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+        text = text[1:-1].strip()
+    return text
 
 
 def _clip(value, limit):
@@ -156,6 +199,12 @@ def _date(value):
     text = _clean(value)
     if len(text) >= 10 and text[4] == "-" and text[7] == "-":
         return text[:10]
+    if re.fullmatch(r"-?\d{11,13}", text):
+        # ArcGIS date fields arrive as epoch milliseconds (UTC).
+        try:
+            return datetime.fromtimestamp(int(text) / 1000, tz=timezone.utc).date().isoformat()
+        except (OverflowError, OSError, ValueError):
+            return ""
     match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", text)
     if not match:
         return ""
@@ -250,6 +299,20 @@ def type_matches(haystack, requested):
     return any(_term_in(text, term) for term in type_terms(requested))
 
 
+def permit_categories(haystack):
+    """Every normalized category the type and description text matches, in CATEGORY_ORDER.
+
+    Returns ``["other"]`` when nothing matches.
+    """
+    text = _norm_label(haystack)
+    found = []
+    if text:
+        for category, label in CATEGORY_ORDER:
+            if any(_term_in(text, term) for term in TYPE_KEYWORDS[label]):
+                found.append(category)
+    return found or [OTHER_CATEGORY]
+
+
 def _value_ok(amount, minimum):
     if minimum <= 0:
         return True
@@ -286,7 +349,8 @@ def actor_input_to_config(actor_input, today=None):
         error = "dateTo must be YYYY-MM-DD."
     elif date_from > date_to:
         error = "dateFrom must be on or before dateTo."
-    access = read_access_settings(raw, prices_usd=PRICES_USD)
+    access = permit_access_settings(raw)
+    store = str(raw.get("stateStoreName") or STATE_STORE).strip() or STATE_STORE
     return {
         "sources": _as_list(raw.get("sources")),
         "date_from": date_from,
@@ -302,8 +366,23 @@ def actor_input_to_config(actor_input, today=None):
         "proxy_groups": access["proxy_groups"],
         "proxy_configuration": access["proxy_configuration"],
         "headless": True if raw.get("headless") is None else bool(raw.get("headless")),
+        "new_since_last_run": bool(raw.get("newSinceLastRun")),
+        "state_store": store,
         "error": error,
     }
+
+
+def permit_access_settings(actor_input):
+    """Shared access settings, except an omitted maxProxyCostUsd means 0.
+
+    With no proxy budget a block pushes one ``blocked`` row and the run ends.
+    A caller who sets maxProxyCostUsd above 0 opts into the shared one-retry
+    proxy ladder.
+    """
+    raw = dict(actor_input or {})
+    if raw.get("maxProxyCostUsd") is None:
+        raw["maxProxyCostUsd"] = 0
+    return read_access_settings(raw, prices_usd=PRICES_USD)
 
 
 def _prepare_entry(entry, config):
@@ -407,7 +486,7 @@ def _search_text(adapter, row, entry):
 def _point(row):
     lat = _coord(row.get("_geom_lat"))
     lng = _coord(row.get("_geom_lng"))
-    for key in ("location", "location1", "geolocation"):
+    for key in ("location", "location1", "location_1", "geolocation"):
         point = row.get(key)
         if not isinstance(point, dict):
             continue
@@ -440,11 +519,17 @@ def _record(entry, **fields):
     source_url = _clean(fields.get("source_url"))
     if not source_url.lower().startswith("http"):
         source_url = _format_record_url(entry, permit_id)
+    permit_type = _clip(fields.get("type"), 300)
+    description = _clip(fields.get("description"), 1000)
+    search = _clean(fields.get("search"))
+    categories = permit_categories(" ".join((permit_type, description, search)))
     return {
         "permit_id": permit_id,
         "issued_date": _date(fields.get("issued_date")),
-        "type": _clip(fields.get("type"), 300),
-        "description": _clip(fields.get("description"), 1000),
+        "type": permit_type,
+        "permit_category": categories[0],
+        "permit_categories": categories,
+        "description": description,
         "value_usd": _money(fields.get("value_usd")),
         "address": _clip(fields.get("address"), 300),
         "city": _clip(fields.get("city") or constants.get("city"), 80),
@@ -457,7 +542,7 @@ def _record(entry, **fields):
         "owner_name": _clip(fields.get("owner_name"), 200),
         "source": entry.get("id") or "",
         "source_url": source_url,
-        "_search": _clean(fields.get("search")),
+        "_search": search,
     }
 
 
@@ -641,6 +726,7 @@ class PermitTable(HttpTableAdapter):
 def _blank_row(status, error, scraped_at, source="", source_url=""):
     row = {key: "" for key in TEXT_FIELDS}
     row.update({
+        "permit_categories": [],
         "value_usd": None,
         "lat": None,
         "lng": None,
@@ -660,6 +746,7 @@ def _dataset_row(record, scraped_at):
         if key in ("source", "source_url"):
             continue
         row[key] = record.get(key) or ""
+    row["permit_categories"] = list(record.get("permit_categories") or [])
     row["value_usd"] = record.get("value_usd")
     row["lat"] = record.get("lat")
     row["lng"] = record.get("lng")
@@ -747,22 +834,29 @@ def _log_source(report):
     )
 
 
-def scrape(config, fetch, entries=None):
+def scrape(config, fetch, entries=None, seen_state=None):
+    """Return (rows, summary).
+
+    ``seen_state`` maps ``permit_key(source, permit_id)`` to firstSeen. With
+    newSinceLastRun on, a permit in it is skipped before maxItems is counted.
+    """
     scraped_at = iso_now()
     if config.get("error"):
         row = _blank_row("error", config["error"], scraped_at)
-        summary = _summarize([row], fetch, merged=0, truncated=False, sources=[], stopped="")
+        summary = _summarize([row], fetch, merged=0, truncated=False, sources=[], stopped="", config=config)
         return [row], summary
 
     selected, error = select_sources(config.get("sources"), entries)
     if error:
         row = _blank_row("error", error, scraped_at)
-        summary = _summarize([row], fetch, merged=0, truncated=False, sources=[], stopped="")
+        summary = _summarize([row], fetch, merged=0, truncated=False, sources=[], stopped="", config=config)
         return [row], summary
 
+    prior = (seen_state or {}) if config.get("new_since_last_run") else {}
     kept = []
     seen = set()
     dupes = 0
+    skipped_seen = 0
     truncated = False
     stopped = ""
     reports = []
@@ -774,16 +868,13 @@ def scrape(config, fetch, entries=None):
             break
         prepared = _prepare_entry(entry, config)
         adapter = _make_adapter(prepared)
-        report = {"id": adapter.id, "status": "ok", "fetched": 0, "kept": 0, "duplicates": 0}
+        report = {"id": adapter.id, "status": "ok", "fetched": 0, "kept": 0, "duplicates": 0, "skippedSeen": 0}
         failure = None
 
         def take(batch):
-            nonlocal truncated, dupes
+            nonlocal truncated, dupes, skipped_seen
             report["fetched"] += len(batch)
             for record in batch:
-                if len(kept) >= config["max_items"]:
-                    truncated = True
-                    return True
                 if not _keep(record, config):
                     continue
                 key = (record.get("source") or "", record.get("permit_id") or "")
@@ -791,6 +882,14 @@ def scrape(config, fetch, entries=None):
                     dupes += 1
                     report["duplicates"] += 1
                     continue
+                if permit_key(*key) in prior:
+                    seen.add(key)
+                    skipped_seen += 1
+                    report["skippedSeen"] += 1
+                    continue
+                if len(kept) >= config["max_items"]:
+                    truncated = True
+                    return True
                 seen.add(key)
                 kept.append(record)
                 report["kept"] += 1
@@ -874,9 +973,12 @@ def scrape(config, fetch, entries=None):
     rows = [_dataset_row(record, scraped_at) for record in kept]
     rows.extend(status_rows)
     if not any(row.get("sourceStatus") == "found" for row in rows) and not status_rows:
+        message = "No permits matched this source, date, type, and value filter."
+        if skipped_seen:
+            message = "No new permits since the last run for this source, date, type, and value filter."
         rows.append(_blank_row(
             "not_found",
-            "No permits matched this source, date, type, and value filter.",
+            message,
             scraped_at,
             source=selected[0].get("id") if selected else "",
         ))
@@ -887,6 +989,8 @@ def scrape(config, fetch, entries=None):
         truncated=truncated,
         sources=reports,
         stopped=stopped,
+        config=config,
+        skipped_seen=skipped_seen,
     )
     log.critical(
         "Permits SUMMARY: status=%s found=%s billedPermits=%s sources=%s",
@@ -898,7 +1002,8 @@ def scrape(config, fetch, entries=None):
     return rows, summary
 
 
-def _summarize(rows, fetch, merged, truncated, sources, stopped):
+def _summarize(rows, fetch, merged, truncated, sources, stopped, config=None, skipped_seen=0):
+    config = config or {}
     counts = {}
     for row in rows or []:
         key = row.get("sourceStatus") or "error"
@@ -933,6 +1038,9 @@ def _summarize(rows, fetch, merged, truncated, sources, stopped):
         "robots": counts.get("robots_disallowed", 0),
         "notFound": counts.get("not_found", 0),
         "mergedDuplicates": merged,
+        "skippedSeen": skipped_seen,
+        "newSinceLastRun": bool(config.get("new_since_last_run")),
+        "stateStore": config.get("state_store") or STATE_STORE,
         "truncated": bool(truncated),
         "chargeCapped": billed < sum(1 for row in rows or [] if billable_row(row)),
         "spendUsd": round(spent + billed * price, 2),
