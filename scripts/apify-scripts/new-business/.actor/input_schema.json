@@ -1,6 +1,6 @@
 {
   "title": "New business filings",
-  "description": "Verified state entity feeds only. New York, Pennsylvania, and Colorado are live. Other states return an unsupported row and are not billed.",
+  "description": "Verified open-data feeds only: state entity formations (NY, PA, CO), liquor-license applications and approvals (NY, CO), and NYC new-restaurant inspections. Other states return an unsupported row and are not billed.",
   "type": "object",
   "schemaVersion": 1,
   "required": ["states"],
@@ -13,17 +13,30 @@
       "editor": "stringList",
       "prefill": ["NY"]
     },
+    "triggers": {
+      "title": "Triggers",
+      "type": "array",
+      "description": "Which new-business signals to pull. entity_formation is the state entity feed (NY, PA, CO). liquor_license is NY State Liquor Authority pending applications and Colorado recently approved licenses. restaurant_inspection is NYC pre-permit initial inspections, the first health inspection of a new restaurant. A state with no feed for a trigger returns a free unsupported row. Default is entity_formation only.",
+      "editor": "select",
+      "items": {
+        "type": "string",
+        "enum": ["entity_formation", "liquor_license", "restaurant_inspection"],
+        "enumTitles": ["Entity formations", "Liquor-license applications and approvals", "New-restaurant inspections"]
+      },
+      "default": ["entity_formation"],
+      "maxItems": 3
+    },
     "counties": {
       "title": "Counties",
       "type": "array",
       "maxItems": 50,
-      "description": "Optional. Case-insensitive county names. A row with no county is omitted when this list is set. Leave empty for every county the feed publishes.",
+      "description": "Optional. Case-insensitive county names. NYC boroughs use county names (Kings for Brooklyn, New York for Manhattan, Richmond for Staten Island). A row with no county is omitted when this list is set, and the Colorado liquor feed has no county column. Leave empty for every county the feed publishes.",
       "editor": "stringList"
     },
     "formedSince": {
       "title": "Formed since",
       "type": "string",
-      "description": "Keep entities formed on or after this date (YYYY-MM-DD). Default is 365 days before the run.",
+      "description": "Keep records whose trigger date is on or after this date (YYYY-MM-DD): formation date, liquor-license received or issue date, or inspection date. Default is 365 days before the run. Dates after the run date are dropped as bad data.",
       "editor": "textfield",
       "prefill": "2026-09-01"
     },
@@ -31,7 +44,7 @@
       "title": "Entity types",
       "type": "array",
       "maxItems": 20,
-      "description": "Optional. Matched against the feed's entity type. LLC matches a limited liability company. Leave empty for every type.",
+      "description": "Optional. Matched against the row type: entity type, liquor-license type (Restaurant, Tavern, Grocery Store), or inspection type. LLC matches a limited liability company. Leave empty for every type.",
       "editor": "stringList"
     },
     "enrichWebsite": {

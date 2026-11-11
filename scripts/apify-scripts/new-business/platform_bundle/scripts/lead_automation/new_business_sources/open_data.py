@@ -39,42 +39,53 @@ class OpenDataAdapter(SourceAdapter):
         if isinstance(spec, list):
             parts = [self._lookup(row, item) for item in spec]
             return " ".join(part for part in parts if part).strip()
+        if isinstance(spec, dict):
+            for item in spec.get("first") or []:
+                value = self._lookup(row, item)
+                if value:
+                    return value
+            return ""
         value = row.get(spec)
         if value is None:
             return ""
         if isinstance(value, dict):
             return ""
-        return str(value).strip()
+        return " ".join(str(value).split())
+
+    def _field(self, row, key):
+        value = self._lookup(row, (self.entry.get("field_map") or {}).get(key))
+        mapping = (self.entry.get("value_maps") or {}).get(key) or {}
+        return mapping.get(value, value)
 
     def _record_from_row(self, row):
-        field_map = self.entry.get("field_map") or {}
         constants = self.entry.get("constants") or {}
-        name = self._lookup(row, field_map.get("business_name"))
+        name = self._field(row, "business_name")
         if not name:
             return None
         newness_field = self.entry.get("newness_field")
         newness_type = self.entry.get("newness_type") or "filing_date"
         newness_raw = self._lookup(row, newness_field) if newness_field else ""
         newness_date = _iso_date(newness_raw)
-        city = self._lookup(row, field_map.get("city")) or constants.get("city") or ""
-        state = self._lookup(row, field_map.get("state")) or constants.get("state") or ""
-        postal = _zip5(self._lookup(row, field_map.get("zip")))
-        street = self._lookup(row, field_map.get("address"))
+        city = self._field(row, "city") or constants.get("city") or ""
+        state = self._field(row, "state") or constants.get("state") or ""
+        postal = _zip5(self._field(row, "zip"))
+        street = self._field(row, "address")
         address = compose_address([street, city, state, postal])
-        entity_id = self._lookup(row, field_map.get("entity_id"))
-        status = self._lookup(row, field_map.get("business_status")) or constants.get("business_status") or ""
-        phone = self._lookup(row, field_map.get("phone"))
-        website = self._lookup(row, field_map.get("website"))
-        email = self._lookup(row, field_map.get("email"))
-        category = self._lookup(row, field_map.get("category"))
+        entity_id = self._field(row, "entity_id")
+        status = self._field(row, "business_status") or constants.get("business_status") or ""
+        phone = self._field(row, "phone")
+        website = self._field(row, "website")
+        email = self._field(row, "email")
+        category = self._field(row, "category")
         record_url = self._record_url(entity_id)
+        field_map = self.entry.get("field_map") or {}
         record = NewBusinessRecord(
             business_name=name,
             category=category,
-            description=self._lookup(row, field_map.get("description")),
+            description=self._field(row, "description"),
             business_status=status,
             state=state,
-            county=self._lookup(row, field_map.get("county")),
+            county=self._field(row, "county"),
             city=city,
             zip=postal,
             address=address,

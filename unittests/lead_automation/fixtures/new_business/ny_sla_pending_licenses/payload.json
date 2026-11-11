@@ -1,0 +1,25 @@
+[
+  {
+    "application_id": "NA-0340-26-900001",
+    "premises_county": "Kings",
+    "description": "Restaurant",
+    "legalname": "Example Tavern Holdings LLC",
+    "dba": "Example Tavern",
+    "actual_address_of_premises": "100 Example Ave",
+    "city": "Brooklyn",
+    "zip_code": "11249",
+    "received_date": "{{days_ago:12}}",
+    "status": "Under Review"
+  },
+  {
+    "application_id": "NA-0081-26-900002",
+    "premises_county": "Albany",
+    "description": "Grocery Store",
+    "legalname": "Example Corner Market Inc",
+    "actual_address_of_premises": "200 Sample St",
+    "city": "Albany",
+    "zip_code": "12207",
+    "received_date": "{{days_ago:20}}",
+    "status": "IntakeComplete"
+  }
+]

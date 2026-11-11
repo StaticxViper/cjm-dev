@@ -1,7 +1,7 @@
 {
   "actorOutputSchemaVersion": 1,
   "title": "New business entity filings",
-  "description": "Recently formed entities from Secretary of State open-data feeds, plus the run summary.",
+  "description": "Recently formed entities, liquor-license applications and approvals, and new-restaurant inspections from open-data feeds, plus the run summary.",
   "properties": {
     "results": {
       "type": "string",

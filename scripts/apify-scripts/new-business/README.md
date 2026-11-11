@@ -14,14 +14,17 @@ $0.008 per returned business ($8 per 1,000) on the free tier, lower on paid Apif
 
 ## What data do you get?
 
-One dataset item per entity.
+One dataset item per business.
 
 | Field | Type | What it holds |
 |-------|------|---------------|
-| `entity_id` | string | The state's entity or DOS id |
-| `name` | string | Registered business name |
-| `formation_date` | string | Date the entity was formed (`YYYY-MM-DD`) |
-| `type` | string | Entity type as filed, such as `DOMESTIC LIMITED LIABILITY COMPANY` |
+| `entity_id` | string | The state's entity or DOS id, liquor application or license number, or NYC restaurant id (CAMIS) |
+| `name` | string | Registered business name, or the trade name on a license or inspection |
+| `trigger` | string | `entity_formation`, `liquor_license`, or `restaurant_inspection` |
+| `trigger_date` | string | Formation, license received or issue, or inspection date (`YYYY-MM-DD`) |
+| `formation_date` | string | Date the entity was formed. Blank on license and inspection rows |
+| `type` | string | Entity type as filed, such as `DOMESTIC LIMITED LIABILITY COMPANY`, or the license or inspection type |
+| `status` | string | Entity status, liquor application status (`Under Review`, `Conditionally Approved`), or inspection grade |
 | `address`, `county`, `state` | string | Location fields the feed publishes |
 | `website`, `email` | string | Filled by enrichment when found |
 | `enrichmentFound` | boolean | `true` when a website or email was verified |
@@ -35,8 +38,11 @@ Sample New York row (the id and name are masked):
 {
   "entity_id": "EXAMPLE7931947",
   "name": "Example Reid LLC",
+  "trigger": "entity_formation",
+  "trigger_date": "2026-09-14",
   "formation_date": "2026-09-14",
   "type": "DOMESTIC LIMITED LIABILITY COMPANY",
+  "status": "active",
   "address": "NY",
   "county": "Montgomery",
   "state": "NY",
@@ -53,11 +59,21 @@ Sample New York row (the id and name are masked):
 
 New York's extract often leaves the street address blank, so `county` is the reliable location field for NY.
 
+## New-opening triggers
+
+Set `triggers` to add businesses that are about to open, not just newly filed:
+
+- **`liquor_license`:** New York State Liquor Authority pending applications (restaurants, bars, grocery and liquor stores) and Colorado recently approved liquor licenses. Wholesalers, importers, permits, and tobacco licenses are left out.
+- **`restaurant_inspection`:** New York City pre-permit initial inspections, the first health inspection of a new restaurant.
+
+Trigger rows have the same shape and price as entity rows. Each row's `trigger` field names the feed it came from. When `maxResults` cuts a run short, rows are taken from each trigger in turn.
+
 ## Input
 
 ```json
 {
   "states": ["NY", "PA"],
+  "triggers": ["entity_formation", "liquor_license"],
   "formedSince": "2026-09-01",
   "counties": [],
   "entityTypes": ["LLC"],
@@ -69,9 +85,10 @@ New York's extract often leaves the street address blank, so `county` is the rel
 | Field | Default | Notes |
 |-------|---------|-------|
 | `states` | required | `NY`, `PA`, `CO`. Other states return a free `unsupported` row |
-| `formedSince` | 365 days ago | Earliest formation date (`YYYY-MM-DD`) |
-| `counties` | all | Up to 50 county names |
-| `entityTypes` | all | Labels like `LLC` or `corporation` |
+| `triggers` | `["entity_formation"]` | Add `liquor_license` (NY, CO) or `restaurant_inspection` (NYC). A state with no feed for a trigger returns a free `unsupported` row |
+| `formedSince` | 365 days ago | Earliest trigger date (`YYYY-MM-DD`) |
+| `counties` | all | Up to 50 county names. NYC boroughs use county names: `Kings`, `New York`, `Queens`, `Bronx`, `Richmond` |
+| `entityTypes` | all | Labels like `LLC` or `corporation`, or license types like `Restaurant` |
 | `enrichWebsite` | false | Add the website or email the registry already published, and check that website |
 | `maxResults` | 50 (max 200) | Entities returned per run, after de-duplication |
 | `maxRequests` | 12 (max 40) | Feed requests per run |
@@ -85,7 +102,7 @@ Pay per event.
 
 | Event | When it is charged | Free tier | Gold and up |
 |-------|--------------------|-----------|-------------|
-| Returned entity (`business`) | A formed entity is returned | $0.008 | $0.005 |
+| Returned business (`business`) | A formed entity, liquor license, or new-restaurant inspection row is returned | $0.008 | $0.005 |
 | Website or email found (`enrichment`) | `enrichWebsite` is on and a website or email is found | $0.01 | $0.01 |
 
 - **100 new LLCs, no enrichment:** 100 × $0.008 = **$0.80**
@@ -101,6 +118,9 @@ Pay per event.
 | NY | NY Department of State active corporations (data.ny.gov) | Monthly extract of active entities. Not a legal status certificate |
 | PA | Pennsylvania registered businesses (data.pa.gov) | No login and no per-record fee |
 | CO | Colorado Secretary of State business entities (data.colorado.gov) | Good Standing entities only |
+| NY | NY State Liquor Authority pending licenses (data.ny.gov) | `liquor_license`. New applications only, updated daily |
+| CO | Colorado recently approved liquor licenses (data.colorado.gov) | `liquor_license`. No county column, and the feed runs about six weeks behind |
+| NYC | NYC DOHMH restaurant inspections (data.cityofnewyork.us) | `restaurant_inspection`. Pre-permit initial inspections only |
 
 - **Coverage:** only feeds that were verified as open data. Delaware, Florida, New Jersey, and Texas portals are not requested. Login-walled or challenged portals are never called.
 - **Dedupe:** the same state and entity id collapse into one row. A shared name alone does not merge two entities.
@@ -114,6 +134,10 @@ Pay per event.
 ### How do I find new LLCs in New York?
 
 Set `states` to `["NY"]`, set `formedSince` to the earliest date you want, and add `entityTypes: ["LLC"]`. Add `counties` to narrow it to your territory.
+
+### How do I find restaurants and bars that are about to open?
+
+Set `states` to `["NY"]` and `triggers` to `["liquor_license", "restaurant_inspection"]`. A liquor application usually comes before opening day. A pre-permit inspection is the city's first check of a new restaurant. For restaurant liquor applications only, run `liquor_license` alone with `entityTypes: ["Restaurant"]`. Inspection rows carry the inspection type, so that filter would drop them.
 
 ### Which states are covered?
 
