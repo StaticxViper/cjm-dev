@@ -1,0 +1,24 @@
+[
+  {
+    "license_number": "03-90001",
+    "licensee_name": "Example Brew Pub",
+    "doing_business_as": "Example Brewing LLC",
+    "license_type": "Brew Pub (city)",
+    "issue_date": "{{days_ago:30}}",
+    "street_address": "300 Example Blvd",
+    "city": "Denver",
+    "state": "CO",
+    "zip": "80211"
+  },
+  {
+    "license_number": "03-90002",
+    "licensee_name": "Example Future Liquor",
+    "doing_business_as": "Example Future LLC",
+    "license_type": "Retail Liquor Store (city)",
+    "issue_date": "2262-04-01T00:00:00.000",
+    "street_address": "400 Sample Rd",
+    "city": "Aurora",
+    "state": "CO",
+    "zip": "80014"
+  }
+]

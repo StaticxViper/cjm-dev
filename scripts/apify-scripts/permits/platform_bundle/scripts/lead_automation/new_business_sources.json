@@ -203,6 +203,189 @@
       "notes": "Verified 2026-10-05: SELECT from business_licenses returned initialissuedate, licensetype, licensestatus, business_name, address, zip. Rental (about 7,800 active 2026 issuances) and Vacant Residential Property rows are excluded so homeowner rental licenses are not treated as business leads. The extra_where list keeps food, vehicle, vendor, tow, sidewalk cafe, tire, and child-care licenses. initialissuedate is a license date, not a formation date. legalname is stored only as a public license-applicant contact."
     },
     {
+      "id": "ny_sla_pending_licenses",
+      "name": "NY State Liquor Authority pending license applications",
+      "category": "State liquor-license databases",
+      "trigger": "liquor_license",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["NY"], "counties": [], "cities": []},
+      "endpoint": "https://data.ny.gov/resource/f8i8-k2gm.json",
+      "url": "https://data.ny.gov/resource/f8i8-k2gm.json",
+      "record_url": "https://data.ny.gov/resource/f8i8-k2gm.json?application_id={id}",
+      "newness_field": "received_date",
+      "newness_type": "license_date",
+      "query": {
+        "style": "socrata",
+        "date_column": "received_date",
+        "extra_where": "state_name IN ('New York', 'NY') AND description NOT IN ('Wholesale Beer', 'Wholesale Beer (Retail)', 'Wholesale Liquor', 'Wholesale Wine', 'Direct Shipper Wine', 'Importer', 'Brand Owner')",
+        "select": [
+          "application_id",
+          "premises_county",
+          "description",
+          "legalname",
+          "dba",
+          "actual_address_of_premises",
+          "city",
+          "zip_code",
+          "received_date",
+          "status"
+        ]
+      },
+      "field_map": {
+        "business_name": {"first": ["dba", "legalname"]},
+        "entity_id": "application_id",
+        "category": "description",
+        "business_status": "status",
+        "county": "premises_county",
+        "city": "city",
+        "zip": "zip_code",
+        "address": "actual_address_of_premises",
+        "contact_name": "legalname",
+        "contact_role": "license_applicant"
+      },
+      "constants": {"state": "NY"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 2, "page_size": 200},
+      "terms_checked": {
+        "date": "2026-11-11",
+        "note": "Public SODA API on data.ny.gov. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. No login and no fee."
+      },
+      "notes": "Verified 2026-11-11: f8i8-k2gm returned application_id, premises_county, description, legalname, dba, premises address, received_date, and status (Under Review, IntakeComplete, Conditionally Approved, Reconsideration). About 640 applications were received from 2026-10-01 to 2026-11-10. Every application_id starts NA (new application), so renewals are not in this set. Wholesalers, importers, brand owners, direct shippers, and out-of-state premises are excluded. received_date is an application date, not an opening date. The dba is the lead name when present. legalname is stored as a public license-applicant contact."
+    },
+    {
+      "id": "co_liquor_recently_approved",
+      "name": "Colorado recently approved liquor licenses",
+      "category": "State liquor-license databases",
+      "trigger": "liquor_license",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["CO"], "counties": [], "cities": []},
+      "endpoint": "https://data.colorado.gov/resource/htyp-tqzh.json",
+      "url": "https://data.colorado.gov/resource/htyp-tqzh.json",
+      "record_url": "https://data.colorado.gov/resource/htyp-tqzh.json?license_number={id}",
+      "newness_field": "issue_date",
+      "newness_type": "license_date",
+      "query": {
+        "style": "socrata",
+        "date_column": "issue_date",
+        "extra_where": "issue_date < '2100-01-01T00:00:00.000' AND license_number NOT LIKE '____-__-__' AND license_type NOT LIKE '%Permit%' AND license_type NOT LIKE 'Tob%' AND license_type NOT LIKE 'Wholesale%' AND license_type NOT LIKE 'Importer%' AND license_type NOT LIKE 'Optional Premises%' AND license_type NOT IN ('Public Transportation', 'Sidewalk Service Area')",
+        "select": [
+          "license_number",
+          "licensee_name",
+          "doing_business_as",
+          "license_type",
+          "issue_date",
+          "street_address",
+          "city",
+          "state",
+          "zip"
+        ]
+      },
+      "field_map": {
+        "business_name": "licensee_name",
+        "entity_id": "license_number",
+        "category": "license_type",
+        "city": "city",
+        "state": "state",
+        "zip": "zip",
+        "address": "street_address",
+        "contact_name": "doing_business_as",
+        "contact_role": "licensee"
+      },
+      "constants": {"state": "CO", "business_status": "Approved"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 2, "page_size": 200},
+      "terms_checked": {
+        "date": "2026-11-11",
+        "note": "Colorado Information Marketplace publishes this Liquor Enforcement Division dataset for public reuse. robots.txt allows /resource/ with Crawl-delay 1."
+      },
+      "notes": "Verified 2026-11-11: htyp-tqzh returned licensee_name, doing_business_as, license_type, issue_date, license_number, street address, city, state, and zip for about 530 licenses approved since 2026-08-10. The feed has no status column, so every row is stored as Approved. In this feed licensee_name holds the trade name and doing_business_as often holds the LLC, so the LLC is kept as a licensee contact. Takeout, delivery, special-event, tobacco, wholesale, importer, optional-premises, transport, and sidewalk rows are excluded. 98 rows had shifted columns on 2026-11-11 (license_number held a date such as 2025-09-16 and issue_date held 2262-04-01), so the query drops a date-shaped license_number and any issue_date after 2100. The clean rows ran 2026-08-10 to 2026-09-30, so the feed trails the run date by about six weeks."
+    },
+    {
+      "id": "nyc_restaurant_inspections",
+      "name": "NYC DOHMH pre-permit restaurant inspections",
+      "category": "Local restaurant inspection databases",
+      "trigger": "restaurant_inspection",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["NY"], "counties": ["New York", "Kings", "Queens", "Bronx", "Richmond"], "cities": ["New York"]},
+      "endpoint": "https://data.cityofnewyork.us/resource/43nn-pn8j.json",
+      "url": "https://data.cityofnewyork.us/resource/43nn-pn8j.json",
+      "record_url": "https://data.cityofnewyork.us/resource/43nn-pn8j.json?camis={id}",
+      "newness_field": "inspection_date",
+      "newness_type": "opening_date",
+      "query": {
+        "style": "socrata",
+        "date_column": "inspection_date",
+        "extra_where": "inspection_type IN ('Pre-permit (Operational) / Initial Inspection', 'Pre-permit (Non-operational) / Initial Inspection')",
+        "select": [
+          "distinct camis",
+          "dba",
+          "boro",
+          "building",
+          "street",
+          "zipcode",
+          "phone",
+          "cuisine_description",
+          "inspection_date",
+          "inspection_type",
+          "grade"
+        ]
+      },
+      "field_map": {
+        "business_name": "dba",
+        "entity_id": "camis",
+        "category": "inspection_type",
+        "description": "cuisine_description",
+        "business_status": "grade",
+        "county": "boro",
+        "city": "boro",
+        "zip": "zipcode",
+        "address": ["building", "street"],
+        "phone": "phone"
+      },
+      "value_maps": {
+        "county": {"Manhattan": "New York", "Brooklyn": "Kings", "Staten Island": "Richmond", "0": ""},
+        "city": {"0": ""},
+        "business_status": {"A": "Grade A", "B": "Grade B", "C": "Grade C", "N": "Not yet graded", "P": "Grade pending", "Z": "Grade pending"}
+      },
+      "constants": {"state": "NY"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 2, "page_size": 200},
+      "terms_checked": {
+        "date": "2026-11-11",
+        "note": "NYC Open Data SODA API. data.cityofnewyork.us/robots.txt has User-agent * with Crawl-delay 1 and does not disallow /resource/. No login and no fee."
+      },
+      "notes": "Verified 2026-11-11: 43nn-pn8j returned camis, dba, boro, building, street, zipcode, phone, cuisine_description, inspection_date, inspection_type, and grade. A pre-permit initial inspection is the first health inspection of a new permit, so it is stored as an opening_date. The dataset has one row per violation, so the query selects distinct establishment and inspection columns. boro is mapped to the county name (Brooklyn to Kings, Manhattan to New York, Staten Island to Richmond). Rows with boro 0 have no borough."
+    },
+    {
+      "id": "boulder_restaurant_inspections",
+      "name": "Boulder County restaurant inspections",
+      "category": "Local restaurant inspection databases",
+      "trigger": "restaurant_inspection",
+      "adapter": "open_data",
+      "enabled": false,
+      "status": "candidate",
+      "access": "public",
+      "coverage": {"states": ["CO"], "counties": ["Boulder"], "cities": []},
+      "endpoint": "https://data.colorado.gov/resource/6ytb-f2cq.json",
+      "url": "https://data.colorado.gov/resource/6ytb-f2cq.json",
+      "newness_field": "",
+      "newness_type": "opening_date",
+      "query": {"style": "socrata", "date_column": "", "select": []},
+      "field_map": {"business_name": "name"},
+      "rate_limit": {"min_delay_s": 3.0, "max_delay_s": 7.0, "max_requests_per_run": 1},
+      "terms_checked": {
+        "date": "2026-11-11",
+        "note": "Public SODA API on data.colorado.gov. robots.txt allows /resource/."
+      },
+      "notes": "Checked 2026-11-11: g6_act_typ is only Routine or Re-Inspection. There is no pre-opening or new-permit inspection type, so a recent inspection does not show a new opening. Left as a candidate. Pennsylvania has no current Socrata inspection feed (data.pa.gov etb6-jzdg stopped in 2020) and no PLCB license list on data.pa.gov."
+    },
+    {
       "id": "google_maps",
       "name": "Google Maps verification",
       "category": "Google Maps / Google Business Profiles",

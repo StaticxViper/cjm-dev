@@ -24,6 +24,9 @@ class TestAdapterParsing(unittest.TestCase):
             ("ny_active_corporations", "Example Reid LLC"),
             ("co_business_entities", "Example Services LLC"),
             ("phl_business_licenses", "Example Cafe LLC"),
+            ("ny_sla_pending_licenses", "Example Tavern"),
+            ("co_liquor_recently_approved", "Example Brew Pub"),
+            ("nyc_restaurant_inspections", "EXAMPLE NOODLE BAR"),
         ):
             payload = resolve_fixture_dates(load_fixture_json(source_id))
             records = adapters[source_id].parse_payload(payload)
@@ -31,6 +34,45 @@ class TestAdapterParsing(unittest.TestCase):
             self.assertEqual(records[0].business_name, expected_name)
             self.assertTrue(records[0].newness_evidence, source_id)
             self.assertTrue(records[0].newness_evidence[0]["date"], source_id)
+
+    def test_liquor_application_prefers_dba_and_keeps_legal_name_as_contact(self):
+        payload = resolve_fixture_dates(load_fixture_json("ny_sla_pending_licenses"))
+        records = _adapters()["ny_sla_pending_licenses"].parse_payload(payload)
+        tavern, market = records
+        self.assertEqual(tavern.business_name, "Example Tavern")
+        self.assertEqual(tavern.public_contacts[0]["name"], "Example Tavern Holdings LLC")
+        self.assertEqual(tavern.public_contacts[0]["role"], "license_applicant")
+        self.assertEqual(market.business_name, "Example Corner Market Inc")
+        self.assertEqual(tavern.category, "Restaurant")
+        self.assertEqual(tavern.business_status, "Under Review")
+        self.assertEqual(tavern.state, "NY")
+        self.assertEqual(tavern.newness_evidence[0]["type"], "license_date")
+        self.assertIsNone(tavern.formation_date)
+        self.assertTrue(tavern.source_record_url.endswith("application_id=NA-0340-26-900001"))
+
+    def test_inspection_maps_borough_to_county_and_collapses_spaces(self):
+        payload = resolve_fixture_dates(load_fixture_json("nyc_restaurant_inspections"))
+        records = _adapters()["nyc_restaurant_inspections"].parse_payload(payload)
+        first = records[0]
+        self.assertEqual(first.county, "Kings")
+        self.assertEqual(first.city, "Brooklyn")
+        self.assertEqual(first.address, "675 EXAMPLE AVENUE, Brooklyn, NY, 11225")
+        self.assertEqual(first.business_status, "Grade A")
+        self.assertEqual(first.description, "Chinese")
+        self.assertEqual(first.opening_date, first.newness_evidence[0]["date"])
+        self.assertEqual(records[2].county, "New York")
+        self.assertEqual(records[2].business_status, "Not yet graded")
+
+    def test_new_opening_queries_filter_on_the_server(self):
+        adapters = _adapters()
+        nyc = adapters["nyc_restaurant_inspections"]._page_url("2026-10-01", 200, 0)
+        self.assertIn("$select=distinct%20camis,", nyc)
+        self.assertIn("Initial%20Inspection", nyc)
+        co = adapters["co_liquor_recently_approved"]._page_url("2026-10-01", 200, 0)
+        self.assertIn("issue_date%20%3E%3D%20%272026-10-01T00%3A00%3A00.000%27", co)
+        self.assertIn("NOT%20LIKE%20%27%25Permit%25%27", co)
+        ny = adapters["ny_sla_pending_licenses"]._page_url("2026-10-01", 200, 0)
+        self.assertIn("Direct%20Shipper%20Wine", ny)
 
     def test_http_table_fixture(self):
         html = (_FIXTURES / "example_public_table" / "page.html").read_text(encoding="utf-8")
@@ -74,6 +116,9 @@ class TestAccess(unittest.TestCase):
         self.assertIn("ny_active_corporations", selected)
         self.assertIn("pa_registered_businesses", selected)
         self.assertIn("google_maps", selected)
+        self.assertIn("ny_sla_pending_licenses", selected)
+        self.assertIn("nyc_restaurant_inspections", selected)
+        self.assertNotIn("boulder_restaurant_inspections", selected)
         self.assertNotIn("google_search", selected)
         self.assertNotIn("example_public_table", selected)
         self.assertNotIn("nj_dores", selected)
