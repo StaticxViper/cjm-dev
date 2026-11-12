@@ -52,7 +52,7 @@ class FakeStore:
 class FakeActor:
     """Stand-in for apify.Actor with the calls permits main() makes."""
 
-    def __init__(self, actor_input, stores=None, limit_after=None):
+    def __init__(self, actor_input, stores=None, limit_after=None, store_error=None):
         self.input = actor_input
         self.stores = stores if stores is not None else {}
         self.pushed = []
@@ -60,6 +60,7 @@ class FakeActor:
         self.values = {}
         self.opened = []
         self.limit_after = limit_after
+        self.store_error = store_error
 
     async def __aenter__(self):
         return self
@@ -83,6 +84,8 @@ class FakeActor:
 
     async def open_key_value_store(self, name=None):
         self.opened.append(name)
+        if self.store_error is not None:
+            raise self.store_error
         return FakeStore(self.stores.setdefault(name, {}))
 
 
@@ -193,9 +196,9 @@ def _run(scripted, entries=None, seen_state=None, **actor_input):
     return rows, summary, scripted, config, sleeps
 
 
-def _run_main(actor_input, scripted=None, stores=None, limit_after=None):
+def _run_main(actor_input, scripted=None, stores=None, limit_after=None, store_error=None):
     scripted = scripted or Scripted(_pages())
-    actor = FakeActor(actor_input, stores=stores, limit_after=limit_after)
+    actor = FakeActor(actor_input, stores=stores, limit_after=limit_after, store_error=store_error)
     fake_apify = types.ModuleType("apify")
     fake_apify.Actor = actor
 
@@ -1055,6 +1058,36 @@ class TestMain(unittest.TestCase):
         self.assertEqual(summary["billedPermits"], 0)
         self.assertEqual(summary["proxyCharges"], 0)
         self.assertNotIn("SEEN", stores["permits-state"])
+
+    def test_unreadable_state_with_new_since_last_run_charges_nothing(self):
+        actor, scripted = _run_main(self._input(), store_error=RuntimeError("kvs down"))
+        self.assertEqual(actor.charges, [])
+        self.assertEqual(scripted.direct_urls, [])
+        self.assertEqual(len(actor.pushed), 1)
+        row = actor.pushed[0]
+        self.assertEqual(row["sourceStatus"], "error")
+        self.assertFalse(mapping.billable_row(row))
+        self.assertIn("kvs down", row["error"])
+        summary = actor.values["SUMMARY"]
+        self.assertEqual(summary["status"], "error")
+        self.assertEqual(summary["billedPermits"], 0)
+        self.assertEqual(summary["stateError"], "kvs down")
+
+    def test_corrupt_state_record_with_new_since_last_run_charges_nothing(self):
+        stores = {"permits-state": {"SEEN": {"version": 1, "permits": "not-a-map"}}}
+        actor, scripted = _run_main(self._input(), stores=stores)
+        self.assertEqual(actor.charges, [])
+        self.assertEqual(scripted.direct_urls, [])
+        self.assertEqual([row["sourceStatus"] for row in actor.pushed], ["error"])
+        self.assertEqual(stores["permits-state"]["SEEN"]["permits"], "not-a-map")
+
+    def test_unreadable_state_without_new_since_last_run_still_bills(self):
+        actor, _scripted = _run_main(
+            self._input(newSinceLastRun=False),
+            store_error=RuntimeError("kvs down"),
+        )
+        self.assertEqual(actor.charges, ["permit", "permit"])
+        self.assertEqual(actor.values["SUMMARY"]["stateError"], "kvs down")
 
 
 if __name__ == "__main__":

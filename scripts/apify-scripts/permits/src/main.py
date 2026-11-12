@@ -55,12 +55,39 @@ def run_sync(actor_input, proxy_url_fn=None, seen_state=None):
 
 
 async def _open_state(name):
+    """Return ``(store, seen, error)``. A missing record is a first run, not an error."""
     try:
         store = await Actor.open_key_value_store(name=name)
-        return store, load_state(await store.get_value(STATE_KEY))
+        raw = await store.get_value(STATE_KEY)
     except Exception as exc:
         log.critical("Could not open state store %s: %s", name, exc)
-        return None, {}
+        return None, {}, str(exc) or type(exc).__name__
+    if raw is not None and not (isinstance(raw, dict) and isinstance(raw.get("permits"), dict)):
+        log.critical("State store %s has an unreadable %s record.", name, STATE_KEY)
+        return None, {}, f"unreadable {STATE_KEY} record"
+    return store, load_state(raw), ""
+
+
+def _state_failure_summary(access, store_name, error):
+    message = (
+        f"newSinceLastRun could not read state store {store_name}: {error}. "
+        "No permits were fetched or billed, so earlier permits are not sent again."
+    )
+    summary = {
+        "status": "error",
+        "pushed": 1,
+        "found": 0,
+        "billedPermits": 0,
+        "blocked": 0,
+        "errors": 1,
+        "error": message,
+        "sources": [],
+        "newSinceLastRun": True,
+        "stateStore": store_name,
+        "stateError": error,
+    }
+    summary.update(access_summary(access, AccessPolicy(access).ledger))
+    return message, summary
 
 
 async def push_permits(rows, ledger):
@@ -95,7 +122,12 @@ async def main():
         config = actor_input_to_config(actor_input)
         access = permit_access_settings(actor_input)
         proxy_url_fn = cached_proxy_url(access, asyncio.get_running_loop())
-        store, seen = await _open_state(config["state_store"])
+        store, seen, state_error = await _open_state(config["state_store"])
+        if state_error and config["new_since_last_run"]:
+            message, summary = _state_failure_summary(access, config["state_store"], state_error)
+            await Actor.push_data(_blank_row("error", message, iso_now()))
+            await Actor.set_value("SUMMARY", summary)
+            return
         ledger = None
         try:
             rows, summary, ledger = await asyncio.to_thread(run_sync, actor_input, proxy_url_fn, seen)
@@ -134,4 +166,6 @@ async def main():
                 summary["stateError"] = str(exc)
         else:
             summary["stateKeys"] = len(seen)
+        if state_error:
+            summary["stateError"] = state_error
         await Actor.set_value("SUMMARY", summary)
