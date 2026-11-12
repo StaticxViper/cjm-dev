@@ -1,0 +1,40 @@
+[
+  {
+    "permitnum": "2026P00001",
+    "description": "Plumbing Permits",
+    "applieddate": "2026-10-01T00:00:00.000",
+    "issueddate": "2026-10-19T00:00:00.000",
+    "originaladdress1": "3200 EXAMPLE AV",
+    "originalcity": "CINCINNATI",
+    "originalstate": "OH",
+    "originalzip": "45207",
+    "jurisdiction": "CINCINNATI",
+    "permitclass": "RCO",
+    "statuscurrent": "ISSUED",
+    "statuscurrentmapped": "Permit Issued",
+    "workclass": "RNEW",
+    "workclassmapped": "New",
+    "permittype": "CBPCPLGW",
+    "permittypemapped": "Plumbing Permits",
+    "companyname": "\"EXAMPLE PLUMBING INC\"",
+    "estprojectcostdec": "2500",
+    "pin": "\"005500030040\"",
+    "link": "http://cagis.hamilton-co.org/opal/apd.aspx?QSPerm=2026P00001"
+  },
+  {
+    "permitnum": "2026B00002",
+    "description": "Residential Alteration",
+    "issueddate": "2026-10-21T00:00:00.000",
+    "originaladdress1": "1600 SAMPLE AV",
+    "originalcity": "CINCINNATI",
+    "originalstate": "OH",
+    "originalzip": "45205",
+    "workclass": "RALT",
+    "workclassmapped": "Existing",
+    "permittype": "CBPRALT",
+    "permittypemapped": "Residential Alteration",
+    "companyname": "\"EXAMPLE REMODELERS LLC\"",
+    "estprojectcostdec": "21000",
+    "link": "http://cagis.hamilton-co.org/opal/apd.aspx?QSPerm=2026B00002"
+  }
+]

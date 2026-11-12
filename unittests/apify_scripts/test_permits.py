@@ -6,18 +6,22 @@ Run from repo root:
 
 Fixtures only. These tests do not call a live permit portal.
 """
+import asyncio
 import importlib
 import json
 import sys
+import types
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest import mock
 from urllib.parse import unquote, urlparse
 
 _REPO = Path(__file__).resolve().parents[2]
-_SRC = _REPO / "scripts" / "apify-scripts" / "permits" / "src"
+_ACTOR = _REPO / "scripts" / "apify-scripts" / "permits"
+_SRC = _ACTOR / "src"
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "permits"
-_ACTOR_MODULES = ("spend", "runtime", "sources", "fetch", "mapping")
+_ACTOR_MODULES = ("spend", "runtime", "sources", "state", "fetch", "mapping", "main")
 
 VERIFIED_IDS = (
     "chicago_building_permits",
@@ -25,6 +29,64 @@ VERIFIED_IDS = (
     "austin_issued_permits",
     "los_angeles_building_permits",
 )
+NEW_IDS = (
+    "nyc_dob_now_permits",
+    "new_orleans_permits",
+    "cincinnati_building_permits",
+)
+ALL_VERIFIED_IDS = VERIFIED_IDS + NEW_IDS
+OWNER_SOURCES = ("nyc_dob_now_permits", "new_orleans_permits")
+
+
+class FakeStore:
+    def __init__(self, data):
+        self.data = data
+
+    async def get_value(self, key):
+        return self.data.get(key)
+
+    async def set_value(self, key, value):
+        self.data[key] = json.loads(json.dumps(value))
+
+
+class FakeActor:
+    """Stand-in for apify.Actor with the calls permits main() makes."""
+
+    def __init__(self, actor_input, stores=None, limit_after=None, store_error=None):
+        self.input = actor_input
+        self.stores = stores if stores is not None else {}
+        self.pushed = []
+        self.charges = []
+        self.values = {}
+        self.opened = []
+        self.limit_after = limit_after
+        self.store_error = store_error
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def get_input(self):
+        return self.input
+
+    async def push_data(self, row):
+        self.pushed.append(row)
+
+    async def charge(self, event_name=None):
+        self.charges.append(event_name)
+        reached = self.limit_after is not None and len(self.charges) >= self.limit_after
+        return types.SimpleNamespace(event_charge_limit_reached=reached)
+
+    async def set_value(self, key, value):
+        self.values[key] = value
+
+    async def open_key_value_store(self, name=None):
+        self.opened.append(name)
+        if self.store_error is not None:
+            raise self.store_error
+        return FakeStore(self.stores.setdefault(name, {}))
 
 
 def _load_actor():
@@ -32,8 +94,11 @@ def _load_actor():
     inserted = str(_SRC) not in sys.path[:1]
     if inserted:
         sys.path.insert(0, str(_SRC))
+    fake_apify = types.ModuleType("apify")
+    fake_apify.Actor = FakeActor({})
     try:
-        return {name: importlib.import_module(name) for name in _ACTOR_MODULES}
+        with mock.patch.dict(sys.modules, {"apify": fake_apify}):
+            return {name: importlib.import_module(name) for name in _ACTOR_MODULES}
     finally:
         for name in _ACTOR_MODULES:
             sys.modules.pop(name, None)
@@ -46,6 +111,8 @@ _actor = _load_actor()
 mapping = _actor["mapping"]
 fetch_mod = _actor["fetch"]
 sources = _actor["sources"]
+state_mod = _actor["state"]
+main_mod = _actor["main"]
 
 
 def _text(name):
@@ -115,7 +182,7 @@ class Scripted:
         return None
 
 
-def _run(scripted, entries=None, **actor_input):
+def _run(scripted, entries=None, seen_state=None, **actor_input):
     config = mapping.actor_input_to_config(actor_input, today=date(2026, 10, 26))
     sleeps = []
     fetch = fetch_mod.build_fetch(
@@ -125,8 +192,31 @@ def _run(scripted, entries=None, **actor_input):
         solver=scripted.solver,
         sleep=lambda seconds: sleeps.append(seconds),
     )
-    rows, summary = mapping.scrape(config, fetch, entries=entries)
+    rows, summary = mapping.scrape(config, fetch, entries=entries, seen_state=seen_state)
     return rows, summary, scripted, config, sleeps
+
+
+def _run_main(actor_input, scripted=None, stores=None, limit_after=None, store_error=None):
+    scripted = scripted or Scripted(_pages())
+    actor = FakeActor(actor_input, stores=stores, limit_after=limit_after, store_error=store_error)
+    fake_apify = types.ModuleType("apify")
+    fake_apify.Actor = actor
+
+    def live(config, proxy_url_fn=None):
+        del proxy_url_fn
+        return fetch_mod.build_fetch(
+            config,
+            scripted.direct,
+            proxy=scripted.proxy,
+            solver=scripted.solver,
+            sleep=lambda _seconds: None,
+        )
+
+    with mock.patch.dict(sys.modules, {"apify": fake_apify}), \
+            mock.patch.object(main_mod, "Actor", actor), \
+            mock.patch.object(main_mod, "make_live_fetch", live):
+        asyncio.run(main_mod.main())
+    return actor, scripted
 
 
 def _found(rows):
@@ -153,6 +243,9 @@ def _pages():
         "76t5-zqzr": _json_text("seattle.json"),
         "3syk-w9eu": _json_text("austin.json"),
         "pi9x-tg5x": _json_text("los_angeles.json"),
+        "rbx6-tga4": _json_text("nyc.json"),
+        "rcm3-fn58": _json_text("new_orleans.json"),
+        "uhjb-xac9": _json_text("cincinnati.json"),
     }
 
 
@@ -240,6 +333,22 @@ class TestInput(unittest.TestCase):
         self.assertFalse(config["allow_captcha"])
         self.assertTrue(config["headless"])
         self.assertFalse(config["error"])
+        self.assertFalse(config["new_since_last_run"])
+        self.assertEqual(config["state_store"], "permits-state")
+
+    def test_omitted_proxy_budget_is_zero(self):
+        config = mapping.actor_input_to_config({}, today=date(2026, 10, 26))
+        self.assertEqual(config["max_proxy_usd"], 0.0)
+        config = mapping.actor_input_to_config({"maxProxyCostUsd": 0.3}, today=date(2026, 10, 26))
+        self.assertEqual(config["max_proxy_usd"], 0.3)
+
+    def test_new_since_last_run_and_store_name(self):
+        config = mapping.actor_input_to_config(
+            {"newSinceLastRun": True, "stateStoreName": "  roofers-feed "},
+            today=date(2026, 10, 26),
+        )
+        self.assertTrue(config["new_since_last_run"])
+        self.assertEqual(config["state_store"], "roofers-feed")
 
     def test_proxy_cap_cannot_exceed_spend_cap(self):
         config = mapping.actor_input_to_config({
@@ -258,10 +367,11 @@ class TestInput(unittest.TestCase):
 
 
 class TestCatalog(unittest.TestCase):
-    def test_four_verified_socrata_sources(self):
+    def test_seven_verified_socrata_sources(self):
         entries = sources.load_entries()
         verified = sources.verified_entries(entries)
-        self.assertEqual([entry["id"] for entry in verified], list(VERIFIED_IDS))
+        self.assertEqual([entry["id"] for entry in verified], list(ALL_VERIFIED_IDS))
+        self.assertGreaterEqual(len({tuple(entry["coverage"]["cities"]) for entry in verified}), 5)
         for entry in verified:
             self.assertEqual(entry["adapter"], "open_data")
             self.assertEqual(entry["status"], "verified")
@@ -270,7 +380,42 @@ class TestCatalog(unittest.TestCase):
             self.assertTrue(entry["query"]["date_column"])
             self.assertIn("permit_id", entry["field_map"])
             self.assertIn("issued_date", entry["field_map"])
-            self.assertNotIn("owner_name", entry.get("field_map") or {})
+            self.assertTrue(entry["terms_checked"]["date"])
+            self.assertTrue(entry["notes"].startswith("Verified "))
+            if entry["id"] in OWNER_SOURCES:
+                self.assertIn("owner_name", entry["field_map"])
+            else:
+                self.assertNotIn("owner_name", entry.get("field_map") or {})
+        for entry in verified:
+            if entry["id"] in NEW_IDS:
+                self.assertEqual(entry["terms_checked"]["date"], "2026-11-11")
+
+    def test_input_schema_lists_every_verified_source(self):
+        schema = json.loads((_ACTOR / ".actor" / "input_schema.json").read_text(encoding="utf-8"))
+        items = schema["properties"]["sources"]["items"]
+        self.assertEqual(items["enum"], list(ALL_VERIFIED_IDS))
+        self.assertEqual(len(items["enumTitles"]), len(items["enum"]))
+        types_enum = schema["properties"]["permitTypes"]["items"]["enum"]
+        self.assertEqual(sorted(types_enum), sorted(mapping.TYPE_KEYWORDS))
+        self.assertFalse(schema["properties"]["newSinceLastRun"]["default"])
+        self.assertEqual(schema["properties"]["maxProxyCostUsd"]["default"], 0)
+
+
+class TestPricing(unittest.TestCase):
+    def test_permit_tiers(self):
+        data = json.loads((_ACTOR / ".actor" / "pay_per_event.json").read_text(encoding="utf-8"))
+        self.assertEqual(list(data["actorChargeEvents"]), ["permit"])
+        tiers = data["actorChargeEvents"]["permit"]["eventTieredPricingUsd"]
+        prices = {name: tier["tieredEventPriceUsd"] for name, tier in tiers.items()}
+        self.assertEqual(prices, {
+            "FREE": 0.012,
+            "BRONZE": 0.010,
+            "SILVER": 0.009,
+            "GOLD": 0.008,
+            "PLATINUM": 0.008,
+            "DIAMOND": 0.008,
+        })
+        self.assertTrue(data["actorChargeEvents"]["permit"]["isPrimaryEvent"])
 
 
 class TestFixtures(unittest.TestCase):
@@ -588,6 +733,361 @@ class TestOtherAdapters(unittest.TestCase):
         self.assertIn("DATE '2026-10-01'", data_urls[0])
         self.assertIn("DATE '2026-10-31'", data_urls[0])
         self.assertIn("UPPER(DESCRIPTION) like '%ROOF%'", data_urls[0])
+
+    def test_arcgis_epoch_millisecond_dates(self):
+        from datetime import datetime, timezone
+
+        issued = int(datetime(2026, 10, 14, tzinfo=timezone.utc).timestamp() * 1000)
+        old = int(datetime(2025, 3, 1, tzinfo=timezone.utc).timestamp() * 1000)
+        payload = {"features": [
+            {"attributes": {"PERMITID": "AG-EPOCH", "ISSUED": issued, "PERMITTYPE": "Roof", "DESCRIPTION": "Reroof"}},
+            {"attributes": {"PERMITID": "AG-OLD", "ISSUED": old, "PERMITTYPE": "Roof", "DESCRIPTION": "Reroof"}},
+        ]}
+        rows, _summary, _scripted, _config, _sleeps = _run(
+            Scripted({"FeatureServer": json.dumps(payload)}),
+            entries=[_arcgis_entry()],
+            sources=["sample_arcgis_permits"],
+            **_base_input(),
+        )
+        found = _found(rows)
+        self.assertEqual([row["permit_id"] for row in found], ["AG-EPOCH"])
+        self.assertEqual(found[0]["issued_date"], "2026-10-14")
+
+
+class TestNewSources(unittest.TestCase):
+    def _rows(self, source_id, **extra):
+        rows, summary, scripted, _config, _sleeps = _run(
+            Scripted(_pages()),
+            sources=[source_id],
+            **_base_input(**extra),
+        )
+        return {row["permit_id"]: row for row in _found(rows)}, summary, scripted
+
+    def test_nyc_dob_now_mapping_and_initial_permit_filter(self):
+        rows, summary, scripted = self._rows("nyc_dob_now_permits")
+        self.assertEqual(summary["found"], 3)
+        roof = rows["Q00000001-I1-GC"]
+        self.assertEqual(roof["issued_date"], "2026-10-14")
+        self.assertEqual(roof["type"], "General Construction")
+        self.assertEqual(roof["permit_category"], "roof")
+        self.assertEqual(roof["permit_categories"], ["roof"])
+        self.assertEqual(roof["value_usd"], 42000.0)
+        self.assertEqual(roof["address"], "12-34 EXAMPLE AVENUE Queens")
+        self.assertEqual(roof["city"], "New York")
+        self.assertEqual(roof["state"], "NY")
+        self.assertEqual(roof["zip"], "11101")
+        self.assertEqual(roof["lat"], 40.745)
+        self.assertEqual(roof["lng"], -73.935)
+        self.assertEqual(roof["contractor_name"], "EXAMPLE NYC ROOFING CORP")
+        self.assertEqual(roof["contractor_license"], "600001")
+        self.assertEqual(roof["owner_name"], "EXAMPLE OWNER LLC")
+        self.assertIn("work_permit=Q00000001-I1-GC", roof["source_url"])
+        self.assertEqual(rows["B00000002-I1-SO"]["permit_category"], "solar")
+        self.assertEqual(rows["M00000003-I1-SC"]["permit_category"], "other")
+        self.assertEqual(rows["M00000003-I1-SC"]["value_usd"], 0.0)
+        data_urls = [unquote(url) for url in scripted.direct_urls if "rbx6-tga4" in url]
+        self.assertEqual(len(data_urls), 1)
+        self.assertIn("filing_reason = 'Initial Permit'", data_urls[0])
+        self.assertIn("issued_date >= '2026-10-01T00:00:00.000'", data_urls[0])
+        self.assertIn("$order=issued_date DESC", data_urls[0])
+
+    def test_new_orleans_mapping_uses_location_1(self):
+        rows, summary, _scripted = self._rows("new_orleans_permits")
+        self.assertEqual(summary["found"], 3)
+        pool = rows["26-00001-POOL"]
+        self.assertEqual(pool["issued_date"], "2026-10-16")
+        self.assertEqual(pool["type"], "Swimming Pool")
+        self.assertEqual(pool["permit_category"], "pool")
+        self.assertEqual(pool["value_usd"], 53095.0)
+        self.assertEqual(pool["address"], "100 Example St")
+        self.assertEqual(pool["city"], "New Orleans")
+        self.assertEqual(pool["state"], "LA")
+        self.assertEqual(pool["zip"], "")
+        self.assertEqual(pool["lat"], 29.9275)
+        self.assertEqual(pool["lng"], -90.0778)
+        self.assertEqual(pool["contractor_name"], "Example Pool Builders LLC")
+        self.assertEqual(pool["owner_name"], "Example Homeowner")
+        self.assertIn("numstring=26-00001-POOL", pool["source_url"])
+        self.assertEqual(rows["26-00002-RNVS"]["permit_category"], "remodel")
+        self.assertEqual(rows["26-00003-EVAC"]["permit_category"], "other")
+
+    def test_cincinnati_mapping_strips_quotes(self):
+        rows, summary, _scripted = self._rows("cincinnati_building_permits")
+        self.assertEqual(summary["found"], 2)
+        plumbing = rows["2026P00001"]
+        self.assertEqual(plumbing["issued_date"], "2026-10-19")
+        self.assertEqual(plumbing["type"], "Plumbing Permits - New")
+        self.assertEqual(plumbing["permit_category"], "other")
+        self.assertEqual(plumbing["value_usd"], 2500.0)
+        self.assertEqual(plumbing["address"], "3200 EXAMPLE AV")
+        self.assertEqual(plumbing["city"], "CINCINNATI")
+        self.assertEqual(plumbing["state"], "OH")
+        self.assertEqual(plumbing["zip"], "45207")
+        self.assertIsNone(plumbing["lat"])
+        self.assertEqual(plumbing["contractor_name"], "EXAMPLE PLUMBING INC")
+        self.assertEqual(plumbing["owner_name"], "")
+        self.assertEqual(plumbing["source_url"], "http://cagis.hamilton-co.org/opal/apd.aspx?QSPerm=2026P00001")
+        self.assertEqual(rows["2026B00002"]["permit_category"], "remodel")
+
+    def test_remodel_filter_across_new_sources(self):
+        rows, _summary, scripted = self._rows("new_orleans_permits", permitTypes=["remodel"])
+        self.assertEqual(list(rows), ["26-00002-RNVS"])
+        data_url = next(unquote(url) for url in scripted.direct_urls if "rcm3-fn58" in url)
+        self.assertIn("upper(description) like '%RENOVATION%'", data_url)
+
+
+class TestCategories(unittest.TestCase):
+    def test_permit_categories(self):
+        cases = {
+            "PERMIT - RENOVATION Roof Tear off and re-roof with architectural shingles": ["roof", "remodel"],
+            "Addition/Alteration Replace roof shingles": ["roof", "remodel"],
+            "PERMIT - NEW CONSTRUCTION Pool In-ground swimming pool": ["pool", "new_construction"],
+            "New single family dwelling with rooftop solar panels": ["solar", "new_construction"],
+            "Bldg-Alter/Repair Re-roof with Class A material": ["roof", "remodel"],
+            "Kitchen remodel": ["remodel"],
+            "Install vinyl siding": ["siding"],
+            "Build a wood deck": ["deck"],
+            "Install additional electrical outlets": ["other"],
+            "Repair decker gate": ["other"],
+            "Plumbing Permits - New": ["other"],
+            "Carpool lane signage": ["other"],
+            "": ["other"],
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(mapping.permit_categories(text), expected)
+
+    def test_remodel_type_filter_uses_word_boundaries(self):
+        self.assertTrue(mapping.type_matches("Room addition at rear", ["remodel"]))
+        self.assertFalse(mapping.type_matches("Additional circuits", ["remodel"]))
+        self.assertTrue(mapping.type_matches("Bathroom renovation", ["remodel"]))
+        self.assertTrue(mapping.type_matches("Install vinyl siding", ["siding"]))
+        self.assertTrue(mapping.type_matches("Build a wood deck", ["deck"]))
+
+    def test_rows_carry_categories_and_status_rows_do_not(self):
+        rows, _summary, _scripted, _config, _sleeps = _run(
+            Scripted(_pages()),
+            sources=["chicago_building_permits"],
+            **_base_input(),
+        )
+        by_id = {row["permit_id"]: row for row in _found(rows)}
+        self.assertEqual(by_id["B-EXAMPLE-1"]["permit_category"], "roof")
+        self.assertEqual(by_id["B-EXAMPLE-4"]["permit_category"], "pool")
+        self.assertEqual(by_id["B-EXAMPLE-4"]["permit_categories"], ["pool", "new_construction"])
+        blank = mapping._blank_row("blocked", "x", "2026-11-11T00:00:00+00:00")
+        self.assertEqual(blank["permit_category"], "")
+        self.assertEqual(blank["permit_categories"], [])
+
+
+class TestFeedRules(unittest.TestCase):
+    def test_new_since_last_run_skips_seen_before_max_items(self):
+        seen = {state_mod.permit_key("chicago_building_permits", "B-EXAMPLE-1"): "2026-10-20T00:00:00+00:00"}
+        rows, summary, _scripted, _config, _sleeps = _run(
+            Scripted(_pages()),
+            seen_state=seen,
+            sources=["chicago_building_permits"],
+            **_base_input(newSinceLastRun=True, maxItems=2),
+        )
+        ids = [row["permit_id"] for row in _found(rows)]
+        self.assertEqual(ids, ["B-EXAMPLE-2", "B-EXAMPLE-4"])
+        self.assertEqual(summary["skippedSeen"], 1)
+        self.assertEqual(summary["billedPermits"], 2)
+        self.assertTrue(summary["truncated"])
+        self.assertTrue(summary["newSinceLastRun"])
+        self.assertEqual(summary["sources"][0]["skippedSeen"], 1)
+
+        rows, summary, _scripted, _config, _sleeps = _run(
+            Scripted(_pages()),
+            seen_state=seen,
+            sources=["chicago_building_permits"],
+            **_base_input(newSinceLastRun=False, maxItems=2),
+        )
+        self.assertEqual([row["permit_id"] for row in _found(rows)], ["B-EXAMPLE-1", "B-EXAMPLE-2"])
+        self.assertEqual(summary["skippedSeen"], 0)
+
+    def test_all_seen_is_not_found_and_not_billed(self):
+        seen = {
+            state_mod.permit_key("chicago_building_permits", permit_id): "2026-10-20T00:00:00+00:00"
+            for permit_id in ("B-EXAMPLE-1", "B-EXAMPLE-2", "B-EXAMPLE-4", "B-EXAMPLE-5", "B-EXAMPLE-6")
+        }
+        rows, summary, _scripted, _config, _sleeps = _run(
+            Scripted(_pages()),
+            seen_state=seen,
+            sources=["chicago_building_permits"],
+            **_base_input(newSinceLastRun=True),
+        )
+        self.assertEqual(_found(rows), [])
+        self.assertEqual(rows[0]["sourceStatus"], "not_found")
+        self.assertIn("No new permits", rows[0]["error"])
+        self.assertEqual(summary["billedPermits"], 0)
+        self.assertEqual(summary["skippedSeen"], 5)
+
+    def test_max_items_is_strict_across_sources(self):
+        rows, summary, scripted, _config, _sleeps = _run(
+            Scripted(_pages()),
+            sources=["chicago_building_permits", "seattle_building_permits", "nyc_dob_now_permits"],
+            **_base_input(maxItems=6),
+        )
+        found = _found(rows)
+        self.assertEqual(len(found), 6)
+        self.assertEqual(summary["billedPermits"], 6)
+        self.assertTrue(summary["truncated"])
+        self.assertEqual({row["source"] for row in found}, {"chicago_building_permits", "seattle_building_permits"})
+        self.assertFalse(any("rbx6-tga4" in url for url in scripted.direct_urls))
+
+        for cap in (1, 3, 10):
+            with self.subTest(maxItems=cap):
+                rows, summary, _scripted, _config, _sleeps = _run(
+                    Scripted(_pages()),
+                    sources=list(ALL_VERIFIED_IDS),
+                    **_base_input(maxItems=cap),
+                )
+                self.assertEqual(len(_found(rows)), cap)
+                self.assertLessEqual(summary["billedPermits"], cap)
+
+    def test_dedupe_key_is_source_and_permit_id(self):
+        first = _arcgis_entry()
+        second = dict(_arcgis_entry(), id="sample_arcgis_permits_two")
+        rows, summary, _scripted, _config, _sleeps = _run(
+            Scripted({"FeatureServer": _text("arcgis.json")}),
+            entries=[first, second],
+            sources=["sample_arcgis_permits", "sample_arcgis_permits_two"],
+            **_base_input(),
+        )
+        found = _found(rows)
+        self.assertEqual([(row["source"], row["permit_id"]) for row in found], [
+            ("sample_arcgis_permits", "AG-1"),
+            ("sample_arcgis_permits_two", "AG-1"),
+        ])
+        self.assertEqual(summary["mergedDuplicates"], 0)
+
+    def test_default_block_pushes_blocked_row_with_no_proxy_or_charge(self):
+        scripted = Scripted(_pages(), challenge_substrings=["ydr8-5enu"])
+        actor_input = {
+            "sources": ["chicago_building_permits", "seattle_building_permits"],
+            "dateFrom": "2026-10-01",
+            "dateTo": "2026-10-31",
+        }
+        rows, summary, scripted, config, _sleeps = _run(scripted, **actor_input)
+        self.assertEqual(config["max_proxy_usd"], 0.0)
+        self.assertEqual(scripted.proxy_calls, [])
+        self.assertEqual(scripted.solved, [])
+        self.assertEqual(_found(rows), [])
+        self.assertEqual([row["sourceStatus"] for row in rows], ["blocked"])
+        self.assertEqual(summary["status"], "blocked")
+        self.assertEqual(summary["billedPermits"], 0)
+        self.assertEqual(summary["proxyCharges"], 0)
+        self.assertEqual(summary["captchaCharges"], 0)
+        self.assertFalse(any("76t5-zqzr" in url for url in scripted.direct_urls))
+
+
+class TestState(unittest.TestCase):
+    def test_round_trip_and_merge(self):
+        self.assertEqual(state_mod.load_state(None), {})
+        self.assertEqual(state_mod.load_state({"permits": "bad"}), {})
+        merged = state_mod.merge_state({"a:1": "2026-10-01"}, {"a:1": "2026-11-01", "b:2": "2026-11-01"})
+        self.assertEqual(merged, {"a:1": "2026-10-01", "b:2": "2026-11-01"})
+        dumped = state_mod.dump_state(merged, "2026-11-11T00:00:00+00:00")
+        self.assertEqual(state_mod.load_state(json.loads(json.dumps(dumped))), merged)
+        capped = state_mod.merge_state({"a:1": "2026-01-01"}, {"b:2": "2026-02-01"}, max_keys=1)
+        self.assertEqual(capped, {"b:2": "2026-02-01"})
+
+
+class TestMain(unittest.TestCase):
+    def _input(self, **extra):
+        payload = {
+            "sources": ["chicago_building_permits"],
+            "dateFrom": "2026-10-01",
+            "dateTo": "2026-10-31",
+            "maxItems": 2,
+            "delaySeconds": 1,
+            "maxSpendUsd": 5,
+            "newSinceLastRun": True,
+        }
+        payload.update(extra)
+        return payload
+
+    def test_new_since_last_run_persists_charged_permits_between_runs(self):
+        stores = {}
+        actor, _scripted = _run_main(self._input(), stores=stores)
+        pushed = [row["permit_id"] for row in actor.pushed if row["sourceStatus"] == "found"]
+        self.assertEqual(pushed, ["B-EXAMPLE-1", "B-EXAMPLE-2"])
+        self.assertEqual(actor.charges, ["permit", "permit"])
+        self.assertEqual(actor.opened, ["permits-state"])
+        saved = stores["permits-state"]["SEEN"]
+        self.assertEqual(sorted(saved["permits"]), [
+            "chicago_building_permits:B-EXAMPLE-1",
+            "chicago_building_permits:B-EXAMPLE-2",
+        ])
+        self.assertEqual(actor.values["SUMMARY"]["stateKeys"], 2)
+
+        actor, _scripted = _run_main(self._input(), stores=stores)
+        pushed = [row["permit_id"] for row in actor.pushed if row["sourceStatus"] == "found"]
+        self.assertEqual(pushed, ["B-EXAMPLE-4", "B-EXAMPLE-5"])
+        self.assertEqual(actor.charges, ["permit", "permit"])
+        summary = actor.values["SUMMARY"]
+        self.assertEqual(summary["skippedSeen"], 2)
+        self.assertEqual(summary["billedPermits"], 2)
+        self.assertEqual(summary["stateKeys"], 4)
+        self.assertEqual(len(stores["permits-state"]["SEEN"]["permits"]), 4)
+
+    def test_uncharged_rows_are_not_recorded(self):
+        stores = {}
+        actor, _scripted = _run_main(self._input(maxItems=10, maxSpendUsd=0.05), stores=stores)
+        found = [row for row in actor.pushed if row["sourceStatus"] == "found"]
+        self.assertEqual(len(found), 5)
+        self.assertEqual(actor.charges, ["permit"])
+        self.assertEqual(list(stores["permits-state"]["SEEN"]["permits"]), ["chicago_building_permits:B-EXAMPLE-1"])
+        self.assertTrue(actor.values["SUMMARY"]["chargeCapped"])
+
+    def test_platform_charge_limit_stops_billing(self):
+        stores = {}
+        actor, _scripted = _run_main(self._input(maxItems=10), stores=stores, limit_after=2)
+        self.assertEqual(actor.charges, ["permit", "permit"])
+        self.assertEqual(len(stores["permits-state"]["SEEN"]["permits"]), 2)
+
+    def test_blocked_run_exits_cleanly_without_charges(self):
+        stores = {}
+        scripted = Scripted(_pages(), challenge_substrings=["ydr8-5enu"])
+        actor, scripted = _run_main(self._input(), scripted=scripted, stores=stores)
+        self.assertEqual(actor.charges, [])
+        self.assertEqual([row["sourceStatus"] for row in actor.pushed], ["blocked"])
+        self.assertEqual(scripted.proxy_calls, [])
+        summary = actor.values["SUMMARY"]
+        self.assertEqual(summary["status"], "blocked")
+        self.assertEqual(summary["billedPermits"], 0)
+        self.assertEqual(summary["proxyCharges"], 0)
+        self.assertNotIn("SEEN", stores["permits-state"])
+
+    def test_unreadable_state_with_new_since_last_run_charges_nothing(self):
+        actor, scripted = _run_main(self._input(), store_error=RuntimeError("kvs down"))
+        self.assertEqual(actor.charges, [])
+        self.assertEqual(scripted.direct_urls, [])
+        self.assertEqual(len(actor.pushed), 1)
+        row = actor.pushed[0]
+        self.assertEqual(row["sourceStatus"], "error")
+        self.assertFalse(mapping.billable_row(row))
+        self.assertIn("kvs down", row["error"])
+        summary = actor.values["SUMMARY"]
+        self.assertEqual(summary["status"], "error")
+        self.assertEqual(summary["billedPermits"], 0)
+        self.assertEqual(summary["stateError"], "kvs down")
+
+    def test_corrupt_state_record_with_new_since_last_run_charges_nothing(self):
+        stores = {"permits-state": {"SEEN": {"version": 1, "permits": "not-a-map"}}}
+        actor, scripted = _run_main(self._input(), stores=stores)
+        self.assertEqual(actor.charges, [])
+        self.assertEqual(scripted.direct_urls, [])
+        self.assertEqual([row["sourceStatus"] for row in actor.pushed], ["error"])
+        self.assertEqual(stores["permits-state"]["SEEN"]["permits"], "not-a-map")
+
+    def test_unreadable_state_without_new_since_last_run_still_bills(self):
+        actor, _scripted = _run_main(
+            self._input(newSinceLastRun=False),
+            store_error=RuntimeError("kvs down"),
+        )
+        self.assertEqual(actor.charges, ["permit", "permit"])
+        self.assertEqual(actor.values["SUMMARY"]["stateError"], "kvs down")
 
 
 if __name__ == "__main__":

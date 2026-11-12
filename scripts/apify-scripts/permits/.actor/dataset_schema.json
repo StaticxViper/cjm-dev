@@ -6,6 +6,8 @@
       "permit_id": {"type": "string"},
       "issued_date": {"type": "string"},
       "type": {"type": "string"},
+      "permit_category": {"type": "string"},
+      "permit_categories": {"type": "array"},
       "description": {"type": "string"},
       "value_usd": {"type": "number"},
       "address": {"type": "string"},
@@ -29,7 +31,7 @@
     "overview": {
       "title": "Overview",
       "transformation": {
-        "fields": ["city", "state", "permit_id", "issued_date", "type", "value_usd", "contractor_name", "sourceStatus"]
+        "fields": ["city", "state", "permit_id", "issued_date", "permit_category", "type", "value_usd", "contractor_name", "sourceStatus"]
       },
       "display": {
         "component": "table",
@@ -38,6 +40,7 @@
           "state": {"label": "State", "format": "text"},
           "permit_id": {"label": "Permit", "format": "text"},
           "issued_date": {"label": "Issued", "format": "text"},
+          "permit_category": {"label": "Category", "format": "text"},
           "type": {"label": "Type", "format": "text"},
           "value_usd": {"label": "Value (USD)", "format": "number"},
           "contractor_name": {"label": "Contractor", "format": "text"},
@@ -53,6 +56,8 @@
           "permit_id",
           "issued_date",
           "type",
+          "permit_category",
+          "permit_categories",
           "description",
           "value_usd",
           "address",
@@ -78,6 +83,8 @@
           "permit_id": {"label": "Permit", "format": "text"},
           "issued_date": {"label": "Issued", "format": "text"},
           "type": {"label": "Type", "format": "text"},
+          "permit_category": {"label": "Category", "format": "text"},
+          "permit_categories": {"label": "All categories", "format": "array"},
           "description": {"label": "Description", "format": "text"},
           "value_usd": {"label": "Value (USD)", "format": "number"},
           "address": {"label": "Address", "format": "text"},

@@ -155,6 +155,121 @@
         "note": "Los Angeles Open Data SODA resource pi9x-tg5x. robots.txt allows /resource/ for User-agent * with Crawl-delay 1. Public open data, not a certified permit record. This extract has no contractor or owner column."
       },
       "notes": "Verified 2026-10-26: issue_date, valuation, work_desc, primary_address, zip_code, lat, and lon returned for a permit issued 2026-10-24. Resource nbyu-2ha9 responded 403 and is not used."
+    },
+    {
+      "id": "nyc_dob_now_permits",
+      "name": "New York City DOB NOW approved permits",
+      "category": "City building permits",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["NY"], "counties": ["New York", "Kings", "Queens", "Bronx", "Richmond"], "cities": ["New York"]},
+      "endpoint": "https://data.cityofnewyork.us/resource/rbx6-tga4.json",
+      "url": "https://data.cityofnewyork.us/resource/rbx6-tga4.json",
+      "record_url": "https://data.cityofnewyork.us/resource/rbx6-tga4.json?work_permit={id}",
+      "query": {
+        "style": "socrata",
+        "date_column": "issued_date",
+        "extra_where": "filing_reason = 'Initial Permit'",
+        "text_columns": ["job_description", "work_type"]
+      },
+      "field_map": {
+        "permit_id": "work_permit",
+        "issued_date": "issued_date",
+        "type": "work_type",
+        "description": "job_description",
+        "value_usd": "estimated_job_costs",
+        "address": ["house_no", "street_name", "borough"],
+        "zip": "zip_code",
+        "lat": "latitude",
+        "lng": "longitude",
+        "contractor_name": "applicant_business_name",
+        "contractor_license": "applicant_license",
+        "owner_name": "owner_business_name"
+      },
+      "constants": {"city": "New York", "state": "NY"},
+      "rate_limit": {"min_delay_s": 2.0, "max_delay_s": 5.0, "max_requests_per_run": 3, "page_size": 50},
+      "terms_checked": {
+        "date": "2026-11-11",
+        "note": "NYC Open Data SODA resource rbx6-tga4 (DOB NOW: Build - Approved Permits), catalog data_updated_at 2026-11-10. robots.txt is User-agent * with Crawl-delay 1 and does not disallow /resource/ (only /api/odata/, /api/collocate*, and browse/search query URLs). Public open data, not a certified permit record. owner_business_name is the owner entity DOB publishes; the personal owner_name column is not copied."
+      },
+      "notes": "Verified 2026-11-11: $order=issued_date DESC with issued_date <= 2026-11-11 returned work_permit, issued_date 2026-11-09, work_type, filing_reason, job_description, estimated_job_costs, house_no, street_name, borough, zip_code, latitude, longitude, applicant_business_name, applicant_license, owner_business_name. Rows with a null issued_date sort first without the window, so the date filter is required. filing_reason values since 2026-10-01 were Initial Permit (12215), Renewal Permit Without Changes (5893), Renewal Permit with Changes (1628), No Work Permit (76), None (63); only Initial Permit is queried so renewals are not resold as new leads. The older DOB Permit Issuance resource ipu4-2q9a is still not used."
+    },
+    {
+      "id": "new_orleans_permits",
+      "name": "New Orleans permits",
+      "category": "City building permits",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["LA"], "counties": ["Orleans"], "cities": ["New Orleans"]},
+      "endpoint": "https://data.nola.gov/resource/rcm3-fn58.json",
+      "url": "https://data.nola.gov/resource/rcm3-fn58.json",
+      "record_url": "https://data.nola.gov/resource/rcm3-fn58.json?numstring={id}",
+      "query": {
+        "style": "socrata",
+        "date_column": "issuedate",
+        "extra_where": "",
+        "text_columns": ["description", "type"]
+      },
+      "field_map": {
+        "permit_id": "numstring",
+        "issued_date": "issuedate",
+        "type": "type",
+        "description": "description",
+        "value_usd": "constrval",
+        "address": "address",
+        "contractor_name": "contractors",
+        "owner_name": "owner"
+      },
+      "constants": {"city": "New Orleans", "state": "LA"},
+      "rate_limit": {"min_delay_s": 2.0, "max_delay_s": 5.0, "max_requests_per_run": 3, "page_size": 50},
+      "terms_checked": {
+        "date": "2026-11-11",
+        "note": "City of New Orleans open data SODA resource rcm3-fn58 (Permits), catalog data_updated_at 2026-11-11. robots.txt is User-agent * with Crawl-delay 1 and does not disallow /resource/. Public open data, not a certified permit record. The city publishes an owner column, so owner_name is filled."
+      },
+      "notes": "Verified 2026-11-11: $order=issuedate DESC with issuedate <= 2026-11-11 returned numstring 26-32978-EVAC issued 2026-11-10 with type, code, description, constrval, address, owner, contractors, applicant, currentstatus, and location_1 {latitude, longitude}. No ZIP column. The feed mixes building, trade (electrical, plumbing), and pool permits; type text drives permit_category. Building Permits (2018-present) nbcf-m6c2 was last updated 2025-08-17 and is not used."
+    },
+    {
+      "id": "cincinnati_building_permits",
+      "name": "Cincinnati building permits",
+      "category": "City building permits",
+      "adapter": "open_data",
+      "enabled": true,
+      "status": "verified",
+      "access": "public",
+      "coverage": {"states": ["OH"], "counties": ["Hamilton"], "cities": ["Cincinnati"]},
+      "endpoint": "https://data.cincinnati-oh.gov/resource/uhjb-xac9.json",
+      "url": "https://data.cincinnati-oh.gov/resource/uhjb-xac9.json",
+      "record_url": "https://data.cincinnati-oh.gov/resource/uhjb-xac9.json?permitnum={id}",
+      "query": {
+        "style": "socrata",
+        "date_column": "issueddate",
+        "extra_where": "",
+        "text_columns": ["description", "permittypemapped", "workclassmapped"]
+      },
+      "field_map": {
+        "permit_id": "permitnum",
+        "issued_date": "issueddate",
+        "description": "description",
+        "value_usd": "estprojectcostdec",
+        "address": "originaladdress1",
+        "city": "originalcity",
+        "state": "originalstate",
+        "zip": "originalzip",
+        "contractor_name": "companyname",
+        "source_url": "link"
+      },
+      "type_fields": ["permittypemapped", "workclassmapped"],
+      "constants": {"city": "Cincinnati", "state": "OH"},
+      "rate_limit": {"min_delay_s": 2.0, "max_delay_s": 5.0, "max_requests_per_run": 3, "page_size": 50},
+      "terms_checked": {
+        "date": "2026-11-11",
+        "note": "Cincinnati Open Data SODA resource uhjb-xac9 (Cincinnati Building Permits), catalog data_updated_at 2026-11-11. robots.txt is User-agent * with Crawl-delay 1 and does not disallow /resource/. Public open data, not a certified permit record. No owner column."
+      },
+      "notes": "Verified 2026-11-11: $order=issueddate DESC with issueddate <= 2026-11-11 returned permitnum 2026P09571 issued 2026-11-09 with description, permittypemapped, workclassmapped, estprojectcostdec, originaladdress1, originalcity, originalstate, originalzip, companyname, and link (CAGIS record page). companyname arrives wrapped in literal double quotes, which the mapper strips. description repeats the permit type; there is no free-text scope. No latitude or longitude column."
     }
   ]
 }
