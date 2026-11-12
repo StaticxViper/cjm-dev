@@ -1,127 +1,133 @@
 # Zillow Real Estate Agent Scraper – Listing Agents by ZIP
 
-Search Zillow by ZIP code, keep each listing, and return the listing agent. Agents are deduped across listings. When an agent is missing an email or a phone, the run looks that contact up on Google, the agent site, and the brokerage site, and stores the page URL and a confidence score.
+**Zillow Real Estate Agent Scraper searches Zillow by ZIP code and returns one row per listing agent, with brokerage, phone, email, license number, profile URL, and the addresses of their listings, for mortgage lenders, title reps, and real estate service providers who prospect active agents.**
 
-The scraper is the in-house pipeline in `scripts/zillow_automation`. This Actor runs that same code on Apify. A local run uses the same input and writes the same dated CSV and JSON files.
+$0.008 per agent ($8 per 1,000) on the free tier, lower on paid Apify plans. Agents are de-duplicated across listings, so you pay once per agent.
 
-## What it collects
+## Who is it for?
 
-Each dataset item is one agent:
+- **Mortgage loan officers and lenders** building referral lists of agents with active listings in their market.
+- **Title, escrow, and home-inspection reps** prospecting agents by ZIP.
+- **Real estate photographers, stagers, and marketers** finding agents who list often.
+- **Brokerage recruiters** mapping who is active in a territory and which brokerage they are with.
+- **Proptech sales teams** selling CRM, lead, or transaction tools to agents.
 
-| Field | Meaning |
-|-------|---------|
-| `agent_name` | Listing agent name |
-| `brokerage` | Brokerage shown on the listing |
-| `phone` | Phone from the listing, or from enrichment |
-| `email` | Email from the listing, or from enrichment |
-| `license` | License number when the page shows one |
-| `profile_url` | Zillow profile URL |
-| `enrichment_source` | `website` when a missing contact was filled from a public page |
-| `enrichment_source_url` | Page the contact came from |
-| `confidence` | `100` when name, brokerage, and area agree. `80` when name plus brokerage or area agree. Blank when the match is weaker |
-| `listing_addresses` | Addresses for the listings tied to this agent |
+## What data do you get?
 
-A value is stored only when the agent name agrees and the brokerage or the search area also agrees. A weaker match stays blank.
+One dataset item per unique agent.
 
-Listings themselves are saved as the key-value record `LISTINGS`. The run summary is `SUMMARY`.
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `agent_name` | string | Listing agent name |
+| `brokerage` | string | Brokerage shown on the listing |
+| `phone` | string | Phone from the listing, or from enrichment |
+| `email` | string | Email from the listing, or from enrichment |
+| `license` | string | License number when the page shows one |
+| `profile_url` | string | Zillow agent profile URL |
+| `enrichment_source` | string | `website` when a missing contact was filled from a public page |
+| `enrichment_source_url` | string | The page the contact came from |
+| `confidence` | string | `100` when name, brokerage, and area agree. `80` when name plus brokerage or area agree. Blank when weaker |
+| `listing_addresses` | array | Addresses of this agent's listings found in the run |
 
-## How to run
+Sample row from the Actor's saved Zillow test pages (a fictional agent). The listing already showed a phone and email, so enrichment did not run:
 
-From this directory, with the [Apify CLI](https://docs.apify.com/cli) logged in (`APIFY_TOKEN` in the environment, or `apify login`):
-
-```bash
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "agent_name": "Jane Smith",
+  "brokerage": "Compass",
+  "phone": "(856) 555-0101",
+  "email": "jane.smith@compass.com",
+  "license": "NJ-12345",
+  "profile_url": "https://www.zillow.com/profile/jane-smith",
+  "enrichment_source": "",
+  "enrichment_source_url": "",
+  "confidence": "",
+  "listing_addresses": ["1 Main St, Cherry Hill, NJ 08002", "2 Oak Ave, Cherry Hill, NJ 08002"]
+}
 ```
 
-`apify run` uses the local Python environment and does not upload `storage/` to the Apify Console. Publish with:
+When enrichment fills a missing contact, `enrichment_source` is `website`, `enrichment_source_url` is the page it came from, and `confidence` is `100` or `80`.
 
-```bash
-apify push
-```
-
-Run the build from the Apify Console with `zip_codes`, `max_listings`, and `max_agents`. The sample input is `fixtures/INPUT.json`.
-
-From the repo, Script Manager script `zillow-apify` starts the published Actor through the Apify API and downloads the dataset. It reads `APIFY_TOKEN` and `APIFY_USER_ID`. Set `ZILLOW_ACTOR_ID` when the id is not `<APIFY_USER_ID>~zillow-agents`.
-
-```bash
-python -m scripts.script_manager run zillow-apify -- --zip-codes 08002 --max-listings 100 --max-agents 50
-```
-
-The universal Script Manager action accepts that script name. Pass `confirm=true` because the run spends Apify credit:
-
-```bash
-gh workflow run "Script Manager" -f script=zillow-apify -f args="--zip-codes 08002 --max-listings 100 --max-agents 50" -f confirm=true
-```
+An enriched contact is kept only when the agent name matches and the brokerage or search area also matches. A weaker match is left blank rather than guessed.
 
 ## Input
 
 ```json
 {
-  "zip_codes": ["08002"],
-  "max_listings": 2,
-  "max_agents": 2,
-  "enrich": false
+  "zip_codes": ["08002", "08003"],
+  "max_listings": 25,
+  "max_agents": 10
 }
 ```
 
-That sample is the smoke fixture: two listings, no Google enrichment. The input defaults are still 100 listings and 50 agents, with enrichment on.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `zip_codes` | required | Up to 50 ZIP codes |
+| `max_listings` | 25 (max 1,000) | Total listings across every ZIP |
+| `max_agents` | 10 (max 500) | Total unique agents returned |
+| `forSaleByAgent`, `forSaleByOwner`, `forRent`, `sold` | agent listings only | Listing types to search |
+| `priceMin`, `priceMax` | — | Price filter |
+| `enrich` | true | Fill a missing phone or email from the agent's or brokerage's public pages |
+| `proxyConfiguration` | Apify residential, US | Change the proxy group or country if needed |
 
-| Field | Default | Meaning |
-|-------|---------|---------|
-| `zip_codes` | required | ZIP codes to search |
-| `max_listings` | `25` (max 1000) | Total listings across every ZIP |
-| `max_agents` | `10` (max 500) | Total unique agents to return |
+The run stops as soon as `max_listings` or `max_agents` is reached, and agents past `max_agents` are not enriched.
 
-The Advanced section holds listing status (`forSaleByAgent`, `forSaleByOwner`, `forRent`, `sold`), `priceMin`, `priceMax`, `enrich`, `headless`, and `proxyConfiguration`. Agent listings are on by default. Enrichment is on by default. The proxy group defaults to residential.
+## How much does it cost?
 
-`max_listings` and `max_agents` stop the run. A later page is not requested once either cap is reached. Agents past `max_agents` are dropped before enrichment.
+Pay per event. You pay for agent rows that have a name.
 
-## Output
+| Event | Free tier | Bronze | Silver | Gold and up |
+|-------|-----------|--------|--------|-------------|
+| Listing agent (`result`) | $0.008 | $0.007 | $0.006 | $0.005 |
 
-One dataset item per agent, pushed to the default dataset.
+- **100 agents:** 100 × $0.008 = **$0.80**
+- **1,000 agents:** 1,000 × $0.008 = **$8.00** (as low as $5.00 on Gold)
 
-Key-value store:
+A blocked ZIP adds no agent rows and costs nothing. There is no CAPTCHA charge. The price is per agent, and the residential proxy this Actor uses is not a separate per-request event. Apify adds its small per-run start event.
 
-| Key | Contents |
-|-----|----------|
-| `LISTINGS` | Listings collected on this run, with the run counts |
-| `SUMMARY` | `listings_found`, `agents_found`, `agents_enriched`, `blocked_zips` |
-| `CHECKPOINT` | Search position, pending listing URLs, and agents already kept. A migrated or restarted run resumes from this record |
+## Limits and data source
 
-`blocked_zips` lists ZIP codes whose search page was a block or captcha. That ZIP is skipped and the next ZIP still runs.
+- **Source:** public Zillow search and listing pages, read as HTML through Apify residential proxy (US exit). Listing data comes from the page's embedded JSON, so no browser is needed for those pages. Enrichment may open a browser to read the agent's or brokerage's public site.
+- **Blocks:** if a ZIP's search page is a block or "are you a robot" page, it is retried once on a fresh proxy session. If it is still blocked, that ZIP is listed in `blocked_zips` and the next ZIP runs. No CAPTCHA solving.
+- **Resume:** progress is checkpointed, so a migrated or restarted run continues where it stopped.
+- **Markup changes:** Zillow changes its pages from time to time. Parsers prefer the embedded listing JSON and fall back to visible fields.
+- **Known issue:** some recent Store runs reached their time limit before finishing. Until a fix ships, start with one or two ZIP codes and the default caps, then scale up.
+- **Personal data:** results can include names, phone numbers, and emails from public listing pages. Store and use them only when you have a lawful reason, and follow the TCPA, CAN-SPAM, and local rules for outreach.
 
-A local run also writes dated files next to the pipeline, for example `scripts/zillow_automation/zillow_agents_2026-10-24_08002.csv`, plus the matching listings CSV and the JSON pair. `zillow-apify` writes those same names after it downloads the dataset.
+## FAQ
 
-## Proxy
+### How do I get a list of real estate agents in a ZIP code?
 
-On Apify (`APIFY_IS_AT_HOME=1`) Zillow search and listing pages are Chrome-impersonation HTTP GETs through `Actor.create_proxy_configuration()`. The default group is `RESIDENTIAL` and the default exit country is `US`. Another group in `proxyConfiguration.apifyProxyGroups` replaces the group. `apifyProxyCountry` replaces the country. The listing data is in the page HTML, so the run does not launch Chromium for those pages. A headless browser is fingerprinted even on a residential IP, and a plain Python TLS handshake is too. The search document is the first request on a session. Before that request, the ZIP is resolved to a Zillow region so the exit city does not replace the search.
+Put the ZIP code in `zip_codes`, set `max_agents` to the number you want, and run. Each row is one agent with their brokerage, contact details, and the listings found for them.
 
-The first residential session is reused for the run. If that session is blocked, the same URL is retried once on a second session. There is no further rotation, no unblocker group, and no browser farm. Enrichment, when it is on, can still open a browser for a missing phone or email and uses the first proxy URL.
+### Can I get agent phone numbers and emails?
 
-A local run, including `apify run` on a laptop, leaves `APIFY_IS_AT_HOME` unset. Chromium then starts with no proxy, and the dated files are written on disk.
+Yes. Contacts shown on the listing are copied as-is. When one is missing and `enrich` is on, the Actor looks for it on the agent's or brokerage's public pages and records the source URL and a confidence score.
 
-Images, fonts, and media are not requested on the platform HTTP path. A press-and-hold, PerimeterX, or "are you a robot" page is stored as blocked for that ZIP after the single retry. The Actor does not solve captchas.
+### Does this need a proxy?
 
-## Cost
+Yes, and it is built in. Zillow blocks datacenter traffic, so the Actor uses Apify residential proxy by default. You do not need to configure anything.
 
-Residential proxy traffic is billed by Apify per gigabyte transferred. Fetching HTML instead of a browser page is what keeps that transfer down. Current proxy prices are on [Apify pricing](https://apify.com/pricing).
+### What counts as a result?
 
-Compute stays at the Actor default. A small ZIP run is a handful of HTML documents plus one retry if the first session is blocked. Enrichment adds Google and site visits for agents that are still missing a phone or an email.
+One unique agent with a name. Listings themselves are saved to the key-value store at no charge.
 
-Pay per event, when you enable it from `.actor/pay_per_event.json`, charges `result` ($0.05) for an agent row that has a name. A blocked ZIP adds no agent row. Proxy gigabytes are the platform proxy bill. There is no captcha charge.
+### Can I search for-sale-by-owner, rentals, or sold homes?
 
-## Limits
+Yes. Turn on `forSaleByOwner`, `forRent`, or `sold` in the input. Agent listings are on by default.
 
-Zillow's markup changes. Parsers prefer the embedded listing JSON, then the visible fields. Update the fixtures in `unittests/zillow_automation/fixtures/` together with the parser.
+## Integrations and output
 
-A block ends that ZIP for this run. The checkpoint lets a restarted run continue the ZIPs that were still in progress.
+- **Dataset:** one row per agent. Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `LISTINGS` (every listing collected), `SUMMARY` (`listings_found`, `agents_found`, `agents_enriched`, `blocked_zips`), and `CHECKPOINT` (resume state).
+- **Automation:** run it from the Apify API, on a schedule, or through Make, Zapier, n8n, a CRM, or Google Sheets.
 
-Tests use saved HTML only:
+## Related actors
 
-```bash
-python -m unittest unittests.zillow_automation.test_zillow_agents unittests.apify_scripts.test_zillow_actor
-```
+- [City Data Scraper](https://apify.com/staticxviper/city-data-scraper): population, income, housing, and crime stats for the towns you farm.
+- [Building Permits Scraper](https://apify.com/staticxviper/permits): new roofing, solar, and pool permits in Chicago, Seattle, Austin, and Los Angeles.
+- [New Business Leads](https://apify.com/staticxviper/new-business): newly registered LLCs and corporations.
 
-Results can include names, phone numbers, and email addresses from public listing pages. Store them only when you have a lawful reason to do so.
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

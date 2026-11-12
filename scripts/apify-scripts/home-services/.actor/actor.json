@@ -1,8 +1,8 @@
 {
   "actorSpecification": 1,
   "name": "home-services",
-  "title": "Home Services / Contractor Leads",
-  "description": "Niche and area lead list from Google Maps, with website email, quality, and intent score. Accepted matches only. Does not call the Places API.",
+  "title": "Home Services Leads – Local Contractor Leads with Emails",
+  "description": "Build local service-business lead lists from Google Maps by niche and area, with phone, website, website email, website-quality score, and intent lead score. You pay only for verified matches.",
   "version": "0.1",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",

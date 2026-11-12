@@ -2,7 +2,7 @@
   "actorChargeEvents": {
     "place": {
       "eventTitle": "Accepted place",
-      "eventDescription": "Charged when a listing is an accepted match under the issue #127 rules. Rejected, blocked, empty, and error rows are saved and not billed.",
+      "eventDescription": "Charged when a Maps listing passes the name and location match check and is accepted. Rejected, blocked, empty, and error rows are saved and not billed.",
       "isOneTimeEvent": false,
       "isPrimaryEvent": true,
       "eventTieredPricingUsd": {

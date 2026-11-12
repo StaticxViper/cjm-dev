@@ -331,6 +331,26 @@ class TestEnrichment(unittest.TestCase):
         self.assertEqual(agent["email"], "")
 
 
+class TestStopPlaywright(unittest.TestCase):
+    def test_connection_without_private_cleanup_uses_public_stop(self):
+        class Connection:
+            _loop = None
+
+        class Impl:
+            _connection = Connection()
+
+        class Playwright:
+            _impl_obj = Impl()
+            stopped = 0
+
+            def stop(self):
+                self.stopped += 1
+
+        playwright = Playwright()
+        zillow_agents._stop_playwright(playwright)
+        self.assertEqual(playwright.stopped, 1)
+
+
 class TestPipeline(unittest.TestCase):
     def _run(self, fetch, root, **kwargs):
         criteria = kwargs.pop("criteria", None) or _criteria(resultsLimit=5)

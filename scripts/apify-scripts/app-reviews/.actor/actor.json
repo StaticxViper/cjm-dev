@@ -1,8 +1,8 @@
 {
   "actorSpecification": 1,
   "name": "app-reviews",
-  "title": "App Store Reviews – iTunes Customer Reviews RSS",
-  "description": "Customer reviews from the public iTunes lookup and customer-reviews RSS feeds. No proxy and no CAPTCHA solver. Google Play is deferred.",
+  "title": "App Store Reviews Scraper – iOS Ratings & Review Text",
+  "description": "Export iOS App Store customer reviews for any app: star rating, title, review text, app version, date, and author, with optional sentiment. Reads Apple's public iTunes feeds. $1 per 1,000 reviews.",
   "version": "0.1",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",

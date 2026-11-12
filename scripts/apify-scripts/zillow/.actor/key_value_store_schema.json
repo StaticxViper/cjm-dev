@@ -1,0 +1,25 @@
+{
+  "actorKeyValueStoreSchemaVersion": 1,
+  "title": "Zillow listing agents run records",
+  "description": "Default key-value store with the listings collected on the run, the run summary, and the resume checkpoint.",
+  "collections": {
+    "listings": {
+      "title": "Listings",
+      "description": "Listings collected on this run, with the run counts.",
+      "key": "LISTINGS",
+      "contentTypes": ["application/json"]
+    },
+    "summary": {
+      "title": "Summary",
+      "description": "listings_found, agents_found, agents_enriched, and blocked_zips for the finished run.",
+      "key": "SUMMARY",
+      "contentTypes": ["application/json"]
+    },
+    "checkpoint": {
+      "title": "Checkpoint",
+      "description": "Search position, pending listing URLs, and agents already kept. A migrated or restarted run resumes from this record.",
+      "key": "CHECKPOINT",
+      "contentTypes": ["application/json"]
+    }
+  }
+}

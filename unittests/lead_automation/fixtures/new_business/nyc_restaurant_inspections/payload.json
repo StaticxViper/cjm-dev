@@ -1,0 +1,41 @@
+[
+  {
+    "camis": "59000001",
+    "dba": "EXAMPLE NOODLE BAR",
+    "boro": "Brooklyn",
+    "building": "675",
+    "street": "EXAMPLE   AVENUE",
+    "zipcode": "11225",
+    "phone": "7185550101",
+    "cuisine_description": "Chinese",
+    "inspection_date": "{{days_ago:5}}",
+    "inspection_type": "Pre-permit (Operational) / Initial Inspection",
+    "grade": "A"
+  },
+  {
+    "camis": "59000001",
+    "dba": "EXAMPLE NOODLE BAR",
+    "boro": "Brooklyn",
+    "building": "675",
+    "street": "EXAMPLE   AVENUE",
+    "zipcode": "11225",
+    "phone": "7185550101",
+    "cuisine_description": "Chinese",
+    "inspection_date": "{{days_ago:5}}",
+    "inspection_type": "Pre-permit (Operational) / Initial Inspection",
+    "grade": "A"
+  },
+  {
+    "camis": "59000002",
+    "dba": "SAMPLE CAFE",
+    "boro": "Manhattan",
+    "building": "10",
+    "street": "SAMPLE STREET",
+    "zipcode": "10003",
+    "phone": "2125550102",
+    "cuisine_description": "Coffee/Tea",
+    "inspection_date": "{{days_ago:9}}",
+    "inspection_type": "Pre-permit (Non-operational) / Initial Inspection",
+    "grade": "N"
+  }
+]

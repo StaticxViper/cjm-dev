@@ -30,33 +30,7 @@ Shared behavior:
 
 ## Listing draft (replace after you copy)
 
-### What it does
-
-One paragraph. Name the site, the fields, and that the Actor is low-volume research.
-
-### Input
-
-Show a sample JSON object.
-
-### Output
-
-Show one dataset item.
-
-### Limitations
-
-Rate limits, pages that are skipped, and what the Actor refuses to do.
-
-### Robots and terms
-
-Say which paths are requested, that robots.txt is checked with the longest-match evaluator, and any site terms that restrict automated extraction.
-
-### Pricing
-
-Pay per event from `.actor/pay_per_event.json`. `result` is the success row. `proxy` is a blocked request retried through Apify Proxy. `captcha` is a solve that returned a token. Blocked rows and direct requests are stored and not billed for those events. Replace the placeholder amounts when the listing is priced.
-
-### Categories
-
-Suggest Console categories. Do not invent an `actor.json` categories field.
+Replace this file with the Store page. Follow the [Store README template](../README.md#store-readme-template): H1 equal to the `actor.json` title and a one-sentence answer, who it is for, a field table and sample row, input, pricing with 100 and 1,000 result costs, limits and data source, FAQ, integrations, related actors, and a changelog pointer. Build notes go under [Actor notes](../README.md#actor-notes). Set Store categories in the Console; there is no `actor.json` categories field.
 
 ## Local run
 

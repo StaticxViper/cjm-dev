@@ -1,40 +1,37 @@
 # City Data Scraper – Population, Crime & Demographics
 
-Playwright Actor that reads [city-data.com](https://www.city-data.com/) city profile pages and optional crime pages, then pushes one JSON object per city. It wraps `scripts/city_data/city_data_scraper.py` (issue #99). It does not call a paid API and it does not post results to Lovable.
+**City Data Scraper returns one JSON row per US city from city-data.com, with population, income, housing, cost of living, education, and crime stats, for real estate investors, market researchers, and anyone comparing towns.**
 
-Low-volume research. Keep `delaySeconds` at 1.5 or higher.
+$0.008 per city profile ($8 per 1,000) on the free tier, lower on paid Apify plans. Only successful profiles are billed.
 
-## What it does
+## Who is it for?
 
-For each city the Actor opens one Chromium browser, loads `https://www.city-data.com/city/{City}-{State}.html`, and parses population, income, housing, cost of living, and education with the same BeautifulSoup parsers as the local CLI. When `crime` is requested it also loads `/crime/crime-{City}-{State}.html`. Images, fonts, media, and common ad hosts are blocked by the existing session. A missing city page sets `ok: false` and the run continues with the next city.
+- **Real estate investors and agents** comparing median home value, rent, and renter share across towns before buying or farming an area.
+- **Relocation and site-selection analysts** who need population, income, and cost-of-living numbers side by side.
+- **Local lead-gen and marketing teams** sizing a market by households, income, and growth before a campaign.
+- **Journalists and researchers** pulling crime index and year-by-year crime counts for a list of cities.
+- **Data teams** enriching a CRM or spreadsheet of city names with demographics.
 
-Sex-offender lists are not scraped.
+## What data do you get?
 
-## Input
+One dataset item per city. Pick the groups you need with `fields`.
 
-`fixtures/INPUT.json`:
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `city`, `state` | string | The city and 2-letter state you asked for |
+| `ok` | boolean | `true` when the city page was fetched and parsed |
+| `sourceStatus` | string | `ok`, `blocked`, `robots_disallowed`, or `error` |
+| `error` | string | Reason when the row is not `ok` |
+| `urls` | object | city-data.com URLs used for the city and crime pages |
+| `population` | object | Year, total, urban/rural %, change since 2000, median age, males, females |
+| `income` | object | Year, median household income, per capita income, poverty rate |
+| `housing` | object | Median home value, median gross rent, renter % |
+| `cost_of_living` | object | Cost-of-living index and year |
+| `education` | object | High school or higher %, bachelor's or higher % (age 25+) |
+| `crime` | object | Crime index, year, vs US average, year-over-year %, homicides, violent and property rates, officers per 1,000, `by_year` |
+| `scrapedAt` | string | ISO timestamp of the fetch |
 
-```json
-{
-  "city": "Clementon",
-  "state": "NJ",
-  "fields": ["population", "crime"],
-  "delaySeconds": 1.5,
-  "timeoutMs": 30000,
-  "headless": true,
-  "maxCities": 1,
-  "maxSpendUsd": 5,
-  "maxProxyCostUsd": 0.5,
-  "allowCaptcha": false,
-  "proxyConfiguration": {"useApifyProxy": false}
-}
-```
-
-A list works too: `cities: [{"city": "Clementon", "state": "NJ", "slug": ""}]`. Optional `slug` overrides the path token. `fields` is a multi-select of the six groups. `headless` defaults to true. `maxSpendUsd` defaults to 5, `maxProxyCostUsd` to 0.50, and `allowCaptcha` to false. The proxy group is used only after a block. The default run timeout is 600 seconds at 2048 MB.
-
-## Output
-
-One dataset item per city, plus key-value `SUMMARY` with pushed / blocked / error counts.
+Sample row from a live Clementon, NJ run (later runs will show newer numbers):
 
 ```json
 {
@@ -52,47 +49,95 @@ One dataset item per city, plus key-value `SUMMARY` with pushed / blocked / erro
 }
 ```
 
-The sample numbers match a live Clementon fetch. A later page will differ. Missing parser keys are omitted. `sourceStatus` is `ok`, `error`, or `robots_disallowed`. Overview shows the city and status. Detail shows `urls`, `population`, `income`, `housing`, `cost_of_living`, `education`, and `crime`.
+Keys a page does not publish are left out. In the dataset, the Overview view shows the city and status, and the Detail view shows every group.
 
-### Field glossary
+## Input
 
-| Group | Page | Keys |
-|-------|------|------|
-| `population` | City | year, total, urban/rural %, change since 2000, median age, males, females |
-| `income` | City | year, median household, per capita, poverty rate |
-| `housing` | City | median home value, median gross rent, renter % |
-| `cost_of_living` | City | index, year |
-| `education` | City (age 25+) | high school or higher %, bachelor's or higher % |
-| `crime` | Crime page, city table if the crime URL 404s | index, year, vs US average, year-over-year %, homicides, violent/property rates, officers per 1,000, `by_year` |
+Two cities with every field group:
 
-## Limitations
-
-- One browser for the run. Delay default is 1.5 seconds between requests, same as the CLI.
-- The session retries a failed navigation once. After a block (HTTP 401, 403, 429, or a challenge page) the Actor may open Apify Proxy once and retry that URL. It does not add another retry loop on top of that.
-- A disallowed path is skipped. The row records `robots_disallowed` and no request is sent. That skip is not retried through a proxy.
-- `maxSpendUsd` defaults to 5 and `maxProxyCostUsd` defaults to 0.50. `allowCaptcha` defaults to false. A block with no proxy budget, with CAPTCHA solving off, or with no solver configured pushes `sourceStatus: "blocked"` and later cities are not requested. This Actor does not ship a solver.
-- The proxy group is `proxyConfiguration` or `proxyGroups`. An empty group uses datacenter, and only after a block. The first page stays direct. No stealth plugin is added.
-- This Actor does not geocode addresses and does not ingest rows into another app.
-
-## Robots
-
-Checked against the live `https://www.city-data.com/robots.txt` while packaging. For `User-agent: *`, `/city/{Name}.html` and `/crime/crime-{Name}.html` are not disallowed. The file does disallow paths such as `/so/`, `/city/js/getBoxes.php*`, forums search, and several script endpoints. Named AI crawlers are `Disallow: /`. This Actor sends the same Chrome user agent as the local scraper and evaluates the `*` group with the longest-match rules in `crm_enrich_robots.py` before every URL. If the site later disallows `/city/` or `/crime/`, those fetches stop.
-
-## Pricing
-
-Pay per event. The primary event is `result` at $0.01, charged only when `ok` is true. A robots skip, a missing page, a blocked row, and any other error are stored and not billed. `proxy` is $0.01, charged only when a blocked page is retried through Apify Proxy. `captcha` is $1.00, charged only when a solver returns a token. Direct page loads are free. Dataset items are not a charge event. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. Memory default is 2048 MB and the default timeout is 600 seconds. City-data terms restrict automated collection; keep runs small and leave the delay at 1.5 seconds or higher.
-
-## Categories
-
-Set in the Apify Console, not in `actor.json`. Suggested: Business, Real estate.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/city-data
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "cities": [
+    {"city": "Clementon", "state": "NJ"},
+    {"city": "Austin", "state": "TX"}
+  ],
+  "fields": ["population", "income", "housing", "cost_of_living", "education", "crime"],
+  "maxCities": 5
+}
 ```
 
-Publish with `APIFY_TOKEN` (`apify push`). That token is not `APIFY_API_KEY`. See `scripts/apify-scripts/README.md`.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `cities` | — | Up to 50 `{city, state}` objects. An optional `slug` overrides the URL token |
+| `city`, `state` | — | Shortcut for a single city |
+| `fields` | all six groups | `population`, `income`, `housing`, `cost_of_living`, `education`, `crime` |
+| `maxCities` | 5 (max 50) | Cities processed per run |
+| `delaySeconds` | 1.5 | Pause between requests. Keep it at 1.5 or higher |
+| `timeoutMs` | 30000 | Page-load timeout |
+| `maxSpendUsd` | 5 (max 100) | Hard cap on what one run can charge |
+| `maxProxyCostUsd`, `allowCaptcha`, `proxyConfiguration` | 0.5, false, off | Block handling, see below |
+
+## How much does it cost?
+
+Pay per event. You pay only for city profiles that come back `ok`.
+
+| Event | Free tier | Bronze | Silver | Gold and up |
+|-------|-----------|--------|--------|-------------|
+| City profile (`result`) | $0.008 | $0.007 | $0.006 | $0.005 |
+
+- **100 cities:** 100 × $0.008 = **$0.80**
+- **1,000 cities:** 1,000 × $0.008 = **$8.00** (as low as $5.00 on Gold)
+
+Missing pages, robots skips, blocked rows, and errors are saved to the dataset and not billed. Apify adds its small per-run start event. `maxSpendUsd` stops the run before a charge would pass your cap.
+
+## Limits and data source
+
+- **Source:** public city and crime pages on [city-data.com](https://www.city-data.com/). Each city is `/city/{City}-{State}.html`, plus `/crime/crime-{City}-{State}.html` when `crime` is selected. When the crime page is missing, crime numbers come from the city page table.
+- **Coverage:** US cities and towns that have a city-data.com profile. A city without a page returns `ok: false` and the run moves on.
+- **Pacing:** one browser per run, 1.5 seconds between requests by default, one retry on a failed navigation.
+- **Robots:** robots.txt is checked before every URL. A disallowed path is skipped and recorded as `robots_disallowed`.
+- **Blocks:** the first request is always direct. After a real block (HTTP 401, 403, 429, or a challenge page) the Actor may retry that URL once through Apify Proxy, inside `maxProxyCostUsd`. If it is still blocked, the row is `blocked` and later cities are not requested. No CAPTCHA solver ships with this Actor.
+- **Not scraped:** sex-offender lists, forum pages, and anything behind a login. Addresses are not geocoded.
+- **Terms:** city-data.com restricts automated collection. Keep runs small and keep the delay at 1.5 seconds or higher.
+
+## FAQ
+
+### How do I get population and median income for a list of US cities?
+
+Add each city and state to `cities`, keep `population` and `income` in `fields`, and run. Each city comes back as one row with a `population` and an `income` object. Export as CSV or Excel from the dataset tab.
+
+### Can I get crime rates by city?
+
+Yes. Include `crime` in `fields`. The row's `crime` object has the city-data crime index, its comparison with the US average, year-over-year change, violent and property crime rates, and a `by_year` history when the page publishes one.
+
+### What counts as a billable result?
+
+One city profile with `ok: true`. Cities with no page, robots-skipped cities, blocked requests, and errors are free.
+
+### Does this need a proxy?
+
+No. Runs start on a direct connection. A proxy is used only to retry a request that was actually blocked, and the current price list has no separate proxy charge.
+
+### How many cities can I run at once?
+
+Up to 50 per run (`maxCities`). For bigger lists, split them across runs or schedule the Actor.
+
+### Is the data current?
+
+The numbers are what city-data.com shows at the time of the run. `scrapedAt` records when each row was fetched, and each group carries the year city-data.com reports.
+
+## Integrations and output
+
+- **Dataset:** one row per city. Download it as JSON, CSV, Excel, or HTML, or read it from the API.
+- **Key-value store:** `SUMMARY` holds the pushed, blocked, and error counts for the run.
+- **Automation:** call the Actor from the Apify API, schedule it in Apify, or connect it to Make, Zapier, n8n, or Google Sheets through Apify integrations.
+
+## Related actors
+
+- [Building Permits Scraper](https://apify.com/staticxviper/permits): recent roofing, solar, and pool permits for Chicago, Seattle, Austin, and Los Angeles.
+- [Zillow Real Estate Agent Scraper](https://apify.com/staticxviper/zillow-agents): listing agents by ZIP code with phone and email.
+- [New Business Leads](https://apify.com/staticxviper/new-business): newly registered LLCs and corporations by state and county.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

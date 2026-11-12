@@ -14,12 +14,12 @@ from datetime import date, datetime, timedelta
 try:
     from .fetch import is_block
     from .runtime import iso_now, prepare_imports
-    from .sources import entity_sources
+    from .sources import ENTITY_TRIGGER, TRIGGER_LABELS, TRIGGERS, feed_sources, trigger_of
     from .spend import ENRICHMENT_EVENT, PRICES_USD
 except ImportError:
     from fetch import is_block
     from runtime import iso_now, prepare_imports
-    from sources import entity_sources
+    from sources import ENTITY_TRIGGER, TRIGGER_LABELS, TRIGGERS, feed_sources, trigger_of
     from spend import ENRICHMENT_EVENT, PRICES_USD
 
 
@@ -188,6 +188,11 @@ def actor_input_to_config(actor_input, today=None):
         elif code not in states:
             states.append(code)
     formed = _parse_since(raw.get("formedSince"), today)
+    triggers = []
+    for item in _as_list(raw.get("triggers")) or [ENTITY_TRIGGER]:
+        if item not in triggers:
+            triggers.append(item)
+    unknown = [item for item in triggers if item not in TRIGGERS]
     error = ""
     if not provided:
         error = "At least one state is required."
@@ -195,12 +200,15 @@ def actor_input_to_config(actor_input, today=None):
         error = "Use a two-letter state code. Verified feeds today are NY, PA, and CO."
     elif formed is None:
         error = "formedSince must be YYYY-MM-DD."
+    elif unknown:
+        error = "Unknown trigger " + ", ".join(unknown) + ". Use " + ", ".join(TRIGGERS) + "."
     max_spend = _bounded_float(raw.get("maxSpendUsd"), 5.0, 0.0, 100.0)
     max_proxy = _bounded_float(raw.get("maxProxyCostUsd"), 0.5, 0.0, 20.0)
     if max_proxy > max_spend:
         max_proxy = max_spend
     return {
         "states": states,
+        "triggers": triggers,
         "counties": _as_list(raw.get("counties")),
         "entity_types": _as_list(raw.get("entityTypes") if raw.get("entityTypes") is not None else raw.get("entity_types")),
         "formed_since": formed,
@@ -228,12 +236,15 @@ def billable_enrichment(row):
     return bool((row.get("website") or "").strip() or (row.get("email") or "").strip())
 
 
-def _blank_row(status, error, scraped_at, state="", source_url=""):
+def _blank_row(status, error, scraped_at, state="", source_url="", trigger=""):
     return {
         "entity_id": "",
         "name": "",
+        "trigger": trigger,
+        "trigger_date": "",
         "formation_date": "",
         "type": "",
+        "status": "",
         "address": "",
         "county": "",
         "state": state,
@@ -254,6 +265,12 @@ def _formation_date(row):
         if len(value) == 10:
             return value
     return ""
+
+
+def _trigger_date(row):
+    dates = [str(item.get("date") or "")[:10] for item in row.get("newness_evidence") or []]
+    dates = [value for value in dates if len(value) == 10]
+    return min(dates) if dates else _formation_date(row)
 
 
 def _site_verified(row):
@@ -447,14 +464,42 @@ def _source_url(record):
     return record.get("source_record_url") or record.get("source_url") or ""
 
 
-def _dataset_row(record, scraped_at):
+def _record_trigger(record, triggers_by_source):
+    """First feed that contributed the record. Dedupe keeps source order."""
+    for source in record.get("sources") or []:
+        trigger = triggers_by_source.get(source.get("source_name") or "")
+        if trigger:
+            return trigger
+    return triggers_by_source.get(record.get("source_name") or "", "")
+
+
+def _interleave_by_trigger(records, triggers_by_source):
+    """Round-robin across triggers so maxResults does not go to the first feed only."""
+    buckets = {}
+    for record in records:
+        buckets.setdefault(_record_trigger(record, triggers_by_source), []).append(record)
+    if len(buckets) < 2:
+        return list(records)
+    queues = list(buckets.values())
+    ordered = []
+    while any(queues):
+        for queue in queues:
+            if queue:
+                ordered.append(queue.pop(0))
+    return ordered
+
+
+def _dataset_row(record, scraped_at, triggers_by_source=None):
     website = (record.get("website") or "").strip()
     email = (record.get("email") or "").strip()
     return {
         "entity_id": record.get("entity_id") or "",
         "name": record.get("business_name") or "",
+        "trigger": _record_trigger(record, triggers_by_source or {}),
+        "trigger_date": _trigger_date(record),
         "formation_date": _formation_date(record),
         "type": record.get("category") or "",
+        "status": record.get("business_status") or "",
         "address": record.get("address") or "",
         "county": record.get("county") or "",
         "state": record.get("state") or "",
@@ -480,12 +525,13 @@ def scrape(config, fetch, entries=None, today=None):
         return [row], summary
 
     OpenDataAdapter, resolve_fixture_dates, dedupe_new_businesses = _load_modules()
-    selected, missing = entity_sources(config["states"], entries)
+    selected, missing = feed_sources(config["states"], config.get("triggers") or [ENTITY_TRIGGER], entries)
+    triggers_by_source = {entry.get("id") or "": trigger_of(entry) for _trigger, entry in selected}
     collected = []
     status_rows = []
     source_reports = []
     stopped = ""
-    for entry in selected:
+    for trigger, entry in selected:
         if stopped:
             break
         adapter = OpenDataAdapter(entry)
@@ -496,7 +542,7 @@ def scrape(config, fetch, entries=None, today=None):
             config["max_results"],
             resolve_fixture_dates,
         )
-        report = {"id": adapter.id, "status": "ok", "records": len(records)}
+        report = {"id": adapter.id, "trigger": trigger, "status": "ok", "records": len(records)}
         if failure is not None:
             kind = _outcome(failure)
             report["status"] = kind
@@ -509,6 +555,7 @@ def scrape(config, fetch, entries=None, today=None):
                     scraped_at,
                     state=state,
                     source_url=adapter.url,
+                    trigger=trigger,
                 ))
                 continue
             if kind == "blocked":
@@ -519,6 +566,7 @@ def scrape(config, fetch, entries=None, today=None):
                     scraped_at,
                     state=state,
                     source_url=adapter.url,
+                    trigger=trigger,
                 ))
                 break
             status_rows.append(_blank_row(
@@ -527,6 +575,7 @@ def scrape(config, fetch, entries=None, today=None):
                 scraped_at,
                 state=state,
                 source_url=adapter.url,
+                trigger=trigger,
             ))
             if kind == "cap":
                 stopped = "request_cap"
@@ -535,23 +584,27 @@ def scrape(config, fetch, entries=None, today=None):
         source_reports.append(report)
         for record in records:
             row = record.as_dict()
+            if _trigger_date(row) > today.isoformat():
+                continue
             if not county_matches(row.get("county"), config["counties"]):
                 continue
             if not type_matches(row.get("category"), config["entity_types"]):
                 continue
             collected.append(row)
 
-    for state in missing:
+    for state, trigger in missing:
         if stopped:
             break
         status_rows.append(_blank_row(
             "unsupported",
-            f"No verified Secretary of State open-data feed for {state}.",
+            f"No verified {TRIGGER_LABELS.get(trigger, trigger)} open-data feed for {state}.",
             scraped_at,
             state=state,
+            trigger=trigger,
         ))
 
     merged, stats = dedupe_new_businesses(collected)
+    merged = _interleave_by_trigger(merged, triggers_by_source)
     truncated = len(merged) > config["max_results"]
     merged = merged[: config["max_results"]]
     can_enrich = (
@@ -577,12 +630,12 @@ def scrape(config, fetch, entries=None, today=None):
         for row in merged:
             row["enrichmentFound"] = False
 
-    rows = [_dataset_row(row, scraped_at) for row in merged]
+    rows = [_dataset_row(row, scraped_at, triggers_by_source) for row in merged]
     rows.extend(status_rows)
     if not any(row.get("sourceStatus") == "found" for row in rows) and not status_rows:
         rows.append(_blank_row(
             "not_found",
-            "No entities matched this state, county, date, and type filter.",
+            "No records matched this state, trigger, county, date, and type filter.",
             scraped_at,
             state=config["states"][0] if config["states"] else "",
         ))
@@ -603,6 +656,7 @@ def scrape(config, fetch, entries=None, today=None):
         sources=source_reports,
     )
     summary["stopped"] = stopped
+    summary["triggers"] = list(config.get("triggers") or [ENTITY_TRIGGER])
     return rows, summary
 
 

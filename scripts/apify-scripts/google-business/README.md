@@ -1,72 +1,38 @@
 # Google Maps Business Leads – Phone, Website & Rating
 
-Low-volume Google Maps lookup for a business name plus a US state. The Actor searches `https://www.google.com/maps/search/`, opens place pages, and scores each listing with the same name and location rules as issue #127. A row is a `match` only when that scorer would accept it. The first Maps card is never used as a fallback.
+**Google Maps Business Leads takes a business name and US state and returns the matching Google Maps listing, with phone, website, address, rating, review count, and a match confidence decision, for sales teams and data teams cleaning or enriching lead lists.**
 
-This is not the Google Places API. That API is a separate paid product and this Actor does not call it.
+$0.006 per accepted match ($6 per 1,000) on the free tier, as low as $0.003 on paid Apify plans. Rejected and low-confidence lookups are free.
 
-## What it does
+## Who is it for?
 
-Each query becomes one dataset item:
+- **Sales and SDR teams** who have company names from a CRM or list and need a verified phone number and website.
+- **RevOps and data teams** de-duplicating or enriching account records with Maps place IDs and categories.
+- **Agencies** checking a prospect's rating and review count before outreach.
+- **Lead-list builders** who need a confidence score so a wrong business never lands in the list.
 
-| `decision` | Meaning |
-|------------|---------|
-| `match` | Score at or above `minConfidence` (default 80) and no hard reject |
-| `low_confidence` | Score at or above `lowConfidenceFloor` (default 60) and below the minimum |
-| `no_match` | Hard reject, weak score, or no listing |
-| `blocked` | Google showed a block page. Later queries are not run |
-| `error` | Input, robots, or unexpected failure |
+## What data do you get?
 
-`hardRejects` can include `brand_token_missing`, `city_mismatch`, `distinctive_token_missing`, `state_mismatch`, `county_mismatch`, `address_mismatch`, `area_code_state_mismatch`, `permanently_closed`, and `website_is_directory`. Legal suffixes such as LLC are stripped before the name comparison. State on the query is required.
+One dataset item per query.
 
-A different brand is not returned as the candidate. Retail words (`food`, `market`, `store`, `shop`, `grocery`) do not count as the brand, and every remaining brand token has to match. When the query has a city, a listing in another city is dropped before scoring. A card that already passed that check is scored under the query name, so a Maps title of "Wegmans" can match "Wegmans Food Markets". The row still shows the Maps title. `no_match` leaves `candidate` null.
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `query` | object | The name, city, county, state, and `maxResults` you sent |
+| `decision` | string | `match`, `low_confidence`, `no_match`, `blocked`, or `error` |
+| `score` | number | Match score from 0 to 100 |
+| `breakdown` | object | Points for name, location, category, and corroboration |
+| `hardRejects` | array | Reasons a listing was rejected, such as `city_mismatch` or `brand_token_missing` |
+| `candidate` | object | The matched listing: `business_name`, `phone`, `website`, `address`, `rating`, `user_ratings_total`, `category`, `mapsUrl`, `placeId`. `null` on `no_match` |
+| `emails` | array | Validated emails from the matched business's own website, when `includeEmails` is on |
+| `sourceStatus` | string | `ok`, `blocked`, `robots_disallowed`, or `error` |
+| `error` | string | Reason when the row failed |
+| `scrapedAt` | string | ISO timestamp |
 
-Known false pairs that stay `no_match`:
-
-- STRIKER CONSTRUCTION SERVICES LLC (NY, Cattaraugus) vs “C. Staker Remodeling”
-- B&B Basecamp LLC (Denver) vs “Base Camp at Golden Gate Canyon”
-
-`includeEmails` defaults to false. When true, emails are read only from the website of a `match`, then validated. The Actor does not guess addresses and does not search Google for them.
-
-## Input
-
-`fixtures/INPUT.json`:
-
-```json
-{
-  "queries": [
-    {
-      "name": "Wegmans Food Markets",
-      "city": "Rochester",
-      "county": "Monroe",
-      "state": "NY",
-      "maxResults": 3
-    }
-  ],
-  "minConfidence": 80,
-  "lowConfidenceFloor": 60,
-  "maxSearches": 1,
-  "headless": true,
-  "includeEmails": false,
-  "maxSpendUsd": 5,
-  "maxProxyCostUsd": 0.5,
-  "allowCaptcha": false,
-  "proxyConfiguration": {"useApifyProxy": false}
-}
-```
-
-A single object (`name`, `state`, optional `city` and `county`) works when `queries` is omitted. `maxResults` defaults to 5 and cannot exceed 20. `maxSearches` defaults to 10 and cannot exceed 50. Search delay defaults to a random 2.0–4.5 seconds and detail delay to 1.2–2.8 seconds, same as the local Maps session. Overrides are optional. `maxSpendUsd` defaults to 5, `maxProxyCostUsd` to 0.50, and `allowCaptcha` to false. The proxy group is used only after a block. The default run timeout is 900 seconds at 2048 MB.
-
-## Output
+Sample row for a Rochester, NY lookup:
 
 ```json
 {
-  "query": {
-    "name": "Wegmans Food Markets",
-    "city": "Rochester",
-    "county": "Monroe",
-    "state": "NY",
-    "maxResults": 3
-  },
+  "query": {"name": "Wegmans Food Markets", "city": "Rochester", "county": "Monroe", "state": "NY", "maxResults": 3},
   "decision": "match",
   "score": 90,
   "breakdown": {"name": 50, "location": 35, "category": 0, "corroboration": 5},
@@ -87,40 +53,105 @@ A single object (`name`, `state`, optional `city` and `county`) works when `quer
 }
 ```
 
-A different business, such as Whole Foods Market in the same city, is not attached to that row. A rejected query looks like `decision: "no_match"`, `candidate: null`, and `hardRejects` of `brand_token_missing` or `city_mismatch`. The dataset Overview shows the decision and score. Detail shows the query, breakdown, hard rejects, and candidate. `sourceStatus` is `ok`, `blocked`, `robots_disallowed`, or `error`. Key-value `SUMMARY` counts pushed, blocked, and error rows.
+### What do the decisions mean?
 
-Candidate fields come from the Maps session: phone, website, address, rating, `user_ratings_total`, category, `mapsUrl`, `placeId`.
+| `decision` | Meaning | Billed |
+|------------|---------|--------|
+| `match` | Score at or above `minConfidence` (default 80) and no hard reject | yes |
+| `low_confidence` | Score between `lowConfidenceFloor` (default 60) and `minConfidence` | no |
+| `no_match` | Hard reject, weak score, or no listing. `candidate` is `null` | no |
+| `blocked` | Google showed a block page. Later queries are not run | no |
+| `error` | Bad input, robots, or an unexpected failure | no |
 
-## Google terms, robots, and blocks
+The first Maps card is never used as a fallback. A different brand in the same city, such as Whole Foods for a Wegmans query, is never attached to the row. Legal suffixes like LLC are ignored when names are compared, and a listing in another city is dropped before scoring.
 
-Google’s terms restrict automated extraction. A robots.txt `Allow` is not permission to automate Maps. This Actor is for occasional research, not bulk lead lists.
+## Input
 
-`https://www.google.com/robots.txt` is read first and evaluated with longest-match rules (`crm_enrich_robots.py`). Under those rules, `/maps/search/` and `/maps/place/` can be allowed while `Disallow: /maps/` is also present, and `/search` stays disallowed. This Actor never requests `https://www.google.com/search`. Python’s `urllib.robotparser` is not used, because it hides the more specific Maps `Allow` lines.
-
-If Google returns a block page, the Actor retries that query once through Apify Proxy when `maxProxyCostUsd` and `maxSpendUsd` still have room. The first search stays direct. The proxy group comes from `proxyConfiguration` or `proxyGroups`; an empty group uses datacenter. A CAPTCHA solve runs only when that retry is still a challenge, `allowCaptcha` is true, and the spend cap covers the solve. This Actor does not ship a solver, so `allowCaptcha: true` still pushes `blocked` and does not bill a solve until one is configured. When the cap is already spent, solving is off, or the proxy URL cannot be opened, the current query is pushed as `blocked`, remaining queries are skipped, and the run exits successfully. A robots disallow is not retried. Chromium starts with `--disable-blink-features=AutomationControlled` from `BusinessDiscoverySession`. No stealth plugin is added. Search and detail delays stay on the source session.
-
-## Limitations
-
-- One Maps page of results per query, then place pages up to `maxResults`.
-- Official Places API data (opening hours from the API, verified owner fields) is out of scope.
-- Emails are not collected for `low_confidence` or `no_match` rows.
-- ZIP-to-county and area-code checks use the tables in `scripts/lead_automation/data/` when those files are present.
-
-## Pricing
-
-Pay per event. The primary event is `result` at $0.05, charged only for `decision: "match"`. `low_confidence`, `no_match`, `blocked`, and `error` rows are stored and not billed. `proxy` is $0.01 and is charged only when a blocked query is retried through Apify Proxy. `captcha` is $1.00 and is charged only when a solver returns a token. Direct searches are free. Dataset items are not a charge event, so a rejected business does not cost a result. `maxSpendUsd` (default 5) caps those events together. `maxProxyCostUsd` (default 0.50) caps proxy events. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. A local run logs that the charge was ignored until the Console pricing model is pay per event; the dataset row is still saved. Default memory is 2048 MB and the default timeout is 900 seconds. Do not price this as a bulk crawler.
-
-## Categories
-
-Set in the Apify Console. Suggested: Business, Lead generation.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/google-business
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "queries": [
+    {"name": "Wegmans Food Markets", "city": "Rochester", "county": "Monroe", "state": "NY", "maxResults": 3}
+  ],
+  "minConfidence": 80,
+  "includeEmails": false
+}
 ```
 
-A local run opens Google Maps. Unit tests do not. Publish with `APIFY_TOKEN`, not `APIFY_API_KEY`. See `scripts/apify-scripts/README.md`.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `queries` | — | Up to 50 objects with `name` and `state` (required), plus optional `city`, `county`, `maxResults` |
+| `name`, `state`, `city`, `county` | — | Shortcut for a single query |
+| `maxResults` | 5 (max 20) | Maps listings opened per query |
+| `minConfidence` | 80 | Score needed for `match` |
+| `lowConfidenceFloor` | 60 | Score needed for `low_confidence` |
+| `maxSearches` | 10 (max 50) | Maps searches per run |
+| `includeEmails` | false | Read emails from the website of each `match` |
+| `maxSpendUsd` | 5 (max 100) | Hard cap on what one run can charge |
+| `maxProxyCostUsd`, `allowCaptcha`, `proxyConfiguration` | 0.5, false, off | Block handling, see below |
+
+Search and detail delays are randomized (2.0–4.5 s and 1.2–2.8 s) and can be overridden.
+
+## How much does it cost?
+
+Pay per event. You pay only for accepted matches.
+
+| Event | Free tier | Bronze | Silver | Gold and up |
+|-------|-----------|--------|--------|-------------|
+| Accepted match (`result`) | $0.006 | $0.005 | $0.004 | $0.003 |
+
+- **100 matches:** 100 × $0.006 = **$0.60**
+- **1,000 matches:** 1,000 × $0.006 = **$6.00** (as low as $3.00 on Gold)
+
+`low_confidence`, `no_match`, `blocked`, and `error` rows are saved and not billed, so a list full of closed or unknown businesses costs nothing for those rows. Emails do not add a charge. Apify adds its small per-run start event.
+
+## Limits and data source
+
+- **Source:** public Google Maps search (`/maps/search/`) and place pages (`/maps/place/`) in a real Chromium browser. This is not the paid Google Places API, and you do not need an API key.
+- **Never requested:** Google web search (`/search`). Emails are read only from the matched business's own website, never guessed and never searched on Google.
+- **Volume:** one Maps results page per query, then up to `maxResults` place pages. Built for lookups and list cleaning, not bulk crawling.
+- **Robots:** Google's robots.txt is checked with longest-match rules before any request.
+- **Blocks:** the first search is direct. After a block, the query may be retried once through Apify Proxy inside `maxProxyCostUsd`. If it is still blocked, that query is `blocked`, the remaining queries are skipped, and the run ends cleanly. No CAPTCHA solver ships with this Actor.
+- **Out of scope:** Places API fields such as official opening hours or owner-verified data.
+- **Terms:** Google's terms restrict automated extraction, and a robots.txt `Allow` is not permission. Use this Actor for occasional research and list hygiene.
+
+## FAQ
+
+### How do I find a business's phone number and website from its name?
+
+Add the business name and state (and city if you know it) to `queries` and run. A `match` row has the phone, website, address, and Maps URL in `candidate`.
+
+### How accurate are the matches?
+
+A row is a `match` only when the name and location checks score 80 or more and no hard reject fires, such as a different city, a missing brand word, a closed listing, or a directory site instead of the business's own website. Anything weaker is `low_confidence` or `no_match`, and is not billed.
+
+### Do I need a Google Places API key?
+
+No. The Actor reads the public Maps pages, so no Google API key or Google Cloud billing is involved.
+
+### Can it get business emails?
+
+Yes. Set `includeEmails: true`. Emails are read from the matched business's own website and validated. There is no extra charge for them.
+
+### Does this need a proxy?
+
+Usually not. Searches start direct, and a proxy is used only to retry a search that was blocked. The current price list has no separate proxy charge.
+
+### What counts as a result?
+
+One `match` row. Everything else is free.
+
+## Integrations and output
+
+- **Dataset:** one row per query, with an Overview view (decision and score) and a Detail view (query, breakdown, rejects, candidate). Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `SUMMARY` counts pushed, blocked, and error rows.
+- **Automation:** run it from the Apify API, on a schedule, or through Make, Zapier, n8n, or Google Sheets.
+
+## Related actors
+
+- [Home Services Leads](https://apify.com/staticxviper/home-services): build a lead list by niche and area, with emails and lead scores.
+- [New Business Leads](https://apify.com/staticxviper/new-business): newly registered LLCs and corporations you can then match on Maps.
+- [Contractor License Lookup](https://apify.com/staticxviper/contractor-license): verify a California contractor's license status.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

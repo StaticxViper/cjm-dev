@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated. Title is now "Home Services Leads – Local Contractor Leads with Emails".
+
 ## 0.1
 
 - Home-services lead enricher. Niche and area, or an upstream Maps dataset.

@@ -16,6 +16,9 @@ _SRC = _REPO / "scripts" / "apify-scripts" / "new-business" / "src"
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "new_business"
 _NY = _REPO / "unittests" / "lead_automation" / "fixtures" / "new_business" / "ny_active_corporations" / "payload.json"
 _PA = _REPO / "unittests" / "lead_automation" / "fixtures" / "new_business" / "pa_registered_businesses" / "payload.json"
+_SLA = _REPO / "unittests" / "lead_automation" / "fixtures" / "new_business" / "ny_sla_pending_licenses" / "payload.json"
+_CO_LIQUOR = _REPO / "unittests" / "lead_automation" / "fixtures" / "new_business" / "co_liquor_recently_approved" / "payload.json"
+_NYC = _REPO / "unittests" / "lead_automation" / "fixtures" / "new_business" / "nyc_restaurant_inspections" / "payload.json"
 
 # Other Actor tests import mapping/fetch/runtime by short name. Load this
 # Actor's modules without leaving those names bound for the rest of the suite.
@@ -268,6 +271,153 @@ class TestNewYorkFixture(unittest.TestCase):
         )
         ids = [row["entity_id"] for row in _found(rows)]
         self.assertEqual(ids, ["EXAMPLE7931947"])
+
+
+def _trigger_pages():
+    return {
+        "n9v6-gdp6": _json_text(_NY),
+        "f8i8-k2gm": _json_text(_SLA),
+        "htyp-tqzh": _json_text(_CO_LIQUOR),
+        "43nn-pn8j": _json_text(_NYC),
+    }
+
+
+class TestTriggers(unittest.TestCase):
+    def test_default_is_entity_formation_only(self):
+        config = mapping.actor_input_to_config({"states": ["NY"]})
+        self.assertEqual(config["triggers"], ["entity_formation"])
+        rows, summary, scripted, _config = _run(
+            Scripted(_trigger_pages()),
+            states=["NY"],
+            formedSince="2020-01-01",
+        )
+        self.assertEqual([row["trigger"] for row in _found(rows)], ["entity_formation"])
+        self.assertEqual(summary["triggers"], ["entity_formation"])
+        self.assertFalse(any("f8i8-k2gm" in url or "cityofnewyork" in url for url in scripted.direct_urls))
+
+    def test_unknown_trigger_is_an_input_error(self):
+        config = mapping.actor_input_to_config({"states": ["NY"], "triggers": ["permits"]})
+        self.assertIn("Unknown trigger permits", config["error"])
+
+    def test_ny_liquor_and_inspections_return_new_opening_rows(self):
+        rows, summary, scripted, _config = _run(
+            Scripted(_trigger_pages()),
+            states=["NY"],
+            triggers=["liquor_license", "restaurant_inspection"],
+            formedSince="2020-01-01",
+        )
+        found = {row["entity_id"]: row for row in _found(rows)}
+        self.assertEqual(
+            set(found),
+            {"NA-0340-26-900001", "NA-0081-26-900002", "59000001", "59000002"},
+        )
+        tavern = found["NA-0340-26-900001"]
+        self.assertEqual(tavern["name"], "Example Tavern")
+        self.assertEqual(tavern["trigger"], "liquor_license")
+        self.assertEqual(tavern["type"], "Restaurant")
+        self.assertEqual(tavern["status"], "Under Review")
+        self.assertEqual(tavern["county"], "Kings")
+        self.assertEqual(tavern["address"], "100 Example Ave, Brooklyn, NY, 11249")
+        self.assertEqual(len(tavern["trigger_date"]), 10)
+        self.assertEqual(tavern["formation_date"], "")
+        self.assertTrue(tavern["source_url"].endswith("application_id=NA-0340-26-900001"))
+        noodle = found["59000001"]
+        self.assertEqual(noodle["trigger"], "restaurant_inspection")
+        self.assertEqual(noodle["type"], "Pre-permit (Operational) / Initial Inspection")
+        self.assertEqual(noodle["status"], "Grade A")
+        self.assertTrue(noodle["source_url"].startswith("https://data.cityofnewyork.us/resource/43nn-pn8j.json?camis="))
+        self.assertEqual(summary["mergedDuplicates"], 1)
+        self.assertEqual(summary["billedBusiness"], 4)
+        self.assertEqual(summary["status"], "ok")
+        self.assertEqual(scripted.proxy_calls, [])
+        self.assertFalse(any("n9v6-gdp6" in url for url in scripted.direct_urls))
+        self.assertTrue(any(url == "https://data.cityofnewyork.us/robots.txt" for url in scripted.direct_urls))
+
+    def test_county_filter_uses_county_names_for_boroughs(self):
+        rows, _summary, _scripted, _config = _run(
+            Scripted(_trigger_pages()),
+            states=["NY"],
+            triggers=["liquor_license", "restaurant_inspection"],
+            counties=["Kings"],
+            formedSince="2020-01-01",
+        )
+        self.assertEqual(
+            sorted(row["entity_id"] for row in _found(rows)),
+            ["59000001", "NA-0340-26-900001"],
+        )
+
+    def test_type_filter_matches_license_type(self):
+        rows, _summary, _scripted, _config = _run(
+            Scripted(_trigger_pages()),
+            states=["NY"],
+            triggers=["liquor_license"],
+            entityTypes=["Grocery Store"],
+            formedSince="2020-01-01",
+        )
+        self.assertEqual([row["entity_id"] for row in _found(rows)], ["NA-0081-26-900002"])
+
+    def test_future_trigger_date_is_dropped(self):
+        rows, summary, _scripted, _config = _run(
+            Scripted(_trigger_pages()),
+            states=["CO"],
+            triggers=["liquor_license"],
+            formedSince="2020-01-01",
+        )
+        found = _found(rows)
+        self.assertEqual([row["entity_id"] for row in found], ["03-90001"])
+        self.assertEqual(found[0]["type"], "Brew Pub (city)")
+        self.assertEqual(found[0]["status"], "Approved")
+        self.assertEqual(summary["billedBusiness"], 1)
+
+    def test_state_without_a_trigger_feed_is_free(self):
+        rows, summary, scripted, _config = _run(
+            Scripted(_trigger_pages()),
+            states=["PA", "CO"],
+            triggers=["liquor_license", "restaurant_inspection"],
+            formedSince="2020-01-01",
+        )
+        unsupported = [(row["state"], row["trigger"]) for row in rows if row["sourceStatus"] == "unsupported"]
+        self.assertEqual(unsupported, [
+            ("PA", "liquor_license"),
+            ("PA", "restaurant_inspection"),
+            ("CO", "restaurant_inspection"),
+        ])
+        message = next(row["error"] for row in rows if row["sourceStatus"] == "unsupported")
+        self.assertEqual(message, "No verified liquor-license open-data feed for PA.")
+        self.assertEqual(summary["billedBusiness"], 1)
+        self.assertFalse(any("6ytb-f2cq" in url for url in scripted.direct_urls))
+
+    def test_block_on_a_trigger_feed_pushes_blocked_and_stops(self):
+        scripted = Scripted(_trigger_pages())
+        scripted._marked = lambda url: "f8i8-k2gm" in url
+        rows, summary, scripted, _config = _run(
+            scripted,
+            states=["NY"],
+            triggers=["liquor_license", "restaurant_inspection"],
+            formedSince="2020-01-01",
+            maxProxyCostUsd=0,
+        )
+        blocked = [row for row in rows if row["sourceStatus"] == "blocked"]
+        self.assertEqual(len(blocked), 1)
+        self.assertEqual(blocked[0]["trigger"], "liquor_license")
+        self.assertEqual(summary["stopped"], "budget")
+        self.assertEqual(summary["billedBusiness"], 0)
+        self.assertFalse(any("cityofnewyork" in url for url in scripted.direct_urls))
+
+    def test_max_results_caps_rows_across_triggers(self):
+        rows, summary, _scripted, _config = _run(
+            Scripted(_trigger_pages()),
+            states=["NY"],
+            triggers=["entity_formation", "liquor_license", "restaurant_inspection"],
+            formedSince="2020-01-01",
+            maxResults=3,
+        )
+        self.assertEqual(
+            [row["trigger"] for row in _found(rows)],
+            ["entity_formation", "liquor_license", "restaurant_inspection"],
+        )
+        self.assertTrue(summary["truncated"])
+        self.assertEqual(summary["billedBusiness"], 3)
 
 
 class TestDedupe(unittest.TestCase):

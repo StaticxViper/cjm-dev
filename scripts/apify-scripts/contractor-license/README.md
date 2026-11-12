@@ -1,46 +1,37 @@
 # Contractor License Lookup – Verify License Status (CA)
 
-Public-record contractor license lookup for one state per run. Issue #155. California posts the official CSLB Check a License form for a license number or business name. Arizona, New Jersey, and Pennsylvania each have a small adapter. A Cloudflare or Turnstile challenge, and a portal that does not publish an open file, push one status row and exit 0. This Actor does not launch Chromium, rotate proxies, or solve CAPTCHAs.
+**Contractor License Lookup checks a California contractor license by license number or business name with the official CSLB license check, and returns status, classification, issue and expiry dates, bond, insurance, and address, for homeowners, general contractors, insurers, and lead-gen teams who need to verify a contractor fast.**
 
-Sheriff-sale, foreclosure, and probate feeds are out of scope.
+$0.008 per found license ($8 per 1,000) on the free tier, lower on paid Apify plans. A lookup that finds nothing is free.
 
-Low-volume research. A California license or name check is a few HTML pages. Keep `delaySeconds` at 2 or higher.
+## Who is it for?
 
-## What it does
+- **General contractors and property managers** verifying subcontractors before a job.
+- **Insurance carriers, agents, and surety bond writers** checking license status, bond, and workers' comp exemption.
+- **Home-improvement marketplaces and lead sellers** screening contractors before listing them.
+- **Lenders and title companies** confirming the contractor on a renovation loan.
+- **Lead-gen teams** pulling licensed contractors by trade classification in California.
 
-| State | Board | What the adapter does |
-|-------|--------|------------------------|
-| CA | Contractors State License Board | Posts the official Check a License form by license number or business name, then reads the detail page. The statewide master file is not downloaded for those lookups. A trade with no license number and no name streams that file and stops at the result cap. |
-| AZ | Registrar of Contractors | Reads the posting-list page and the dated "All Current Contractors" CSV when that HTML is served. A Cloudflare challenge stops the run. The Salesforce search is not used. |
-| NJ | Department of Community Affairs | Checks the registered new-home builder page. That page now links a service portal that does not return records anonymously, so the adapter returns `unsupported` and does not open the portal. Consumer Affairs mylicense (home-improvement registrations) is a different board and is not requested. |
-| PA | Attorney General, Home Improvement Consumer Protection Act | Confirmed board: there is no statewide general-contractor license. The HIC search page loads Cloudflare Turnstile. The adapter returns `captcha` and does not submit the form. PALS and municipal licenses are not included. |
+## What data do you get?
 
-A name search ignores punctuation and company suffixes such as LLC. A license number matches exactly after spaces and leading zeros are removed. A trade matches a classification code (`B-1` and `B1` are the same code) or every word of a class description. When more than one of license number, name, and trade is set, all of them must match. Results are the first matches in the public file, capped by `maxResults`.
+One dataset item per found license, or one status row when nothing is found.
 
-## Input
+| Field | Type | What it holds |
+|-------|------|---------------|
+| `state` | string | State searched |
+| `license_no` | string | License number |
+| `name` | string | Business name on the license |
+| `status` | string | The board's license status, such as `CLEAR` |
+| `class` | string | Classification codes, such as `B` (General Building) |
+| `issue_date`, `expiry_date` | string | Dates as the board publishes them |
+| `bond` | string | Contractor bond surety and amount |
+| `insurance` | string | Workers' compensation coverage, or `Exempt` |
+| `address` | string | Business address of record |
+| `source_url` | string | The board page the record came from |
+| `sourceStatus` | string | `found`, `not_found`, `unsupported`, `captcha`, `robots_disallowed`, or `error` |
+| `ok`, `error`, `scrapedAt` | | Success flag, failure reason, timestamp |
 
-`fixtures/INPUT.json`:
-
-```json
-{
-  "state": "CA",
-  "licenseNo": "99999999",
-  "name": "",
-  "trade": "",
-  "maxResults": 5,
-  "maxRequests": 4,
-  "delaySeconds": 2,
-  "headless": true
-}
-```
-
-`state` is required (`CA`, `AZ`, `NJ`, or `PA`). Provide `licenseNo`, `name`, `trade`, or a combination. `license_no` is accepted as an alias of `licenseNo`. `maxResults` defaults to 25 and cannot exceed 50. `maxRequests` defaults to 4 (robots.txt counts) and cannot exceed 8. `headless` is kept for the shared Actor contract and has no effect, because no browser is launched. The sample license number is not on file, so a run of this fixture is a free `not_found` from the license-check page.
-
-## Output
-
-One dataset item per found license, or one status row when nothing is billed. Key-value `SUMMARY` has pushed, found, notFound, unsupported, captcha, and billed counts.
-
-Found license (shape only; these values are not a live record):
+Sample found row (shape only, values are not a live record):
 
 ```json
 {
@@ -62,52 +53,97 @@ Found license (shape only; these values are not a live record):
 }
 ```
 
-`status` is the board's own license status when a row is found. `sourceStatus` is the run result:
+## Input
 
-| sourceStatus | Meaning | Billed |
-|--------------|---------|--------|
-| `found` | A license row was matched | yes, event `license` |
-| `not_found` | The public file answered and nothing matched | no |
-| `unsupported` | No open file for this state, or the state has no adapter | no |
-| `captcha` | The source returned a challenge. The run stopped | no |
-| `robots_disallowed` | robots.txt disallows the URL | no |
-| `error` | The fetch failed, the request cap was hit, or the input was incomplete | no |
-
-Dates stay in the format the board published. Bond and insurance are blank when that file does not publish them. Arizona's current-contractor CSV has no bond or insurance columns, and qualifying-party names are not copied into the dataset.
-
-## Limitations
-
-- California's license check is the current board record for that license number or business name. A `not_found` is not proof that a license never existed. The trade-only fallback still reads the master file, which omits cancelled, revoked, and expired-nonrenewable licenses, and it streams that file instead of loading it.
-- A license or name check does not download the statewide file. The trade-only stream stops once `maxResults` matches are kept and is still capped at 80 MB.
-- Arizona's posting-list URL changes with the file date. The adapter reads the link from the page. If that page is a Cloudflare challenge, status is `captcha` and the CSV is not requested.
-- Arizona's current file is active contractors only.
-- New Jersey returns `unsupported` until DCA publishes a verified open file. The service portal is not scraped.
-- Pennsylvania returns `captcha` while Turnstile is on the HIC search. The form is not submitted even if a later page omits the widget; that path stays `unsupported` until it is verified as open data.
-- `maxResults` stops a broad trade search. `truncated` in `SUMMARY` is true when more matches existed than the cap.
-- Empty, failed, not-found, unsupported, and captcha runs do not emit the `license` event.
-- No proxy rotation and no CAPTCHA solving.
-
-## Robots and terms
-
-California's `robots.txt` returned 404 while packaging, so the license-check URL is requested. The Actor still fetches `robots.txt` for each host and skips a disallowed path. The master file is requested only for a trade search that has no license number and no business name. Arizona's robots response was itself a Cloudflare challenge; that is returned as `captcha` and the file is not downloaded. New Jersey's robots file does not disallow the builders page. Pennsylvania's search page is fetched only to detect Turnstile and is not submitted.
-
-CSLB asks readers to use Instant License Check for the newest status. The Registrar of Contractors asks readers to confirm a posting with the office before acting on it. Registration under Pennsylvania's Home Improvement Consumer Protection Act is not an endorsement by the Attorney General.
-
-## Pricing
-
-Pay per event. The primary event is `license` at $0.05, charged only when `sourceStatus` is `found` and `license_no` is set. `not_found`, `unsupported`, `captcha`, `robots_disallowed`, and `error` rows are stored and are not a success charge. Dataset items are not a charge event. The platform still applies its start event. Prices are the starting Store rates in `.actor/pay_per_event.json`. Memory default is 512 MB and the default timeout is 600 seconds.
-
-## Categories
-
-Set in the Apify Console, not in `actor.json`. Suggested: Business, Other.
-
-## Local run
-
-```bash
-cd scripts/apify-scripts/contractor-license
-mkdir -p storage/key_value_stores/default
-cp fixtures/INPUT.json storage/key_value_stores/default/INPUT.json
-apify run --purge
+```json
+{
+  "state": "CA",
+  "licenseNo": "1000001",
+  "name": "",
+  "trade": "",
+  "maxResults": 25
+}
 ```
 
-Publish with `APIFY_TOKEN` (`apify push`). That token is not `APIFY_API_KEY`. See `scripts/apify-scripts/README.md`.
+| Field | Default | Notes |
+|-------|---------|-------|
+| `state` | required | `CA` is fully supported. `AZ`, `NJ`, and `PA` return a status row, see Limits |
+| `licenseNo` | — | Exact license number. Spaces and leading zeros are ignored |
+| `name` | — | Business name. Punctuation and suffixes like LLC are ignored |
+| `trade` | — | Classification code (`B-1` and `B1` are the same) or class description words |
+| `maxResults` | 25 (max 50) | Licenses returned per run |
+| `maxRequests` | 4 (max 8) | Board requests per run, including robots.txt |
+| `delaySeconds` | 2 (max 10) | Pause between requests. Keep it at 2 or higher |
+
+Set `licenseNo`, `name`, `trade`, or a mix. When more than one is set, every one must match.
+
+## How much does it cost?
+
+Pay per event. You pay only when a license is found.
+
+| Event | Free tier | Bronze | Silver | Gold and up |
+|-------|-----------|--------|--------|-------------|
+| Found license (`license`) | $0.008 | $0.007 | $0.006 | $0.005 |
+
+- **100 license checks, all found:** 100 × $0.008 = **$0.80**
+- **1,000 license checks, all found:** 1,000 × $0.008 = **$8.00** (as low as $5.00 on Gold)
+
+`not_found`, `unsupported`, `captcha`, `robots_disallowed`, and `error` rows are free. Apify adds its small per-run start event.
+
+## Limits and data source
+
+| State | Board | Result |
+|-------|-------|--------|
+| CA | Contractors State License Board (CSLB) | Full lookup through the official Check a License form, then the license detail page |
+| AZ | Registrar of Contractors | Reads the public "All Current Contractors" CSV when the posting page is served. A Cloudflare challenge returns `captcha` |
+| NJ | Department of Community Affairs | Returns `unsupported`. The builder page now links a service portal that does not return records anonymously, and that portal is not opened |
+| PA | Attorney General, Home Improvement Consumer Protection Act | Returns `captcha`. The HIC search loads Cloudflare Turnstile, and the form is not submitted. Pennsylvania has no statewide general-contractor license |
+
+- **Lookups:** a license-number or name check is a few HTML pages and does not download the statewide file. A trade-only search streams the CSLB master file and stops at `maxResults`. That file omits cancelled, revoked, and expired licenses.
+- **`not_found`:** means the current board record has no match. It is not proof a license never existed.
+- **No bypassing:** no browser, no proxy rotation, and no CAPTCHA solving. A challenged or closed portal returns one free status row.
+- **Robots:** robots.txt is checked for every host before any request.
+- **Out of scope:** sheriff-sale, foreclosure, and probate records. Pennsylvania PALS and municipal licenses.
+- **Terms:** CSLB recommends Instant License Check for the newest status before you rely on a record. Registration under Pennsylvania's Home Improvement Consumer Protection Act is not an endorsement by the Attorney General.
+
+## FAQ
+
+### How do I verify a California contractor license?
+
+Set `state` to `CA` and `licenseNo` to the license number, then run. The row shows the CSLB status, classification, expiry date, bond, and workers' comp insurance.
+
+### Can I look up a contractor by business name?
+
+Yes. Put the business name in `name`. Suffixes like LLC and Inc. and punctuation are ignored when names are compared.
+
+### How do I find every licensed roofer or electrician in California?
+
+Use `trade` with the classification code, such as `C-39` for roofing or `C-10` for electrical, and set `maxResults`. Results come from the CSLB master file of active licenses.
+
+### Which states are supported?
+
+California is fully supported. Arizona works when its posting page is not behind a challenge. New Jersey and Pennsylvania return a free status row because their portals are closed to anonymous lookups or protected by a CAPTCHA.
+
+### What counts as a result?
+
+One found license. `not_found`, `unsupported`, and `captcha` rows are free.
+
+### Does this need a proxy?
+
+No. The CSLB lookup answers direct, so there is no proxy cost.
+
+## Integrations and output
+
+- **Dataset:** one row per license or status. Export as JSON, CSV, Excel, or HTML.
+- **Key-value store:** `SUMMARY` has `pushed`, `found`, `notFound`, `unsupported`, `captcha`, billed counts, and `truncated`.
+- **Automation:** call it from the Apify API inside an onboarding or vetting workflow, or through Make, Zapier, n8n, or Google Sheets.
+
+## Related actors
+
+- [Building Permits Scraper](https://apify.com/staticxviper/permits): recent permits with the contractor who pulled them.
+- [Home Services Leads](https://apify.com/staticxviper/home-services): local contractors by niche and area, with emails and lead scores.
+- [Google Maps Business Leads](https://apify.com/staticxviper/google-business-lead-generation): a contractor's phone, website, and Google rating.
+
+## Changelog
+
+Release notes are on the **Changelog** tab of this page.

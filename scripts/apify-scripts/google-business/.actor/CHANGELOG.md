@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated. `actor.json` name is now `google-business-lead-generation`, the Store slug.
+
 ## 0.3
 
 - A Maps block retries once through Apify Proxy when maxSpendUsd and maxProxyCostUsd still have room. CAPTCHA solving stays off unless allowCaptcha is true and the cap covers a solve.

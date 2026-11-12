@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "contractor-license",
   "title": "Contractor License Lookup – Verify License Status (CA)",
-  "description": "Public-record contractor license lookup. California uses the CSLB license check. Challenged or closed state portals return a status row and are not billed.",
+  "description": "Verify California contractor licenses by license number or business name with the official CSLB license check: status, classification, expiry, bond, and insurance. Lookups that find nothing are free.",
   "version": "0.2",
   "buildTag": "latest",
   "meta": {

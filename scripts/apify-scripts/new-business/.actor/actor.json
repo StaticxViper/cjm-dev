@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "new-business",
   "title": "New Business Leads – Newly Registered LLCs & Corporations",
-  "description": "Recently formed entities from verified Secretary of State open-data feeds. Website and email enrichment is optional and billed only when a value is found.",
+  "description": "Get newly registered LLCs and corporations from official New York, Pennsylvania, and Colorado open-data feeds, filtered by formation date, county, and entity type. Optional liquor-license and new-restaurant inspection triggers, plus website and email enrichment.",
   "version": "0.1",
   "buildTag": "latest",
   "dockerfile": "../Dockerfile",

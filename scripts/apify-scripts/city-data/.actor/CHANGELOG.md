@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Store README rewritten for buyers: who it is for, field table, sample row, cost for 100 and 1,000 results, limits, and FAQ. Listing description updated. `actor.json` name is now `city-data-scraper`, the Store slug.
 - `maxCities` now defaults to 5 (max 50), and `cities` accepts up to 50 entries.
 - The image builds from this folder only and now includes the browser helpers that `helper_scripts.browser` loads on import.
 
