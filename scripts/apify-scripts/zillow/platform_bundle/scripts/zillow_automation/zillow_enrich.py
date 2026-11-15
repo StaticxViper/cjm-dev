@@ -19,6 +19,7 @@ for _entry in (_REPO_ROOT, _SCRIPTS, _LEAD):
         sys.path.insert(0, _text)
 
 import re
+import time
 
 from crm_enrich_match import GENERIC_TOKENS, distinctive_token_missing, normalize_match_name
 from email_discovery import (
@@ -280,8 +281,21 @@ def _apply_cached(agent, cached):
         agent["confidence"] = int(raw) if raw.isdigit() else raw
 
 
-def enrich_agent(agent, area, session, inspect=None, max_pages=MAX_PAGES, before_visit=None):
-    """Search and visit likely pages. Leave email and phone blank when unsure."""
+def enrich_agent(
+    agent,
+    area,
+    session,
+    inspect=None,
+    max_pages=MAX_PAGES,
+    before_visit=None,
+    deadline=None,
+    clock=time.monotonic,
+):
+    """Search and visit likely pages. Leave email and phone blank when unsure.
+
+    ``deadline`` is a ``clock()`` value. No new search or page visit starts
+    after it, and a lookup cut short is not cached as a miss.
+    """
     if agent is None or not needs_contact(agent):
         return agent
     if not agent_key(agent):
@@ -297,16 +311,26 @@ def enrich_agent(agent, area, session, inspect=None, max_pages=MAX_PAGES, before
     if session is None or session.google_blocked:
         return agent
 
+    def out_of_time():
+        return deadline is not None and clock() >= deadline
+
     found = False
+    timed_out = False
     visited = set()
     for query in build_agent_queries(agent, area):
         if session.google_blocked or not needs_contact(agent):
+            break
+        if out_of_time():
+            timed_out = True
             break
         results = session.search(query) or []
         for url in select_visit_urls(results, lead, agent, limit=max_pages):
             if url in visited or not needs_contact(agent):
                 continue
             if len(visited) >= max_pages:
+                break
+            if out_of_time():
+                timed_out = True
                 break
             visited.add(url)
             if before_visit is not None and not before_visit(url):
@@ -319,21 +343,50 @@ def enrich_agent(agent, area, session, inspect=None, max_pages=MAX_PAGES, before
                 continue
             if _apply_page(agent, area, inspected):
                 found = True
-    if found or not session.google_blocked:
+        if timed_out:
+            break
+    if found or not (session.google_blocked or timed_out):
         session.remember_result(_cache_lead(agent, area))
     return agent
 
 
-def enrich_agents(agents, session, inspect=None, before_visit=None):
-    """Enrich each agent that is still missing an email or phone."""
+def enrich_agents(
+    agents,
+    session,
+    inspect=None,
+    before_visit=None,
+    deadline=None,
+    agent_budget_s=None,
+    clock=time.monotonic,
+):
+    """Enrich each agent that is still missing an email or phone.
+
+    ``deadline`` stops the whole pass. ``agent_budget_s`` limits each agent.
+    """
     enriched = 0
     for agent in agents or []:
         area = agent.get("area") or ""
         if not needs_contact(agent):
             continue
+        now = clock()
+        if deadline is not None and now >= deadline:
+            break
+        agent_deadline = deadline
+        if agent_budget_s:
+            agent_deadline = now + float(agent_budget_s)
+            if deadline is not None:
+                agent_deadline = min(agent_deadline, deadline)
         before_email = str(agent.get("email") or "")
         before_phone = str(agent.get("phone") or "")
-        enrich_agent(agent, area, session, inspect=inspect, before_visit=before_visit)
+        enrich_agent(
+            agent,
+            area,
+            session,
+            inspect=inspect,
+            before_visit=before_visit,
+            deadline=agent_deadline,
+            clock=clock,
+        )
         email_filled = (not before_email) and str(agent.get("email") or "")
         phone_filled = (not before_phone) and str(agent.get("phone") or "")
         if email_filled or phone_filled:

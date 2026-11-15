@@ -239,6 +239,28 @@ class TestEvaluate(unittest.TestCase):
     def test_missing_memory_reading_is_not_a_failure(self):
         self.assertEqual(build.evaluate(BUDGET, _result(memoryMaxMbytes=None)), [])
 
+    def test_platform_min_items_applies_only_to_the_platform_smoke(self):
+        budget = dict(BUDGET, minItems=0, platformMinItems=1)
+        empty = _result(itemCount=0)
+        self.assertEqual(build.evaluate(budget, empty), [])
+        self.assertEqual(len(build.evaluate(budget, empty, platform=True)), 1)
+        self.assertEqual(build.evaluate(budget, _result(itemCount=1), platform=True), [])
+
+    def test_empty_docker_run_needs_the_summary_record(self):
+        budget = dict(BUDGET, minItems=0, summaryKey="SUMMARY")
+        missing = build.evaluate(budget, _result(itemCount=0, summary=None))
+        self.assertEqual(len(missing), 1)
+        self.assertIn("SUMMARY", missing[0])
+        blocked = _result(itemCount=0, summary={"blocked_zips": ["08002"], "areas_blocked": 1})
+        self.assertEqual(build.evaluate(budget, blocked), [])
+
+    def test_summary_record_is_read_from_the_local_store(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            kvs = Path(tmp)
+            self.assertIsNone(build.read_kvs_record(kvs, "SUMMARY"))
+            (kvs / "SUMMARY.json").write_text('{"blocked_zips": ["08002"]}', encoding="utf-8")
+            self.assertEqual(build.read_kvs_record(kvs, "SUMMARY"), {"blocked_zips": ["08002"]})
+
     def test_local_charging_log(self):
         with tempfile.TemporaryDirectory() as tmp:
             storage = Path(tmp)

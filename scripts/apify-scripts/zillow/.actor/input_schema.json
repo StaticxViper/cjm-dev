@@ -77,9 +77,9 @@
     "enrich": {
       "title": "Enrich missing email and phone",
       "type": "boolean",
-      "description": "Look up agents that are missing an email or phone on Google, the agent site, and the brokerage site. Default on.",
+      "description": "Look up agents that are missing an email or phone on Google, the agent site, and the brokerage site. Off by default so Store runs stay inside the Actor timeout and residential proxy budget; turn on for small max_agents runs.",
       "editor": "checkbox",
-      "default": true
+      "default": false
     },
     "proxyConfiguration": {
       "title": "Proxy group",

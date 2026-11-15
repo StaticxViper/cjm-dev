@@ -331,24 +331,54 @@ class TestEnrichment(unittest.TestCase):
         self.assertEqual(agent["email"], "")
 
 
-class TestStopPlaywright(unittest.TestCase):
-    def test_connection_without_private_cleanup_uses_public_stop(self):
+class TestBrowserTeardown(unittest.TestCase):
+    def _slot(self, calls, fail=()):
+        class Handle:
+            def __init__(self, label):
+                self.label = label
+
+            def unroute(self, *_args):
+                calls.append(f"{self.label}.unroute")
+
+            def close(self):
+                calls.append(f"{self.label}.close")
+                if self.label in fail:
+                    raise RuntimeError(f"{self.label} close failed")
+
         class Connection:
-            _loop = None
+            """The installed Playwright Connection has no cleanup attribute."""
 
         class Impl:
             _connection = Connection()
 
-        class Playwright:
+        class Driver:
             _impl_obj = Impl()
-            stopped = 0
 
             def stop(self):
-                self.stopped += 1
+                calls.append("driver.stop")
+                if "driver" in fail:
+                    raise AttributeError("'Connection' object has no attribute 'cleanup'")
 
-        playwright = Playwright()
-        zillow_agents._stop_playwright(playwright)
-        self.assertEqual(playwright.stopped, 1)
+        slot = zillow_agents._Slot()
+        slot.page = Handle("page")
+        slot.context = Handle("context")
+        slot.browser = Handle("browser")
+        slot.playwright = Driver()
+        return slot
+
+    def test_close_without_connection_cleanup_does_not_raise(self):
+        calls = []
+        browser = zillow_agents.ZillowBrowser()
+        slot = self._slot(calls, fail=("page", "context", "browser", "driver"))
+        browser._slots.append(slot)
+        browser.close()
+        self.assertEqual(
+            calls,
+            ["page.unroute", "page.close", "context.close", "browser.close", "driver.stop"],
+        )
+        self.assertIsNone(slot.playwright)
+        self.assertEqual(browser._slots, [])
+        browser.close()
 
 
 class TestPipeline(unittest.TestCase):
@@ -425,6 +455,90 @@ class TestPipeline(unittest.TestCase):
             self.assertGreaterEqual(result["stats"]["blocked_pages"], 1)
             self.assertEqual(result["stats"]["areas_blocked"], 1)
             self.assertTrue(result["paths"]["agents_json"].is_file())
+
+    def test_deadline_stops_the_run_and_keeps_rows(self):
+        search = _read("search_results.html")
+        detail = _read("listing_detail.html")
+        now = [0.0]
+        requested = []
+
+        def fetch(url):
+            requested.append(url)
+            now[0] += 50.0
+            if "homedetails" in url:
+                return zillow_agents.FetchResult(url=url, html=detail, status=200)
+            return zillow_agents.FetchResult(url=url, html=search, status=200)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self._run(
+                fetch,
+                tmp,
+                criteria=_criteria(zipCodes=["08002", "08057"], resultsLimit=5),
+                concurrency=1,
+                deadline=90.0,
+                clock=lambda: now[0],
+            )
+            self.assertEqual(result["stats"]["stopped_early"], "time_budget")
+            self.assertEqual(sum("homedetails" in url for url in requested), 1)
+            self.assertFalse(any("08057" in url for url in requested))
+            self.assertEqual(result["areas"]["08002"]["status"], "in_progress")
+            self.assertEqual(result["stats"]["agents_found"], 1)
+            self.assertEqual(result["stats"]["search_seconds"], 100.0)
+            saved = json.loads(Path(result["paths"]["agents_json"]).read_text(encoding="utf-8"))
+            self.assertEqual(saved["agents"][0]["agent_name"], "Jane Smith")
+            self.assertEqual(saved["run"]["stopped_early"], "time_budget")
+
+    def test_should_stop_reason_is_recorded(self):
+        search = _read("search_results.html")
+        requested = []
+
+        def fetch(url):
+            requested.append(url)
+            return zillow_agents.FetchResult(url=url, html=search, status=200)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self._run(fetch, tmp, should_stop=lambda: "proxy_budget" if requested else "")
+            self.assertEqual(len(requested), 1)
+            self.assertEqual(result["stats"]["stopped_early"], "proxy_budget")
+            self.assertEqual(result["areas"]["08002"]["status"], "in_progress")
+
+    def test_stopped_early_is_not_inherited_on_resume(self):
+        search = _read("search_done.html")
+        detail = _read("listing_detail.html")
+
+        def fetch(url):
+            if "homedetails" in url:
+                return zillow_agents.FetchResult(url=url, html=detail, status=200)
+            return zillow_agents.FetchResult(url=url, html=search, status=200)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            first = self._run(fetch, tmp, should_stop=lambda: "proxy_budget")
+            self.assertEqual(first["stats"]["stopped_early"], "proxy_budget")
+            second = self._run(fetch, tmp)
+            self.assertEqual(second["stats"]["stopped_early"], "")
+            self.assertEqual(second["areas"]["08002"]["status"], "done")
+
+
+class TestEnrichmentBudget(unittest.TestCase):
+    def test_agent_budget_stops_searches_and_does_not_cache_a_miss(self):
+        now = [0.0]
+
+        class SlowSession(FakeSession):
+            def search(self, query):
+                now[0] += 40.0
+                return super().search(query)
+
+        session = SlowSession([])
+        agents = [_blank_agent(), dict(_blank_agent(), agent_name="John Roe")]
+        zillow_enrich.enrich_agents(agents, session, agent_budget_s=60, clock=lambda: now[0])
+        self.assertEqual(len(session.queries), 4)
+        self.assertEqual(session.persistent, {})
+
+    def test_run_deadline_skips_remaining_agents(self):
+        now = [100.0]
+        session = FakeSession(SERP)
+        zillow_enrich.enrich_agents([_blank_agent()], session, deadline=50.0, clock=lambda: now[0])
+        self.assertEqual(session.queries, [])
 
 
 if __name__ == "__main__":

@@ -182,11 +182,11 @@ def _read(response):
     return data.decode("utf-8", "replace")
 
 
-def _result(url, html, status, final, error=""):
+def _result(url, html, status, final, error="", size=0):
     import zillow_agents
 
     if error and not html:
-        return zillow_agents.FetchResult(url=url, error=error)
+        return zillow_agents.FetchResult(url=url, error=error, bytes_read=size)
     blocked = _blocked(zillow_agents.is_blocked_page, final or url, html, status)
     return zillow_agents.FetchResult(
         url=url,
@@ -195,6 +195,7 @@ def _result(url, html, status, final, error=""):
         final_url=final or url,
         blocked=blocked,
         error=error,
+        bytes_read=size or len((html or "").encode("utf-8")),
     )
 
 
@@ -219,6 +220,13 @@ def urllib_transport(url, proxy_url, timeout=45):
     return _result(url, html, status, final or url)
 
 
+def _timeout_until(deadline, clock, ceiling):
+    """Request timeout that ends at the run deadline, never below 5 seconds."""
+    if deadline is None:
+        return ceiling
+    return max(5.0, min(float(ceiling), deadline - clock()))
+
+
 class ChromeTransport:
     """One Chrome-impersonation cookie session per proxy URL.
 
@@ -227,16 +235,21 @@ class ChromeTransport:
     on the session constructor does not send the request through the proxy.
     """
 
-    def __init__(self, timeout=45):
+    def __init__(self, timeout=45, deadline=None, clock=time.monotonic):
         self.timeout = timeout
+        self.deadline = deadline
+        self.clock = clock
         self._sessions = {}
         self._regions = {}
         self._fallback = None
 
+    def _timeout(self):
+        return _timeout_until(self.deadline, self.clock, self.timeout)
+
     def _region(self, term):
         if term in self._regions:
             return self._regions[term]
-        region = lookup_region(term, timeout=self.timeout)
+        region = lookup_region(term, timeout=min(20, self._timeout()))
         self._regions[term] = region
         if region:
             log.info(
@@ -260,7 +273,7 @@ class ChromeTransport:
     def _get(self, session, url, proxy_url):
         response = session.get(
             url,
-            timeout=self.timeout,
+            timeout=self._timeout(),
             allow_redirects=True,
             proxy=proxy_url or None,
             impersonate="chrome152",
@@ -269,7 +282,8 @@ class ChromeTransport:
         if len(html) > _MAX_BYTES:
             html = html[:_MAX_BYTES]
         final = str(response.url or url)
-        result = _result(url, html, int(response.status_code or 0), final)
+        size = len(response.content or b"")
+        result = _result(url, html, int(response.status_code or 0), final, size=size)
         title = ""
         match = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
         if match:
@@ -292,48 +306,72 @@ class ChromeTransport:
             log.info("Chrome impersonation is unavailable (%s). Using the Python client.", type(exc).__name__)
             if self._fallback is None:
                 self._fallback = urllib_transport
-            return self._fallback(url, proxy_url, timeout=self.timeout)
+            return self._fallback(url, proxy_url, timeout=self._timeout())
         try:
             return self._get(session, pin_search_url(url, self._region), proxy_url)
         except Exception as exc:
             return _result(url, "", 0, url, _public_error(exc))
 
 
-def make_proxy_fetch(proxy_urls, transport=None, sleep=None):
+def make_proxy_fetch(proxy_urls, transport=None, sleep=None, max_bytes=None, deadline=None, clock=time.monotonic):
     """Fetch with the first proxy URL, then one retry on the spare URL.
 
     ``proxy_urls`` is one or two Apify proxy URLs. The second is used only
     after a block or a transport failure, and only once for the run.
+    ``max_bytes`` caps the page bytes read through the proxy for the run, and
+    ``deadline`` (a ``clock()`` value) stops new requests. Either one makes
+    ``fetch.budget_reason()`` return the reason so the pipeline can stop.
     """
     import zillow_agents
 
     urls = [item for item in (proxy_urls or []) if item]
     if not urls:
         raise RuntimeError("Apify Proxy is required for Zillow requests on the platform.")
-    send = transport or ChromeTransport()
+    send = transport or ChromeTransport(deadline=deadline, clock=clock)
     pause = sleep or time.sleep
-    state = {"index": 0, "gave_up": False, "requests": 0, "rotations": 0, "paused": False}
+    state = {"index": 0, "gave_up": False, "requests": 0, "rotations": 0, "paused": False, "bytes": 0}
+
+    def budget_reason():
+        if max_bytes and state["bytes"] >= max_bytes:
+            return "proxy_budget"
+        if deadline is not None and clock() >= deadline:
+            return "time_budget"
+        return ""
+
+    def send_once(url):
+        result = send(url, urls[state["index"]])
+        state["requests"] += 1
+        state["bytes"] += int(getattr(result, "bytes_read", 0) or 0)
+        return result
 
     def fetch(url):
         if state["gave_up"] and _is_zillow(url):
             return zillow_agents.FetchResult(url=url, blocked=True, error="already_blocked")
+        reason = budget_reason()
+        if reason:
+            return zillow_agents.FetchResult(url=url, error=reason)
         if state["paused"]:
             pause(random.uniform(1.5, 2.5))
         state["paused"] = True
-        result = send(url, urls[state["index"]])
-        state["requests"] += 1
-        if _should_retry(result) and state["rotations"] < 1 and state["index"] + 1 < len(urls):
+        result = send_once(url)
+        if (
+            _should_retry(result)
+            and state["rotations"] < 1
+            and state["index"] + 1 < len(urls)
+            and not budget_reason()
+        ):
             state["index"] += 1
             state["rotations"] += 1
             log.info("Zillow blocked the first residential session. Retrying once on a new session.")
-            result = send(url, urls[state["index"]])
-            state["requests"] += 1
+            result = send_once(url)
         if result.blocked:
             state["gave_up"] = True
         return result
 
     fetch.request_count = lambda: state["requests"]
     fetch.rotation_count = lambda: state["rotations"]
+    fetch.bytes_read = lambda: state["bytes"]
+    fetch.budget_reason = budget_reason
     return fetch
 
 

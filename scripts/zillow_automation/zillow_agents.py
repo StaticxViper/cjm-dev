@@ -26,7 +26,6 @@ for _entry in (_REPO_ROOT, _SCRIPTS, _LEAD, _SCRIPT_DIR):
     sys.path.insert(0, _text)
 
 import argparse
-import asyncio
 import csv
 import json
 import os
@@ -37,6 +36,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 
+from helper_scripts.browser.google_session import close_playwright_handles
 from helper_scripts.utils.logger.logger import setup_logger
 from email_discovery import EmailDiscoverySession, is_google_block_page
 from opp_finder_v2.browser.detection import classify_page
@@ -97,7 +97,17 @@ def empty_stats():
         "blocked_pages": 0,
         "areas_completed": 0,
         "areas_blocked": 0,
+        "search_seconds": 0.0,
+        "enrich_seconds": 0.0,
+        "stopped_early": "",
     }
+
+
+# Stats that describe one run only. A resumed run does not inherit them.
+PER_RUN_STATS = ("search_seconds", "enrich_seconds", "stopped_early")
+# Worst case for one Google search (two 30s attempts plus the pause). Enrichment
+# does not start a search with less time than this left on the run.
+ENRICH_STEP_RESERVE_S = 75.0
 
 
 @dataclass
@@ -108,6 +118,7 @@ class FetchResult:
     final_url: str = ""
     blocked: bool = False
     error: str = ""
+    bytes_read: int = 0
 
 
 def is_blocked_page(url, html, status=None):
@@ -204,67 +215,56 @@ def _abort_heavy_route(route):
         return
 
 
-def _stop_playwright(playwright):
-    """Stop the driver after cancelled tasks have finished.
+class ZillowEmailSession(EmailDiscoverySession):
+    """Google lookups for agent contacts without images, media, or fonts.
 
-    Playwright's own stop() closes the event loop while its connection task is
-    still cancelling. That prints TargetClosedError once the process exits.
+    On Apify this browser goes through residential proxy, which is billed per GB.
     """
-    manager = getattr(getattr(playwright, "stop", None), "__self__", None)
-    if manager is not None and getattr(manager, "_exit_was_called", False):
-        return
-    impl = getattr(playwright, "_impl_obj", None)
-    connection = getattr(impl, "_connection", None)
-    original_cleanup = getattr(connection, "cleanup", None)
-    if connection is not None and (original_cleanup is None or not hasattr(connection, "stop_sync")):
-        # Playwright builds without these private hooks get the public stop().
-        try:
-            playwright.stop()
-        except Exception as exc:
-            logger.error("Failed to stop Playwright: %s", exc)
-        return
-    loop = getattr(connection, "_loop", None) if connection is not None else None
-    if connection is not None:
 
-        def cleanup(cause=None):
-            futures = [
-                callback.future
-                for callback in list(connection._callbacks.values())
-                if not getattr(callback, "no_reply", False)
-            ]
-            original_cleanup(cause)
-            for future in futures:
-                if future.done() and not future.cancelled():
-                    future.exception()
+    def _ensure_browser_blocking(self):
+        had_page = self._page is not None
+        page = super()._ensure_browser_blocking()
+        if page is not None and not had_page:
+            try:
+                page.route("**/*", _abort_heavy_route)
+            except Exception as exc:
+                logger.error("Failed to block heavy resources on the Google page: %s", exc)
+        return page
 
-        connection.cleanup = cleanup
+
+def _log_close_error(label, exc):
+    logger.error("Failed to close Playwright %s: %s", label, exc)
+
+
+def close_slot(slot):
+    """Close page, context, browser, then the driver. Teardown never raises.
+
+    Only public Playwright calls are used. A close error is logged so a blocked
+    fetch is still reported as a block, not as a crashed run.
+    """
+    page, context, browser, playwright = slot.page, slot.context, slot.browser, slot.playwright
+    slot.page = slot.context = slot.browser = slot.playwright = None
+    if page is not None:
         try:
-            connection.stop_sync()
-        except Exception as exc:
-            logger.error("Failed to stop Playwright connection: %s", exc)
-    if loop is not None and not loop.is_closed():
-        try:
-            pending = [task for task in asyncio.all_tasks(loop) if not task.done()]
-            for task in pending:
-                task.cancel()
-            if pending:
-                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-            loop.run_until_complete(loop.shutdown_asyncgens())
-        except Exception as exc:
-            logger.error("Failed to drain Playwright tasks: %s", exc)
-        try:
-            if not loop.is_closed():
-                loop.close()
-        except Exception as exc:
-            logger.error("Failed to close Playwright loop: %s", exc)
-    if manager is not None:
-        manager._exit_was_called = True
+            page.unroute("**/*", _abort_heavy_route)
+        except Exception:
+            pass
+    close_playwright_handles(
+        (
+            (page, "page", "close"),
+            (context, "context", "close"),
+            (browser, "browser", "close"),
+            (playwright, "driver", "stop"),
+        ),
+        _log_close_error,
+    )
 
 
 class _Slot:
     def __init__(self):
         self.playwright = None
         self.browser = None
+        self.context = None
         self.page = None
 
 
@@ -294,24 +294,7 @@ class ZillowBrowser:
             self._slots = []
         self._local.slot = None
         for slot in slots:
-            page = slot.page
-            slot.page = None
-            if page is not None:
-                try:
-                    page.unroute("**/*", _abort_heavy_route)
-                except Exception:
-                    pass
-            browser = slot.browser
-            slot.browser = None
-            if browser is not None:
-                try:
-                    browser.close()
-                except Exception as exc:
-                    logger.error("Failed to close browser: %s", exc)
-            playwright = slot.playwright
-            slot.playwright = None
-            if playwright is not None:
-                _stop_playwright(playwright)
+            close_slot(slot)
 
     def _mark_blocked(self):
         with self._block_lock:
@@ -328,20 +311,21 @@ class ZillowBrowser:
         from playwright.sync_api import sync_playwright
 
         slot = _Slot()
+        with self._slots_lock:
+            self._slots.append(slot)
+        self._local.slot = slot
         slot.playwright = sync_playwright().start()
         launch_kwargs = {"headless": self.headless}
         if self.proxy:
             launch_kwargs["proxy"] = self.proxy
         slot.browser = slot.playwright.chromium.launch(**launch_kwargs)
-        slot.page = slot.browser.new_page(
+        slot.context = slot.browser.new_context(
             user_agent=USER_AGENT,
             viewport={"width": 1280, "height": 900},
         )
+        slot.page = slot.context.new_page()
         slot.page.set_default_timeout(self.timeout_ms)
         slot.page.route("**/*", _abort_heavy_route)
-        self._local.slot = slot
-        with self._slots_lock:
-            self._slots.append(slot)
         return slot
 
     def fetch(self, url):
@@ -521,10 +505,12 @@ def _note_block(stats, url, area):
     logger.error("Blocked page at %s; stopping area %s.", url, area)
 
 
-def _consume_details(pending, fetch_many, collection, seen, stats, area, concurrency):
+def _consume_details(pending, fetch_many, collection, seen, stats, area, concurrency, stop=None):
     blocked = False
     batch_size = max(1, int(concurrency or 1))
     while pending and not blocked:
+        if stop is not None and stop():
+            break
         batch = list(pending[:batch_size])
         rest = list(pending[batch_size:])
         results = list(fetch_many(batch))
@@ -594,8 +580,18 @@ def run_pipeline(
     max_agents=None,
     on_checkpoint=None,
     browser_proxy=None,
+    deadline=None,
+    should_stop=None,
+    agent_budget_s=None,
+    clock=time.monotonic,
 ):
-    """Search each area, dedupe, enrich missing contacts, and write JSON and CSV."""
+    """Search each area, dedupe, enrich missing contacts, and write JSON and CSV.
+
+    ``deadline`` is a ``clock()`` value for the whole run. ``should_stop``
+    returns a reason string (for example a spent proxy budget) or "". Either
+    one ends the search and enrichment early; the rows collected so far are
+    still written and ``stats["stopped_early"]`` names the reason.
+    """
     criteria = normalize_criteria(criteria)
     areas_list = search_areas(criteria)
     if fetch_many is None:
@@ -605,7 +601,23 @@ def run_pipeline(
     digest = criteria_hash(criteria)
     checkpoint_path = _checkpoint_path_for(checkpoint_path, digest)
     collection, stats, areas, digest = load_checkpoint(checkpoint_path, criteria, resume)
+    fresh = empty_stats()
+    for key in PER_RUN_STATS:
+        stats[key] = fresh[key]
     seen = load_seen(seen_path)
+
+    def stop_reason():
+        if stats["stopped_early"]:
+            return stats["stopped_early"]
+        reason = should_stop() if should_stop is not None else ""
+        if not reason and deadline is not None and clock() >= deadline:
+            reason = "time_budget"
+        if reason:
+            stats["stopped_early"] = reason
+            logger.error("Stopping early (%s). Rows collected so far are kept.", reason)
+        return reason
+
+    search_started = clock()
     limit = int(criteria.get("resultsLimit") or 0)
     total_cap = int(max_listings or 0)
     agent_cap = int(max_agents or 0)
@@ -639,12 +651,12 @@ def run_pipeline(
         if not take:
             return tail, False
         leftover, blocked_now = _consume_details(
-            take, fetch_many, collection, seen, stats, area, concurrency
+            take, fetch_many, collection, seen, stats, area, concurrency, stop=stop_reason
         )
         return leftover + tail, blocked_now
 
     for area in areas_list:
-        if capped():
+        if capped() or stop_reason():
             break
         state = areas.get(area) or _blank_area()
         if state.get("status") == "done":
@@ -667,6 +679,8 @@ def run_pipeline(
 
         while not blocked and not failed and not capped() and page_num <= MAX_SEARCH_PAGES:
             if limit > 0 and area_count() >= limit:
+                break
+            if stop_reason():
                 break
             search_url = build_search_url(area, criteria, page_num)
             fetched = list(fetch_many([search_url]) or [])
@@ -713,7 +727,7 @@ def run_pipeline(
 
         if blocked:
             state["status"] = "blocked"
-        elif failed or capped() or pending:
+        elif failed or capped() or pending or stats["stopped_early"]:
             state["status"] = "in_progress"
         else:
             state["status"] = "done"
@@ -723,30 +737,43 @@ def run_pipeline(
 
     if agent_cap > 0 and len(collection.agents) > agent_cap:
         collection.agents = collection.agents[:agent_cap]
+    stats["search_seconds"] = round(clock() - search_started, 1)
 
+    enrich_started = clock()
+    enrich_deadline = None if deadline is None else deadline - ENRICH_STEP_RESERVE_S
     if enrich_fn is not None:
         stats["agents_enriched"] = int(stats.get("agents_enriched") or 0) + int(
             enrich_fn(collection.agents) or 0
         )
     elif enrich and collection.agents:
-        session = EmailDiscoverySession(
-            cache_path=str(cache_path) if cache_path else None,
-            proxy=browser_proxy,
-        )
-        visit_pacer = HostPacer()
-
-        def before_visit(url):
-            return visit_pacer.acquire(url)
-
-        try:
-            stats["agents_enriched"] = int(stats.get("agents_enriched") or 0) + enrich_agents(
-                collection.agents,
-                session,
-                before_visit=before_visit,
+        if enrich_deadline is not None and clock() >= enrich_deadline:
+            stats["stopped_early"] = "time_budget"
+            logger.error("No time left to enrich agents. Rows are written without enrichment.")
+        else:
+            session = ZillowEmailSession(
+                cache_path=str(cache_path) if cache_path else None,
+                proxy=browser_proxy,
             )
-        finally:
-            session.close()
-        save_checkpoint()
+            visit_pacer = HostPacer()
+
+            def before_visit(url):
+                return visit_pacer.acquire(url)
+
+            try:
+                stats["agents_enriched"] = int(stats.get("agents_enriched") or 0) + enrich_agents(
+                    collection.agents,
+                    session,
+                    before_visit=before_visit,
+                    deadline=enrich_deadline,
+                    agent_budget_s=agent_budget_s,
+                    clock=clock,
+                )
+            finally:
+                session.close()
+            if enrich_deadline is not None and clock() >= enrich_deadline and not stats["stopped_early"]:
+                stats["stopped_early"] = "time_budget"
+            save_checkpoint()
+    stats["enrich_seconds"] = round(clock() - enrich_started, 1)
 
     stats["listings_found"] = len(collection.listings)
     stats["agents_found"] = len(collection.agents)
@@ -774,7 +801,8 @@ def run_pipeline(
     save_checkpoint()
     logger.info(
         "listings_found=%s duplicates_skipped=%s agents_found=%s agents_enriched=%s "
-        "blocked_pages=%s areas_completed=%s areas_blocked=%s",
+        "blocked_pages=%s areas_completed=%s areas_blocked=%s "
+        "search_seconds=%s enrich_seconds=%s stopped_early=%s",
         stats["listings_found"],
         stats["duplicates_skipped"],
         stats["agents_found"],
@@ -782,6 +810,9 @@ def run_pipeline(
         stats["blocked_pages"],
         stats["areas_completed"],
         stats["areas_blocked"],
+        stats["search_seconds"],
+        stats["enrich_seconds"],
+        stats["stopped_early"] or "no",
     )
     logger.info("Wrote %s", paths["agents_json"])
     return {"stats": stats, "paths": paths, "areas": areas, "run": run}
