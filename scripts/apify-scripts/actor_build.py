@@ -564,14 +564,20 @@ def read_charging_log(storage):
 
 
 def read_kvs_record(kvs, key):
-    """A JSON record from a local key-value store folder, or None."""
-    path = kvs / f"{key}.json"
-    if not path.is_file():
-        return None
-    try:
-        return read_json(path)
-    except (OSError, json.JSONDecodeError):
-        return None
+    """A JSON record from a local key-value store folder, or None.
+
+    Apify/Crawlee 1.x writes ``Actor.set_value("SUMMARY", ...)`` as the
+    extensionless file ``SUMMARY`` (plus ``SUMMARY.__metadata__.json``). Older
+    fixtures and docs used ``SUMMARY.json``, so both names are accepted.
+    """
+    for path in (kvs / key, kvs / f"{key}.json"):
+        if not path.is_file():
+            continue
+        try:
+            return read_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+    return None
 
 
 def _docker(*args, check=True, capture=True):

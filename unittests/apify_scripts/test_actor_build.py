@@ -261,6 +261,20 @@ class TestEvaluate(unittest.TestCase):
             (kvs / "SUMMARY.json").write_text('{"blocked_zips": ["08002"]}', encoding="utf-8")
             self.assertEqual(build.read_kvs_record(kvs, "SUMMARY"), {"blocked_zips": ["08002"]})
 
+    def test_summary_record_reads_extensionless_apify_sdk_file(self):
+        """Crawlee FileSystem KVS stores key SUMMARY as file SUMMARY, not SUMMARY.json."""
+        with tempfile.TemporaryDirectory() as tmp:
+            kvs = Path(tmp)
+            (kvs / "SUMMARY").write_text('{"blocked_zips": ["08002"], "areas_blocked": 1}', encoding="utf-8")
+            (kvs / "SUMMARY.__metadata__.json").write_text(
+                '{"key": "SUMMARY", "content_type": "application/json", "size": 1}',
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                build.read_kvs_record(kvs, "SUMMARY"),
+                {"blocked_zips": ["08002"], "areas_blocked": 1},
+            )
+
     def test_local_charging_log(self):
         with tempfile.TemporaryDirectory() as tmp:
             storage = Path(tmp)
