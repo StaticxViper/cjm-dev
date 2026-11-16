@@ -53,9 +53,17 @@ class _Page:
         return None
 
 
-class _Browser:
-    def new_page(self, **_kwargs):
+class _Context:
+    def new_page(self):
         return _Page()
+
+    def close(self):
+        return None
+
+
+class _Browser:
+    def new_context(self, **_kwargs):
+        return _Context()
 
     def close(self):
         return None
@@ -151,7 +159,7 @@ class TestInput(unittest.TestCase):
         self.assertEqual(settings["criteria"]["resultsLimit"], 0)
         self.assertEqual(settings["max_listings"], 25)
         self.assertEqual(settings["max_agents"], 10)
-        self.assertTrue(settings["enrich"])
+        self.assertFalse(settings["enrich"])
         self.assertTrue(settings["headless"])
         self.assertTrue(settings["criteria"]["forSaleByAgent"])
         self.assertFalse(settings["criteria"]["forRent"])
@@ -560,6 +568,141 @@ class TestResidentialHttp(unittest.TestCase):
         self.assertEqual(config.sessions, ["zillowtest", "zillowtestb"])
         self.assertEqual(len(urls), 2)
         self.assertEqual(asyncio.run(pipeline.open_http_proxy_urls(actor, {}, at_home=False)), [])
+
+    def test_byte_cap_stops_requests_and_names_the_reason(self):
+        http_fetch = _load("http_fetch")
+        calls = []
+        payload = '<html>__NEXT_DATA__ "zpid":"111"</html>'
+
+        def transport(url, proxy_url):
+            calls.append(url)
+            return zillow_agents.FetchResult(url=url, status=200, html=payload, bytes_read=600_000)
+
+        fetch = http_fetch.make_proxy_fetch(
+            ["http://user:secret@proxy.example/1"],
+            transport=transport,
+            sleep=lambda _seconds: None,
+            max_bytes=1_000_000,
+        )
+        page = "https://www.zillow.com/homedetails/1-Main-St/111_zpid/"
+        self.assertEqual(fetch(page).html, payload)
+        self.assertEqual(fetch.budget_reason(), "")
+        self.assertEqual(fetch(page).html, payload)
+        self.assertEqual(fetch.budget_reason(), "proxy_budget")
+        skipped = fetch(page)
+        self.assertEqual(skipped.error, "proxy_budget")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(fetch.bytes_read(), 1_200_000)
+
+    def test_deadline_stops_requests_and_bounds_the_timeout(self):
+        http_fetch = _load("http_fetch")
+        now = [0.0]
+        calls = []
+
+        def transport(url, proxy_url):
+            calls.append(url)
+            now[0] += 30.0
+            return zillow_agents.FetchResult(url=url, status=200, html='"zpid"', bytes_read=10)
+
+        fetch = http_fetch.make_proxy_fetch(
+            ["http://user:secret@proxy.example/1"],
+            transport=transport,
+            sleep=lambda _seconds: None,
+            deadline=50.0,
+            clock=lambda: now[0],
+        )
+        page = "https://www.zillow.com/homedetails/1-Main-St/111_zpid/"
+        fetch(page)
+        fetch(page)
+        self.assertEqual(fetch(page).error, "time_budget")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(http_fetch._timeout_until(None, lambda: 0.0, 45), 45)
+        self.assertEqual(http_fetch._timeout_until(100.0, lambda: 80.0, 45), 20.0)
+        self.assertEqual(http_fetch._timeout_until(100.0, lambda: 99.0, 45), 5.0)
+
+
+class TestRunBudget(unittest.TestCase):
+    def test_platform_deadline_leaves_a_margin_before_the_actor_timeout(self):
+        from datetime import datetime, timezone
+
+        now = datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)
+        env = {"ACTOR_TIMEOUT_AT": "2026-11-15T12:10:00.000Z"}
+        deadline = pipeline.platform_deadline(lambda: 1000.0, now=now, env=env)
+        self.assertEqual(deadline, 1000.0 + 600 - 60)
+        short = {"ACTOR_TIMEOUT_AT": "2026-11-15T12:01:00Z"}
+        self.assertEqual(pipeline.platform_deadline(lambda: 0.0, now=now, env=short), 60 - 12)
+        self.assertIsNone(pipeline.platform_deadline(lambda: 0.0, now=now, env={}))
+        self.assertIsNone(pipeline.platform_deadline(lambda: 0.0, now=now, env={"ACTOR_TIMEOUT_AT": "soon"}))
+
+    def test_summary_shows_where_the_time_went(self):
+        search = _read("search_results.html")
+        detail = _read("listing_detail.html")
+        now = [0.0]
+
+        def transport(url, proxy_url):
+            now[0] += 40.0
+            html = detail if "homedetails" in url else search
+            return zillow_agents.FetchResult(url=url, status=200, html=html, bytes_read=1024 * 1024)
+
+        http_fetch = _load("http_fetch")
+        real_make = http_fetch.make_proxy_fetch
+        made = []
+
+        def make_fetch(urls, **kwargs):
+            fetch = real_make(urls, transport=transport, sleep=lambda _s: None, **kwargs)
+            made.append(kwargs)
+            return fetch
+
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch.object(http_fetch, "make_proxy_fetch", make_fetch),
+            patch.dict(sys.modules, {"http_fetch": http_fetch}),
+        ):
+            collected = pipeline.run_collected(
+                {"zip_codes": ["08002"], "max_listings": 5, "max_agents": 5, "enrich": False},
+                proxy_urls=["http://user:secret@proxy.example/1"],
+                output_dir=tmp,
+                checkpoint_path=Path(tmp) / "checkpoint.json",
+                seen_path=Path(tmp) / "seen.json",
+                run_date="2026-11-15",
+                deadline=70.0,
+                clock=lambda: now[0],
+            )
+        summary = collected["summary"]
+        self.assertEqual(made[0]["max_bytes"], pipeline.proxy_byte_cap(5))
+        self.assertEqual(summary["stopped_early"], "time_budget")
+        self.assertEqual(summary["search_seconds"], 80.0)
+        self.assertEqual(summary["zillow_http_requests"], 2)
+        self.assertEqual(summary["zillow_session_rotations"], 0)
+        self.assertEqual(summary["zillow_proxy_mb"], 2.0)
+        self.assertEqual(summary["agents_found"], 1)
+        self.assertEqual(len(collected["rows"]), 1)
+
+    def test_local_run_reports_a_block_when_browser_teardown_fails(self):
+        block = _read("block_page.html")
+
+        class Driver:
+            def stop(self):
+                raise AttributeError("'Connection' object has no attribute 'cleanup'")
+
+        class BlockedBrowser(zillow_agents.ZillowBrowser):
+            def fetch(self, url):
+                slot = zillow_agents._Slot()
+                slot.playwright = Driver()
+                self._slots.append(slot)
+                return zillow_agents.FetchResult(url=url, html=block, status=200)
+
+        with tempfile.TemporaryDirectory() as tmp, patch.object(zillow_agents, "ZillowBrowser", BlockedBrowser):
+            collected = pipeline.run_collected(
+                {"zip_codes": ["08002"], "max_listings": 2, "max_agents": 2, "enrich": False},
+                output_dir=tmp,
+                checkpoint_path=Path(tmp) / "checkpoint.json",
+                seen_path=Path(tmp) / "seen.json",
+                run_date="2026-11-15",
+            )
+        self.assertEqual(collected["rows"], [])
+        self.assertEqual(collected["summary"]["blocked_zips"], ["08002"])
+        self.assertEqual(collected["summary"]["areas_blocked"], 1)
 
 
 if __name__ == "__main__":

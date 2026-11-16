@@ -58,6 +58,7 @@ flowchart LR
   scripts_stock_analyzer --> helper_scripts_utils
   scripts_webhook_manager --> helper_scripts_utils
   scripts_zillow_automation --> helper_scripts_api_manager
+  scripts_zillow_automation --> helper_scripts_browser
   scripts_zillow_automation --> helper_scripts_utils
   scripts_zillow_automation --> scripts_opp_finder_v2
 ```

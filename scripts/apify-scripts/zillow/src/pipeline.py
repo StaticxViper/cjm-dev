@@ -10,6 +10,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -36,11 +38,43 @@ CHECKPOINT_KEY = "CHECKPOINT"
 LISTINGS_KEY = "LISTINGS"
 SUMMARY_KEY = "SUMMARY"
 _SESSION_RE = re.compile(r"[^A-Za-z0-9._~]")
+# Enrichment time per agent. A slow Google or agent site cannot use the whole run.
+AGENT_ENRICH_BUDGET_S = 90
+# Decoded Zillow page bytes per run through residential proxy. Billed traffic
+# is compressed, so this is an upper bound on what the cap allows.
+PROXY_BYTES_BASE = 4 * 1024 * 1024
+PROXY_BYTES_PER_LISTING = 2 * 1024 * 1024
 
 
 def on_platform():
     """True only inside an Apify run. Local apify run leaves this unset."""
     return os.environ.get("APIFY_IS_AT_HOME") == "1"
+
+
+def platform_deadline(clock=time.monotonic, now=None, env=None):
+    """``clock()`` value at which the run stops working, or None without a timeout.
+
+    The margin leaves time to push rows and write SUMMARY before Apify stops
+    the run at its timeout.
+    """
+    env = os.environ if env is None else env
+    raw = env.get("ACTOR_TIMEOUT_AT") or env.get("APIFY_TIMEOUT_AT") or ""
+    if not raw:
+        return None
+    try:
+        timeout_at = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if timeout_at.tzinfo is None:
+        timeout_at = timeout_at.replace(tzinfo=timezone.utc)
+    current = now or datetime.now(timezone.utc)
+    remaining = (timeout_at - current).total_seconds()
+    margin = min(60.0, max(10.0, remaining * 0.2))
+    return clock() + max(0.0, remaining - margin)
+
+
+def proxy_byte_cap(max_listings):
+    return PROXY_BYTES_BASE + PROXY_BYTES_PER_LISTING * max(1, int(max_listings or 1))
 
 
 def _present(raw, *keys):
@@ -198,7 +232,7 @@ def read_run_input(actor_input):
     for aliases, field in status_fields:
         if any(alias in raw for alias in aliases):
             criteria[field] = _flag(_present(raw, *aliases), False)
-    enrich = _flag(_present(raw, "enrich", "enrichment"), True)
+    enrich = _flag(_present(raw, "enrich", "enrichment"), False)
     if "headless" in raw:
         headless = _flag(raw.get("headless"), True)
     else:
@@ -256,6 +290,9 @@ def run_summary(result):
         "blocked_pages": int(stats.get("blocked_pages") or 0),
         "areas_completed": int(stats.get("areas_completed") or 0),
         "areas_blocked": int(stats.get("areas_blocked") or 0),
+        "search_seconds": float(stats.get("search_seconds") or 0),
+        "enrich_seconds": float(stats.get("enrich_seconds") or 0),
+        "stopped_early": str(stats.get("stopped_early") or ""),
     }
 
 
@@ -313,20 +350,33 @@ def run_collected(
     run_date=None,
     at_home=False,
     proxy_urls=None,
+    deadline=None,
+    clock=time.monotonic,
 ):
-    """Run the shared pipeline. A local call with fetch= does not open a browser."""
+    """Run the shared pipeline. A local call with fetch= does not open a browser.
+
+    On the platform the run deadline comes from the Actor timeout, so a slow
+    run ends SUCCEEDED with the rows it has instead of TIMED-OUT.
+    """
     settings = read_run_input(actor_input)
     out_dir = run_output_dir(at_home, output_dir)
     checkpoint = Path(checkpoint_path) if checkpoint_path else checkpoint_file(at_home, out_dir)
     seen = Path(seen_path) if seen_path else (out_dir / "zillow_seen.json")
     cache = Path(cache_path) if cache_path else (out_dir / "zillow_agent_enrich_cache.json")
+    if deadline is None and at_home:
+        deadline = platform_deadline(clock)
     browser = None
     if fetch is None and proxy_urls:
         try:
             from .http_fetch import make_proxy_fetch
         except ImportError:
             from http_fetch import make_proxy_fetch
-        fetch = make_proxy_fetch(proxy_urls)
+        fetch = make_proxy_fetch(
+            proxy_urls,
+            max_bytes=proxy_byte_cap(settings["max_listings"]),
+            deadline=deadline,
+            clock=clock,
+        )
         if proxy is None and settings["enrich"]:
             proxy = playwright_proxy(proxy_urls[0])
     elif fetch is None:
@@ -354,10 +404,17 @@ def run_collected(
             max_agents=settings["max_agents"],
             on_checkpoint=on_checkpoint,
             browser_proxy=proxy,
+            deadline=deadline,
+            should_stop=getattr(fetch, "budget_reason", None),
+            agent_budget_s=AGENT_ENRICH_BUDGET_S,
+            clock=clock,
         )
     finally:
         if browser is not None:
-            browser.close()
+            try:
+                browser.close()
+            except Exception as exc:
+                zillow_agents.logger.error("Browser teardown failed after the run: %s", exc)
     agents_doc, listings_doc = load_written(result)
     rows = [dataset_row(agent) for agent in (agents_doc.get("agents") or [])]
     summary = run_summary(result)
@@ -365,6 +422,8 @@ def run_collected(
     if hasattr(fetch, "request_count"):
         summary["zillow_http_requests"] = int(fetch.request_count())
         summary["zillow_session_rotations"] = int(fetch.rotation_count())
+    if hasattr(fetch, "bytes_read"):
+        summary["zillow_proxy_mb"] = round(fetch.bytes_read() / (1024 * 1024), 2)
     return {
         "rows": rows,
         "listings": listings_doc,

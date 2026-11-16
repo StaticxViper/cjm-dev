@@ -67,7 +67,7 @@ An enriched contact is kept only when the agent name matches and the brokerage o
 | `max_agents` | 10 (max 500) | Total unique agents returned |
 | `forSaleByAgent`, `forSaleByOwner`, `forRent`, `sold` | agent listings only | Listing types to search |
 | `priceMin`, `priceMax` | — | Price filter |
-| `enrich` | true | Fill a missing phone or email from the agent's or brokerage's public pages |
+| `enrich` | false | Fill a missing phone or email from the agent's or brokerage's public pages. Off by default to keep Store runs inside timeout and proxy budget |
 | `proxyConfiguration` | Apify residential, US | Change the proxy group or country if needed |
 
 The run stops as soon as `max_listings` or `max_agents` is reached, and agents past `max_agents` are not enriched.
@@ -91,7 +91,7 @@ A blocked ZIP adds no agent rows and costs nothing. There is no CAPTCHA charge. 
 - **Blocks:** if a ZIP's search page is a block or "are you a robot" page, it is retried once on a fresh proxy session. If it is still blocked, that ZIP is listed in `blocked_zips` and the next ZIP runs. No CAPTCHA solving.
 - **Resume:** progress is checkpointed, so a migrated or restarted run continues where it stopped.
 - **Markup changes:** Zillow changes its pages from time to time. Parsers prefer the embedded listing JSON and fall back to visible fields.
-- **Known issue:** some recent Store runs reached their time limit before finishing. Until a fix ships, start with one or two ZIP codes and the default caps, then scale up.
+- **Time limit:** the run stops a little before its timeout and saves the agents it already has, so a short timeout returns fewer rows instead of a timed-out run. Enrichment spends at most about 90 seconds per agent. `SUMMARY.stopped_early` says when the time limit or the proxy traffic cap ended the run.
 - **Personal data:** results can include names, phone numbers, and emails from public listing pages. Store and use them only when you have a lawful reason, and follow the TCPA, CAN-SPAM, and local rules for outreach.
 
 ## FAQ
@@ -119,7 +119,7 @@ Yes. Turn on `forSaleByOwner`, `forRent`, or `sold` in the input. Agent listings
 ## Integrations and output
 
 - **Dataset:** one row per agent. Export as JSON, CSV, Excel, or HTML.
-- **Key-value store:** `LISTINGS` (every listing collected), `SUMMARY` (`listings_found`, `agents_found`, `agents_enriched`, `blocked_zips`), and `CHECKPOINT` (resume state).
+- **Key-value store:** `LISTINGS` (every listing collected), `SUMMARY` (`listings_found`, `agents_found`, `agents_enriched`, `blocked_zips`, seconds spent searching and enriching, and `stopped_early`), and `CHECKPOINT` (resume state).
 - **Automation:** run it from the Apify API, on a schedule, or through Make, Zapier, n8n, a CRM, or Google Sheets.
 
 ## Related actors

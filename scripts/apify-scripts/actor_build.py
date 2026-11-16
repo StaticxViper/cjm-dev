@@ -52,6 +52,8 @@ BUDGET_KEYS = {
     "maxItems",
     "maxChargeUsd",
     "maxUsageUsd",
+    "platformMinItems",
+    "summaryKey",
     "notes",
 }
 # Paths an Actor's own code adds to sys.path, relative to the repo root.
@@ -241,6 +243,8 @@ def budget_errors(actor):
         errors.append(f"budget maxDurationSecs is above actor.json defaultRunOptions.timeoutSecs {timeout}")
     if budget["minItems"] > budget["maxItems"]:
         errors.append("budget minItems is above maxItems")
+    if budget.get("platformMinItems", 0) > budget["maxItems"]:
+        errors.append("budget platformMinItems is above maxItems")
     if not (actor / FIXTURE).is_file():
         return errors
     try:
@@ -460,7 +464,14 @@ def isolate(actor):
 # --- fixture smoke ----------------------------------------------------------
 
 
-def evaluate(budget, result):
+def min_items(budget, platform=False):
+    """The platform smoke can require rows that a direct Docker run may not get."""
+    if platform and budget.get("platformMinItems") is not None:
+        return budget["platformMinItems"]
+    return budget["minItems"]
+
+
+def evaluate(budget, result, platform=False):
     """Return the budget violations for a finished run."""
     problems = []
     if result["status"] != "SUCCEEDED":
@@ -471,8 +482,12 @@ def evaluate(budget, result):
     if result["durationSecs"] > budget["maxDurationSecs"]:
         problems.append(f"duration {result['durationSecs']:.0f}s > {budget['maxDurationSecs']}s")
     items = result["itemCount"]
-    if not budget["minItems"] <= items <= budget["maxItems"]:
-        problems.append(f"dataset rows {items} outside {budget['minItems']}-{budget['maxItems']}")
+    low = min_items(budget, platform)
+    if not low <= items <= budget["maxItems"]:
+        problems.append(f"dataset rows {items} outside {low}-{budget['maxItems']}")
+    key = budget.get("summaryKey")
+    if key and not platform and items == 0 and result.get("summary") is None:
+        problems.append(f"0 dataset rows and no {key} record, so the run did not report why")
     if result["chargeUsd"] > Decimal(str(budget["maxChargeUsd"])):
         problems.append(f"PPE charge ${result['chargeUsd']} > ${budget['maxChargeUsd']}")
     usage = result.get("usageUsd")
@@ -546,6 +561,23 @@ def read_charging_log(storage):
         charged[event] = charged.get(event, 0) + count
         charge += Decimal(str(row.get("event_price_usd", 0))) * count
     return charge, charged
+
+
+def read_kvs_record(kvs, key):
+    """A JSON record from a local key-value store folder, or None.
+
+    Apify/Crawlee 1.x writes ``Actor.set_value("SUMMARY", ...)`` as the
+    extensionless file ``SUMMARY`` (plus ``SUMMARY.__metadata__.json``). Older
+    fixtures and docs used ``SUMMARY.json``, so both names are accepted.
+    """
+    for path in (kvs / key, kvs / f"{key}.json"):
+        if not path.is_file():
+            continue
+        try:
+            return read_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+    return None
 
 
 def _docker(*args, check=True, capture=True):
@@ -687,6 +719,8 @@ def smoke_docker(actor, budget, image):
             "chargeUsd": charge,
             "chargedEvents": charged,
         }
+        if budget.get("summaryKey"):
+            result["summary"] = read_kvs_record(kvs, budget["summaryKey"])
         unknown = sorted(set(charged) - set(ppe_prices(actor)))
         if unknown:
             print(f"Charged events not in pay_per_event.json (priced $1 locally): {', '.join(unknown)}")
@@ -764,7 +798,7 @@ def smoke(actor, image=None, platform=False, actor_id=None, build=None, report=N
         log = message
         problems = [message]
     else:
-        problems = evaluate(budget, result)
+        problems = evaluate(budget, result, platform)
     if report:
         _write_report(report, actor, result, problems, log)
     print(f"\n{actor.name} fixture smoke ({'platform' if platform else 'docker'})")
@@ -772,7 +806,9 @@ def smoke(actor, image=None, platform=False, actor_id=None, build=None, report=N
     memory = result.get("memoryMaxMbytes")
     print(f"  peak memory     {'n/a' if memory is None else f'{memory:.0f} MB'} (budget {budget['memoryMbytes']} MB)")
     print(f"  duration        {result['durationSecs']:.0f}s (budget {budget['maxDurationSecs']}s)")
-    print(f"  dataset rows    {result['itemCount']} (budget {budget['minItems']}-{budget['maxItems']})")
+    print(f"  dataset rows    {result['itemCount']} (budget {min_items(budget, platform)}-{budget['maxItems']})")
+    if "summary" in result:
+        print(f"  {budget['summaryKey']:<15} {json.dumps(result['summary'], sort_keys=True)}")
     print(f"  PPE charge      ${result['chargeUsd']} {result['chargedEvents']} (budget ${budget['maxChargeUsd']})")
     if result.get("usageUsd") is not None:
         print(f"  platform usage  ${result['usageUsd']:.4f}")

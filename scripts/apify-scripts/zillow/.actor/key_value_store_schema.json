@@ -11,7 +11,7 @@
     },
     "summary": {
       "title": "Summary",
-      "description": "listings_found, agents_found, agents_enriched, and blocked_zips for the finished run.",
+      "description": "listings_found, agents_found, agents_enriched, blocked_zips, search_seconds, enrich_seconds, stopped_early, and proxy request counts for the finished run.",
       "key": "SUMMARY",
       "contentTypes": ["application/json"]
     },
