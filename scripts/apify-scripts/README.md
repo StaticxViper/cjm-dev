@@ -31,8 +31,9 @@ Later folders (not created yet): `amazon/`, `youtube/`, `instagram/`. Each one i
 7. Write `fixtures/INPUT.json` as a small run and `fixtures/budget.json` for it (see [Build and budgets](#build-and-budgets)). Run `budgets --write` to refresh the table below.
 8. Write the marketplace `README.md` from the [Store README template](#store-readme-template). Build notes go under [Actor notes](#actor-notes), not in the Store page.
 9. Add unit tests under `unittests/apify_scripts/` for input mapping and dataset shape. No live site calls in those tests.
+10. Run `python -m pytest unittests/` from the repo root before the pull request. That is the CI job. The new test file passing by itself is not enough.
 
-Do not merge an Actor that is missing from `python scripts/apify-scripts/actor_build.py list`, or whose `check` or `smoke <name>` fails. Unit tests are not a substitute. `check` fails when `bundle.txt`, `fixtures/INPUT.json`, or `fixtures/budget.json` is missing, and `ci.yml` runs it on every pull request. The Apify Actors workflow then builds and smokes every name `list` prints, with no hardcoded Actor list. An HTTP-only Actor may use `apify/actor-python:3.12` instead of the Playwright image. It still omits `dockerContextDir` and leaves `WORKDIR` at `/usr/src/app`.
+Do not merge an Actor that is missing from `python scripts/apify-scripts/actor_build.py list`, or whose `check` or `smoke <name>` fails. Unit tests are not a substitute. `check` fails when `bundle.txt`, `fixtures/INPUT.json`, or `fixtures/budget.json` is missing, and `ci.yml` runs it on every pull request. The Apify Actors workflow then builds and smokes every name `list` prints. Actor folders are discovered from `.actor/actor.json`. Do not add the folder name to a list in a test or a workflow. `unittests/apify_scripts/test_actor_build.py` used to keep a frozen `ACTORS` tuple, and every new Actor failed CI until someone edited that tuple. An HTTP-only Actor may use `apify/actor-python:3.12` instead of the Playwright image. It still omits `dockerContextDir` and leaves `WORKDIR` at `/usr/src/app`.
 
 ## Build and budgets
 

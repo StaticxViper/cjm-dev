@@ -1,0 +1,17 @@
+---
+description: New Apify Actors must pass the full unit suite CI runs, with no frozen actor-name list
+globs: scripts/apify-scripts/**,unittests/apify_scripts/**
+alwaysApply: true
+---
+
+# New Actor CI
+
+The CI job in `.github/workflows/ci.yml` runs `python -m pytest unittests/` plus `python scripts/apify-scripts/actor_build.py check`. Actor Docker smoke is a different workflow. A green smoke and a green new test file still leave the pull request red when the full unit suite fails.
+
+Before opening or updating a pull request that adds an Actor:
+
+- Run `python -m pytest unittests/` from the repo root. Run the new test file as well, but that command is not CI.
+- Run `python scripts/apify-scripts/actor_build.py check`.
+- Discover actors with `python scripts/apify-scripts/actor_build.py list`. Folders come from `.actor/actor.json`.
+
+Do not add the new folder name to a tuple, workflow matrix, or expected-name list. `unittests/apify_scripts/test_actor_build.py` discovers folders. A frozen `ACTORS` list is why CI failed on every new Actor (including PR 213, `ucc-filing`).
