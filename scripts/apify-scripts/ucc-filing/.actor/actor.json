@@ -1,0 +1,28 @@
+{
+  "actorSpecification": 1,
+  "name": "ucc-filing",
+  "title": "UCC Filing Leads – New UCC-1 Debtor Feed",
+  "description": "New UCC-1 financing statements from Connecticut and Oregon open data, with debtor, secured party, filing date, and lapse date. A scheduled feed for MCA, equipment, and B2B teams.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "changelog": "./CHANGELOG.md",
+  "input": "./input_schema.json",
+  "output": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json",
+    "keyValueStore": "./key_value_store_schema.json"
+  },
+  "minMemoryMbytes": 512,
+  "maxMemoryMbytes": 512,
+  "defaultMemoryMbytes": 512,
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 300,
+    "memoryMbytes": 512
+  },
+  "meta": {
+    "generatedBy": "Cursor with Grok 4.7"
+  }
+}

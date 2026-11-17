@@ -1,0 +1,4 @@
+# HTTP only. The slim apify/actor-python base has no Playwright and this
+# Actor does not need it.
+apify>=2.7,<4
+httpx

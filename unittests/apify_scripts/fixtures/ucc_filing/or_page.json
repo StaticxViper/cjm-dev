@@ -1,0 +1,40 @@
+[
+  {
+    "lien_type": "UCC",
+    "original_file_number": "94624849",
+    "file_number": "94624849",
+    "file_type": "INITIAL",
+    "filing_date": "2026-10-21T00:00:00.000",
+    "lapse_date": "2031-10-21T00:00:00.000",
+    "party_type": "DB",
+    "entity_type": "IND",
+    "entity": "RIDGES, KEVIN",
+    "mail_addr_1": "38651 SE SERBAN RD",
+    "city_descr": "SANDY",
+    "st_cd_txt": "OR",
+    "zip_code_txt": "97055",
+    "cntry_cd_txt": "USA",
+    "image_link": {
+      "url": "http://records.sos.state.or.us/ORSOSWebDrawer/Record?q=recTitle%3A94624849"
+    }
+  },
+  {
+    "lien_type": "UCC",
+    "original_file_number": "94624849",
+    "file_number": "94624849",
+    "file_type": "INITIAL",
+    "filing_date": "2026-10-21T00:00:00.000",
+    "lapse_date": "2031-10-21T00:00:00.000",
+    "party_type": "SP",
+    "entity_type": "ORG",
+    "entity": "SUNGAGE FINANCIAL LLC, AS COLLATERAL AGENT",
+    "mail_addr_1": "38 CHAUNCY ST FLOOR 6",
+    "city_descr": "BOSTON",
+    "st_cd_txt": "MA",
+    "zip_code_txt": "02111",
+    "cntry_cd_txt": "USA",
+    "image_link": {
+      "url": "http://records.sos.state.or.us/ORSOSWebDrawer/Record?q=recTitle%3A94624849"
+    }
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "states": ["CT"],
+  "dateFrom": "2024-06-03",
+  "dateTo": "2024-06-03",
+  "filingTypes": ["UCC-1"],
+  "maxItems": 2,
+  "delaySeconds": 1,
+  "maxSpendUsd": 0.05
+}
