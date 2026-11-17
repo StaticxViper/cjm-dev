@@ -1,0 +1,208 @@
+{
+  "title": "UCC filing leads",
+  "description": "New UCC-1 financing statements from Connecticut and Oregon open data. Other states return a free status row. No portal, CAPTCHA, or paid-search fetch.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "states": {
+      "title": "States",
+      "type": "array",
+      "description": "Two-letter codes. Verified open data: CT (Connecticut, updated continuously) and OR (Oregon, the previous calendar month's file). Any other state returns one free unsupported row and is not fetched. Default and Try input is CT. At most 10.",
+      "editor": "select",
+      "items": {
+        "type": "string",
+        "enum": [
+          "AL",
+          "AK",
+          "AZ",
+          "AR",
+          "CA",
+          "CO",
+          "CT",
+          "DE",
+          "DC",
+          "FL",
+          "GA",
+          "HI",
+          "ID",
+          "IL",
+          "IN",
+          "IA",
+          "KS",
+          "KY",
+          "LA",
+          "ME",
+          "MD",
+          "MA",
+          "MI",
+          "MN",
+          "MS",
+          "MO",
+          "MT",
+          "NE",
+          "NV",
+          "NH",
+          "NJ",
+          "NM",
+          "NY",
+          "NC",
+          "ND",
+          "OH",
+          "OK",
+          "OR",
+          "PA",
+          "RI",
+          "SC",
+          "SD",
+          "TN",
+          "TX",
+          "UT",
+          "VT",
+          "VA",
+          "WA",
+          "WV",
+          "WI",
+          "WY"
+        ],
+        "enumTitles": [
+          "Alabama",
+          "Alaska",
+          "Arizona",
+          "Arkansas",
+          "California",
+          "Colorado",
+          "Connecticut",
+          "Delaware",
+          "District of Columbia",
+          "Florida",
+          "Georgia",
+          "Hawaii",
+          "Idaho",
+          "Illinois",
+          "Indiana",
+          "Iowa",
+          "Kansas",
+          "Kentucky",
+          "Louisiana",
+          "Maine",
+          "Maryland",
+          "Massachusetts",
+          "Michigan",
+          "Minnesota",
+          "Mississippi",
+          "Missouri",
+          "Montana",
+          "Nebraska",
+          "Nevada",
+          "New Hampshire",
+          "New Jersey",
+          "New Mexico",
+          "New York",
+          "North Carolina",
+          "North Dakota",
+          "Ohio",
+          "Oklahoma",
+          "Oregon",
+          "Pennsylvania",
+          "Rhode Island",
+          "South Carolina",
+          "South Dakota",
+          "Tennessee",
+          "Texas",
+          "Utah",
+          "Vermont",
+          "Virginia",
+          "Washington",
+          "West Virginia",
+          "Wisconsin",
+          "Wyoming"
+        ]
+      },
+      "default": [
+        "CT"
+      ],
+      "prefill": [
+        "CT"
+      ],
+      "maxItems": 10
+    },
+    "dateFrom": {
+      "title": "Filing date from",
+      "type": "string",
+      "description": "YYYY-MM-DD, inclusive. Empty uses the last 7 days together with dateTo. Oregon's open file is the previous calendar month, so a last-7-days window only matches it near the start of a month.",
+      "editor": "textfield"
+    },
+    "dateTo": {
+      "title": "Filing date through",
+      "type": "string",
+      "description": "YYYY-MM-DD, inclusive. Empty uses today when dateFrom is also empty. The window cannot exceed 92 days.",
+      "editor": "textfield"
+    },
+    "filingTypes": {
+      "title": "Filing types",
+      "type": "array",
+      "description": "UCC-1 is an original financing statement. UCC-3 is an amendment, continuation, assignment, or termination on a commercial filing. Default is UCC-1. Tax, municipal, and vessel liens are not included.",
+      "editor": "select",
+      "items": {
+        "type": "string",
+        "enum": [
+          "UCC-1",
+          "UCC-3"
+        ],
+        "enumTitles": [
+          "UCC-1 original financing statement",
+          "UCC-3 amendment, continuation, assignment, or termination"
+        ]
+      },
+      "default": [
+        "UCC-1"
+      ],
+      "prefill": [
+        "UCC-1"
+      ],
+      "maxItems": 2
+    },
+    "maxItems": {
+      "title": "Max filings",
+      "type": "integer",
+      "description": "Hard cap on successful UCC rows for the run, after party rows are folded into filings and after newSinceLastRun. Default 25, maximum 500. The Try input asks for 5. Status rows do not count and are not billed. Later states are not requested once the cap is full.",
+      "editor": "number",
+      "default": 25,
+      "prefill": 5,
+      "minimum": 1,
+      "maximum": 500
+    },
+    "newSinceLastRun": {
+      "title": "New since last run",
+      "type": "boolean",
+      "description": "Skip filings already pushed and charged in stateStoreName. If that store cannot be read, the run fetches nothing and bills nothing, so earlier filings are not sent again. A missing record is a first run. Default off.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "stateStoreName": {
+      "title": "State store name",
+      "type": "string",
+      "description": "Named key-value store that remembers filings this Actor has charged. Default ucc-filing-state. Letters, numbers, hyphens, and underscores only.",
+      "editor": "textfield",
+      "default": "ucc-filing-state"
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Both portals ask for Crawl-delay 1. Requests run one at a time. The pause jitters upward by up to 1 second.",
+      "editor": "number",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "A filing is pushed only when its $0.008 charge fits under this amount. When the next filing would pass it, the feed stops and one free spend_capped row records how many filings were held back. Default 0.50, maximum 100.",
+      "editor": "number",
+      "default": 0.5,
+      "minimum": 0.01,
+      "maximum": 100
+    }
+  }
+}

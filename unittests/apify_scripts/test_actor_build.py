@@ -25,20 +25,6 @@ _spec = importlib.util.spec_from_file_location("cjm_actor_build", _PATH)
 build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
 
-ACTORS = (
-    "app-reviews",
-    "ats-jobs",
-    "city-data",
-    "contractor-license",
-    "google-business",
-    "gov-contracts",
-    "home-services",
-    "new-business",
-    "permits",
-    "shopify-store",
-    "zillow",
-)
-
 BUDGET = {
     "memoryMbytes": 1024,
     "maxDurationSecs": 300,
@@ -63,10 +49,19 @@ def _result(**overrides):
 
 
 class TestRepoActors(unittest.TestCase):
-    def test_every_listed_actor_has_a_build_folder(self):
-        names = [actor.name for actor in build.actor_dirs()]
-        self.assertEqual(sorted(set(names) - {"_template"}), sorted(ACTORS))
-        self.assertIn("_template", names)
+    def test_actor_discovery_follows_actor_json(self):
+        """A folder with .actor/actor.json is an Actor. There is no name list to update."""
+        found = [actor.name for actor in build.actor_dirs()]
+        on_disk = sorted(
+            path.name
+            for path in build.HERE.iterdir()
+            if path.is_dir() and (path / ".actor" / "actor.json").is_file()
+        )
+        self.assertEqual(found, on_disk)
+        self.assertIn("_template", found)
+        published = [name for name in found if not name.startswith("_")]
+        self.assertNotIn("_template", published)
+        self.assertGreaterEqual(len(published), 1)
 
     def test_repo_passes_check(self):
         for actor in build.actor_dirs():
@@ -90,8 +85,11 @@ class TestRepoActors(unittest.TestCase):
         body = template[template.index("FROM ") :]
         base = body.splitlines()[0]
         matched = []
-        for name in ACTORS:
-            text = (build.HERE / name / "Dockerfile").read_text(encoding="utf-8")
+        for actor in build.actor_dirs():
+            if actor.name.startswith("_"):
+                continue
+            name = actor.name
+            text = (actor / "Dockerfile").read_text(encoding="utf-8")
             actor_body = text[text.index("FROM ") :]
             if not actor_body.startswith(base):
                 continue

@@ -1,0 +1,91 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "UCC filing leads",
+    "fields": {
+      "state": {"type": "string"},
+      "filingNumber": {"type": "string"},
+      "filingType": {"type": "string"},
+      "filingDate": {"type": "string"},
+      "lapseDate": {"type": "string"},
+      "debtorName": {"type": "string"},
+      "debtorAddress": {"type": "string"},
+      "securedPartyName": {"type": "string"},
+      "securedPartyAddress": {"type": "string"},
+      "collateral": {"type": "string"},
+      "source": {"type": "string"},
+      "sourceUrl": {"type": "string"},
+      "status": {"type": "string"},
+      "decision": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["state", "filingType", "filingDate", "debtorName", "securedPartyName", "filingNumber", "status"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "state": {"label": "State", "format": "text"},
+          "filingType": {"label": "Type", "format": "text"},
+          "filingDate": {"label": "Filed", "format": "text"},
+          "debtorName": {"label": "Debtor", "format": "text"},
+          "securedPartyName": {"label": "Secured party", "format": "text"},
+          "filingNumber": {"label": "Filing number", "format": "text"},
+          "status": {"label": "Status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "state",
+          "filingNumber",
+          "filingType",
+          "filingDate",
+          "lapseDate",
+          "debtorName",
+          "debtorAddress",
+          "securedPartyName",
+          "securedPartyAddress",
+          "collateral",
+          "source",
+          "sourceUrl",
+          "status",
+          "decision",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "state": {"label": "State", "format": "text"},
+          "filingNumber": {"label": "Filing number", "format": "text"},
+          "filingType": {"label": "Type", "format": "text"},
+          "filingDate": {"label": "Filed", "format": "text"},
+          "lapseDate": {"label": "Lapse", "format": "text"},
+          "debtorName": {"label": "Debtor", "format": "text"},
+          "debtorAddress": {"label": "Debtor address", "format": "text"},
+          "securedPartyName": {"label": "Secured party", "format": "text"},
+          "securedPartyAddress": {"label": "Secured party address", "format": "text"},
+          "collateral": {"label": "Collateral", "format": "text"},
+          "source": {"label": "Source", "format": "text"},
+          "sourceUrl": {"label": "Source URL", "format": "link"},
+          "status": {"label": "Status", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}
