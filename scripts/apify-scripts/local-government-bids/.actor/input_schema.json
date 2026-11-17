@@ -1,0 +1,93 @@
+{
+  "title": "Local government bids",
+  "description": "City and county bid, RFP, and ITB leads from official open data. Not SAM.gov. Unknown source ids return a free status row and are not fetched.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "sources": {
+      "title": "Sources",
+      "type": "array",
+      "description": "Verified feeds: montgomery_solicitations (Montgomery County, MD; the default and the Try source) and los_angeles_ramp (Los Angeles open bids). Any other id returns one free unsupported row and is not fetched. At most 10.",
+      "editor": "stringList",
+      "items": {"type": "string"},
+      "default": ["montgomery_solicitations"],
+      "prefill": ["montgomery_solicitations"],
+      "maxItems": 10
+    },
+    "state": {
+      "title": "State",
+      "type": "string",
+      "description": "Optional two-letter postal code. A selected source in another state returns one free skipped row and is not fetched. Empty runs every selected source.",
+      "editor": "textfield"
+    },
+    "keywords": {
+      "title": "Keywords",
+      "type": "array",
+      "description": "Optional words matched against the title, agency, category, and solicitation id. Letters, numbers, and spaces only. Other characters are dropped. At most 8.",
+      "editor": "stringList",
+      "items": {"type": "string"},
+      "maxItems": 8
+    },
+    "dateFrom": {
+      "title": "Posted from",
+      "type": "string",
+      "description": "YYYY-MM-DD, inclusive, on the posted or issuance date. Empty uses the last 14 days together with dateTo. This is not the due date.",
+      "editor": "textfield"
+    },
+    "dateTo": {
+      "title": "Posted through",
+      "type": "string",
+      "description": "YYYY-MM-DD, inclusive. Empty uses today when dateFrom is also empty. The window cannot exceed 92 days.",
+      "editor": "textfield"
+    },
+    "maxItems": {
+      "title": "Max bids",
+      "type": "integer",
+      "description": "Hard cap on successful bid rows for the run, after newSinceLastRun. Default 25, maximum 500. The Try input asks for 5. Status rows do not count and are not billed. Later sources are not requested once the cap is full.",
+      "editor": "number",
+      "default": 25,
+      "prefill": 5,
+      "minimum": 1,
+      "maximum": 500
+    },
+    "newSinceLastRun": {
+      "title": "New since last run",
+      "type": "boolean",
+      "description": "Skip bids already pushed and charged in stateStoreName. If that store cannot be read, the run fetches nothing and bills nothing, so earlier bids are not sent again. A missing record is a first run. Default off.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "stateStoreName": {
+      "title": "State store name",
+      "type": "string",
+      "description": "Named key-value store that remembers bids this Actor has charged. Default local-government-bids-state. Letters, numbers, hyphens, and underscores only.",
+      "editor": "textfield",
+      "default": "local-government-bids-state"
+    },
+    "delaySeconds": {
+      "title": "Delay between requests",
+      "type": "number",
+      "description": "Seconds to wait before each request after the first. Both portals ask for a one-second crawl delay. Requests run one at a time. The pause jitters upward by up to 1 second.",
+      "editor": "number",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxSpendUsd": {
+      "title": "Max spend (USD)",
+      "type": "number",
+      "description": "A bid is pushed only when its $0.008 charge fits under this amount. When the next bid would pass it, the feed stops and one free spend_capped row records how many bids were held back. Default 0.50, maximum 100.",
+      "editor": "number",
+      "default": 0.5,
+      "minimum": 0.01,
+      "maximum": 100
+    },
+    "appToken": {
+      "title": "Socrata app token",
+      "type": "string",
+      "description": "Optional. Sent only as an X-App-Token header when a feed needs one. Leave it empty for Los Angeles and Montgomery County. A feed that requires a token is skipped, and the other feeds still run. Stored as a secret. It is not written to the dataset or the summary.",
+      "editor": "textfield",
+      "isSecret": true
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "memoryMbytes": 512,
+  "maxDurationSecs": 180,
+  "minItems": 2,
+  "maxItems": 2,
+  "maxChargeUsd": 0.016,
+  "maxUsageUsd": 0.05,
+  "notes": "CI Docker smoke. Two Montgomery County solicitations issued on 2023-03-23 from data.montgomerycountymd.gov eeq6-nnwe. maxItems 2, so a day with more filings still pushes two rows. A blocked or error run that pushes one status row fails minItems. Two bids at $0.008 equal maxChargeUsd, which is within the fixture maxSpendUsd of 0.05. The platform start fee is not in this Docker charge. Los Angeles is covered by the recorded unit fixture only, because that file is the current open-bid list and a fixed historical day can drop off it."
+}

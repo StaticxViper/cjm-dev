@@ -1,0 +1,28 @@
+[
+  {
+    "status": "Closed",
+    "type": "RFP",
+    "number": "1134941",
+    "description": "Parking Meters",
+    "issuancedate": "2023-03-23T00:00:00.000",
+    "closingdate": "2023-05-03T00:00:00.000",
+    "construction": "N",
+    "lsbrpindicator": "N",
+    "buyer": "Harris, Eric",
+    "department": "Department of Transportation",
+    "deptcontact": "Javier Torres"
+  },
+  {
+    "status": "Closed",
+    "type": "RFP",
+    "number": "1138052",
+    "description": "Registered Nurse Healthcare Services for Head Start and Pre-Kindergarten Children",
+    "issuancedate": "2023-03-23T00:00:00.000",
+    "closingdate": "2023-05-03T00:00:00.000",
+    "construction": "N",
+    "lsbrpindicator": "N",
+    "buyer": "Harris, Eric",
+    "department": "Department of Health & Human Svcs",
+    "deptcontact": "Beka Urgessa"
+  }
+]

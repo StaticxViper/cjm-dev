@@ -1,0 +1,100 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": "Local government bids",
+    "fields": {
+      "source": {"type": "string"},
+      "sourceUrl": {"type": "string"},
+      "agency": {"type": "string"},
+      "title": {"type": "string"},
+      "solicitationId": {"type": "string"},
+      "category": {"type": "string"},
+      "naics": {"type": "string"},
+      "state": {"type": "string"},
+      "city": {"type": "string"},
+      "postedDate": {"type": "string"},
+      "dueDate": {"type": "string"},
+      "estimatedValue": {"type": "string"},
+      "status": {"type": "string"},
+      "description": {"type": "string"},
+      "contactName": {"type": "string"},
+      "contactEmail": {"type": "string"},
+      "decision": {"type": "string"},
+      "ok": {"type": "boolean"},
+      "error": {"type": "string"},
+      "scrapedAt": {"type": "string"}
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": ["state", "city", "title", "agency", "dueDate", "category", "status"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "state": {"label": "State", "format": "text"},
+          "city": {"label": "City", "format": "text"},
+          "title": {"label": "Title", "format": "text"},
+          "agency": {"label": "Agency", "format": "text"},
+          "dueDate": {"label": "Due", "format": "text"},
+          "category": {"label": "Category", "format": "text"},
+          "status": {"label": "Status", "format": "text"}
+        }
+      }
+    },
+    "detail": {
+      "title": "Detail",
+      "transformation": {
+        "fields": [
+          "source",
+          "sourceUrl",
+          "agency",
+          "title",
+          "solicitationId",
+          "category",
+          "naics",
+          "state",
+          "city",
+          "postedDate",
+          "dueDate",
+          "estimatedValue",
+          "status",
+          "description",
+          "contactName",
+          "contactEmail",
+          "decision",
+          "ok",
+          "error",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "source": {"label": "Source", "format": "text"},
+          "sourceUrl": {"label": "Source URL", "format": "link"},
+          "agency": {"label": "Agency", "format": "text"},
+          "title": {"label": "Title", "format": "text"},
+          "solicitationId": {"label": "Solicitation", "format": "text"},
+          "category": {"label": "Category", "format": "text"},
+          "naics": {"label": "NAICS", "format": "text"},
+          "state": {"label": "State", "format": "text"},
+          "city": {"label": "City", "format": "text"},
+          "postedDate": {"label": "Posted", "format": "text"},
+          "dueDate": {"label": "Due", "format": "text"},
+          "estimatedValue": {"label": "Estimate", "format": "text"},
+          "status": {"label": "Status", "format": "text"},
+          "description": {"label": "Description", "format": "text"},
+          "contactName": {"label": "Contact", "format": "text"},
+          "contactEmail": {"label": "Email", "format": "text"},
+          "decision": {"label": "Decision", "format": "text"},
+          "ok": {"label": "OK", "format": "boolean"},
+          "error": {"label": "Error", "format": "text"},
+          "scrapedAt": {"label": "Scraped at", "format": "text"}
+        }
+      }
+    }
+  }
+}

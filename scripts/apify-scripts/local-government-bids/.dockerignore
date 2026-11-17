@@ -1,0 +1,6 @@
+storage
+fixtures
+**/__pycache__
+**/*.pyc
+.venv
+*.env

@@ -1,0 +1,32 @@
+[
+  {
+    "event_id": "SFGOV~0000012231",
+    "department": "Airport Commission",
+    "status": "Open",
+    "category": "Personal Services",
+    "type": "Seeking Bids",
+    "open_date": "2026-11-16T12:00:00.000",
+    "due_date": "2026-12-18T12:00:00.000",
+    "title": "AIR | TM3 – Enhanced Passenger Processing Program",
+    "sfcitypartner_link": {
+      "url": "https://sfcitypartner.sfgov.org/pages/Events-BS3/event-details.aspx?Page=AUC_RESP_INQ_DTL&Action=U&AUC_ID=0000012231&AUC_ROUND=1&AUC_VERSION=1&BIDDER_ID=0000000001&BIDDER_LOC=1&BIDDER_SETID=SHARE&BIDDER_TYPE=B&BUSINESS_UNIT=SFGOV"
+    },
+    "data_as_of": "2026-11-08T23:14:58.000",
+    "data_loaded_at": "2026-11-09T03:06:58.302"
+  },
+  {
+    "event_id": "SFGOV~0000012224",
+    "department": "Office of Contract Administration",
+    "status": "Open",
+    "category": "Commodity",
+    "type": "Seeking Bids",
+    "open_date": "2026-11-06T17:00:00.000",
+    "due_date": "2026-11-16T17:00:00.000",
+    "title": "OCA PUC | TM3-Citrix VAD License Renewal",
+    "sfcitypartner_link": {
+      "url": "https://sfcitypartner.sfgov.org/pages/Events-BS3/event-details.aspx?Page=AUC_RESP_INQ_DTL&Action=U&AUC_ID=0000012224&AUC_ROUND=1&AUC_VERSION=1&BIDDER_ID=0000000001&BIDDER_LOC=1&BIDDER_SETID=SHARE&BIDDER_TYPE=B&BUSINESS_UNIT=SFGOV"
+    },
+    "data_as_of": "2026-11-08T23:14:58.000",
+    "data_loaded_at": "2026-11-09T03:06:58.302"
+  }
+]

@@ -158,6 +158,7 @@ One opportunity or award row. A skipped source, an empty search, and errors are 
 
 ## Related actors
 
+- [Local Government Bids](https://apify.com/staticxviper/local-government-bids): city and county RFP and ITB leads from official open data. This Actor stays on federal SAM.gov and USAspending.
 - [New Business Leads](https://apify.com/staticxviper/new-business): newly registered LLCs and corporations by state.
 - [Contractor License Lookup](https://apify.com/staticxviper/contractor-license): verify a California contractor's license.
 - [ATS Jobs Feed](https://apify.com/staticxviper/ats-jobs): open jobs from Greenhouse, Lever, Ashby, and Workable boards.

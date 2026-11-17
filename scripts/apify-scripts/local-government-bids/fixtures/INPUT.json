@@ -1,0 +1,8 @@
+{
+  "sources": ["montgomery_solicitations"],
+  "dateFrom": "2023-03-23",
+  "dateTo": "2023-03-23",
+  "maxItems": 2,
+  "delaySeconds": 1,
+  "maxSpendUsd": 0.05
+}

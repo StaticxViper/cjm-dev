@@ -1,0 +1,16 @@
+{
+  "actorChargeEvents": {
+    "apify-actor-start": {
+      "eventTitle": "Actor start",
+      "eventDescription": "Charged once when the run starts. This is the platform start fee.",
+      "eventPriceUsd": 0.00005,
+      "isOneTimeEvent": true
+    },
+    "opportunity": {
+      "eventTitle": "Local bid",
+      "eventDescription": "Charged when a local bid row is pushed. A bid is pushed only when this charge fits under maxSpendUsd. unsupported, skipped, not_found, blocked, robots, spend_capped, and error rows are saved and not billed.",
+      "eventPriceUsd": 0.008,
+      "isPrimaryEvent": true
+    }
+  }
+}
